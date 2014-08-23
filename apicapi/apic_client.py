@@ -594,8 +594,7 @@ class Transaction(object):
         parent = self.create_branch(container,
                                     *params[:container.dn_param_count])
         # Mo is child of this node
-        curr = self._append_child(parent, mo, *params)
-        return curr
+        return self._append_child(parent, mo, *params)
 
     def commit(self):
         return self.session.post_body(

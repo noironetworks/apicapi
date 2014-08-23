@@ -15,9 +15,21 @@
 #
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
 
-from setuptools import setup, find_packages
+import os
+from setuptools import setup
+
+
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+
 setup(
-    name = "ApicApi",
-    version = "0.1",
-    packages = find_packages(),
+    name = "apicapi",
+    version = "0.0.1",
+    packages = ["apicapi"],
+    author = "Cisco Systems, Inc.",
+    author_email = "apicapi@noironetworks.com",
+    url = "http://github.com/noironetworks/apicapi/",
+    license = "http://www.apache.org/licenses/LICENSE-2.0",
+    description = "This library provides an interface to the APIC REST api.",
+    long_description=read('README.md'),
 )
