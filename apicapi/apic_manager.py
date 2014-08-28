@@ -175,6 +175,11 @@ class APICManager(object):
             self.apic.fvCtx.create(
                 owner, ctx_id, pcEnfPref=CONTEXT_ENFORCED, transaction=trs)
 
+    def ensure_context_deleted(self, owner=TENANT_COMMON,
+                               ctx_id=CONTEXT_SHARED,
+                               transaction=None):
+        self.apic.fvCtx.delete(owner, ctx_id, transaction=transaction)
+
     def ensure_entity_profile_created_on_apic(self, name, transaction=None):
         """Create the infrastructure entity profile."""
         with self.apic.transaction(transaction) as trs:
@@ -370,15 +375,16 @@ class APICManager(object):
 
     def ensure_bd_created_on_apic(self, tenant_id, bd_id,
                                   ctx_owner=TENANT_COMMON,
+                                  ctx_name=CONTEXT_SHARED,
                                   transaction=None):
         """Creates a Bridge Domain on the APIC."""
-        self.ensure_context_enforced(ctx_owner, CONTEXT_SHARED)
+        self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.create(tenant_id, bd_id, transaction=trs)
             # Add default context to the BD
             self.apic.fvRsCtx.create(
                 tenant_id, bd_id,
-                tnFvCtxName=self.apic.fvCtx.name(CONTEXT_SHARED),
+                tnFvCtxName=self.apic.fvCtx.name(ctx_name),
                 transaction=trs)
 
     def delete_bd_on_apic(self, tenant_id, bd_id, transaction=None):
@@ -401,7 +407,8 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.fvSubnet.delete(tenant_id, bd_id, gw_ip, transaction=trs)
 
-    def ensure_epg_created(self, tenant_id, network_id, transaction=None):
+    def ensure_epg_created(self, tenant_id, network_id,
+                           bd_name=None, transaction=None):
         """Creates an End Point Group on the APIC.
 
         Create a new EPG on the APIC for the network spcified. This information
@@ -416,7 +423,7 @@ class APICManager(object):
                                     transaction=trs)
 
             # Add bd to EPG
-            bd_name = network_id
+            bd_name = bd_name or network_id
             self.apic.fvBD.create(tenant_id, bd_name, transaction=trs)
 
             # create fvRsBd
@@ -503,18 +510,18 @@ class APICManager(object):
             self.apic.vzRsIf.create(owner, iuuid,
                                     tDn=CP_PATH_DN % (owner, cuuid),
                                     transaction=trs)
-        self.db.update_contract_for_router(owner, router_id)
+        self.db.update_contract_for_router(owner, router_id.uid)
         return cuuid
 
     def delete_router_contract(self, router_id, transaction=None):
         """Delete the contract related to a given Router."""
-        contract = self.db.get_contract_for_router(router_id)
+        contract = self.db.get_contract_for_router(router_id.uid)
         if contract:
             with self.apic.transaction(transaction) as trs:
                 self.apic.vzBrCP.delete(contract.tenant_id,
                                         'contract-%s' % router_id.uid,
                                         transaction=trs)
-            self.db.delete_contract_for_router(router_id)
+            self.db.delete_contract_for_router(router_id.uid)
 
     def ensure_path_created_for_port(self, tenant_id, network_id,
                                      host_id, encap, transaction=None):
@@ -561,6 +568,32 @@ class APICManager(object):
                 pdn = PORT_DN_PATH % (switch, module, port)
                 self.apic.fvRsPathAtt.delete(tenant_id, self.app_profile_name,
                                              network_id, pdn, transaction=trs)
+
+    def ensure_static_endpoint_created(self, tenant_id, epg_id, host_id,
+                                       mac_address, ip_address, encap,
+                                       transaction=None):
+        with self.apic.transaction(transaction) as trs:
+            # Get attached switch and port for this host
+            host_config = self.db.get_switch_and_port_for_host(host_id)
+            if not host_config or not host_config.count():
+                raise cexc.ApicHostNotConfigured(host=host_id)
+
+            encap = 'vlan-' + str(encap)
+            self.apic.fvStCEp.create(
+                tenant_id, self.app_profile_name, epg_id,
+                mac_address, 'tep', encap=encap, ip=ip_address,
+                transaction=trs)
+            for switch, module, port in host_config:
+                pdn = PORT_DN_PATH % (switch, module, port)
+                self.apic.fvRsStCEpToPathEp.create(
+                    tenant_id, self.app_profile_name, epg_id,
+                    mac_address, 'tep', pdn, transaction=trs)
+
+    def ensure_static_endpoint_deleted(self, tenant_id, epg_id, mac_address,
+                                       transaction=None):
+        self.apic.fvStCEp.delete(
+            tenant_id, self.app_profile_name, epg_id,
+            mac_address, 'tep', transaction=transaction)
 
     def add_hostlink(self, host, ifname, ifmac, switch, module, port,
                      transaction=None):
@@ -754,7 +787,7 @@ class APICManager(object):
 
     def delete_external_epg_contract(self, router_id, network_id,
                                      transaction=None):
-        contract = self.db.get_contract_for_router(router_id)
+        contract = self.db.get_contract_for_router(router_id.uid)
         with self.apic.transaction(transaction) as trs:
             if contract:
                 self.apic.fvRsCons__Ext.delete(contract.tenant_id, network_id,
