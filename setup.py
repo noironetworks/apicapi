@@ -24,7 +24,7 @@ def read(fname):
 
 setup(
     name = "apicapi",
-    version = "0.0.1",
+    version = "0.9.0",
     packages = ["apicapi"],
     author = "Cisco Systems, Inc.",
     author_email = "apicapi@noironetworks.com",

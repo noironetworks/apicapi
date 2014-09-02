@@ -78,31 +78,19 @@ class APICManager(object):
             self.apic_config.apic_password,
             self.apic_config.apic_use_ssl
         )
-        # TODO(ivar): REMOVE TRY
-        try:
-            name_mapping = self.apic_config.apic_name_mapping
-        except:
-            name_mapping = 'use_name'
 
+        name_mapping = self.apic_config.apic_name_mapping
         self._apic_mapper = apic_mapper.APICNameMapper(
             self.db, log, keyclient, keystone_authtoken,
             name_mapping)
         self.phys_domain_dn = None
         self.entity_profile_dn = None
         self.apic_system_id = apic_system_id
-        # TODO(ivar): REMOVE TRY
-        try:
-            self.app_profile_name = self.apic_mapper.app_profile(
-                None, self.apic_config.apic_app_profile_name)
-        except:
-            self.app_profile_name = apic_system_id + '_app'
+        self.app_profile_name = self.apic_mapper.app_profile(
+            None, self.apic_config.apic_app_profile_name)
 
         self.function_profile = self.apic_config.apic_function_profile
-        # TODO(ivar): REMOVE TRY
-        try:
-            self.lacp_profile = self.apic_config.apic_lacp_profile
-        except:
-            self.lacp_profile = apic_system_id + '_lacp_profile'
+        self.lacp_profile = self.apic_config.apic_lacp_profile
 
     @property
     def apic_mapper(self):
@@ -123,19 +111,11 @@ class APICManager(object):
             vlan_ns_name, vlan_min, vlan_max)
 
         # Create domain
-        # TODO(ivar): REMOVE TRY
-        try:
-            phys_name = self.apic_config.apic_domain_name
-        except:
-            phys_name = self.apic_system_id
+        phys_name = self.apic_config.apic_domain_name
         self.ensure_phys_domain_created_on_apic(phys_name, vlan_ns_dn)
 
         # Create entity profile
-        # TODO(ivar): REMOVE TRY
-        try:
-            ent_name = self.apic_config.apic_entity_profile
-        except:
-            ent_name = self.apic_system_id + '_entity_profile'
+        ent_name = self.apic_config.apic_entity_profile
         self.ensure_entity_profile_created_on_apic(ent_name)
 
         # Create lacp profile
@@ -146,27 +126,18 @@ class APICManager(object):
         func_name = self.function_profile
         self.ensure_function_profile_created_on_apic(func_name)
 
-        # TODO(ivar): REMOVE TRY
-        try:
-            # first make sure that all existing switches in DB are in apic
-            for switch in self.db.get_switches():
-                self.ensure_infra_created_for_switch(switch[0])
-        except:
-            pass
+        # first make sure that all existing switches in DB are in apic
+        for switch in self.db.get_switches():
+            self.ensure_infra_created_for_switch(switch[0])
 
         # now create add any new switches in config to apic and DB
-        try:
-            self.db.get_switch_and_port_for_host('')
-        except AttributeError:
-            self.backward_configure_manual_switches()
-        else:
-            for switch in self.switch_dict:
-                for module_port in self.switch_dict[switch]:
-                    module, port = module_port.split('/')
-                    hosts = self.switch_dict[switch][module_port]
-                    for host in hosts:
-                        self.add_hostlink(host, 'static', None, switch, module,
-                                          port)
+        for switch in self.switch_dict:
+            for module_port in self.switch_dict[switch]:
+                module, port = module_port.split('/')
+                hosts = self.switch_dict[switch][module_port]
+                for host in hosts:
+                    self.add_hostlink(host, 'static', None, switch, module,
+                                      port)
 
     def ensure_context_enforced(self, owner=TENANT_COMMON,
                                 ctx_id=CONTEXT_SHARED, transaction=None):
@@ -526,26 +497,19 @@ class APICManager(object):
     def ensure_path_created_for_port(self, tenant_id, network_id,
                                      host_id, encap, transaction=None):
         """Create path attribute for an End Point Group."""
-        # TODO(ivar) REMOVE TRY
-        try:
-            self.db.get_switch_and_port_for_host(host_id)
-        except AttributeError:
-            self.bw_ensure_path_created_for_port(tenant_id, network_id,
-                                                 host_id, encap)
-        else:
-            with self.apic.transaction(transaction) as trs:
-                eid = self.ensure_epg_created(tenant_id, network_id,
-                                              transaction=trs)
+        with self.apic.transaction(transaction) as trs:
+            eid = self.ensure_epg_created(tenant_id, network_id,
+                                          transaction=trs)
 
-                # Get attached switch and port for this host
-                host_config = self.db.get_switch_and_port_for_host(host_id)
-                if not host_config or not host_config.count():
-                    raise cexc.ApicHostNotConfigured(host=host_id)
+            # Get attached switch and port for this host
+            host_config = self.db.get_switch_and_port_for_host(host_id)
+            if not host_config or not host_config.count():
+                raise cexc.ApicHostNotConfigured(host=host_id)
 
-                for switch, module, port in host_config:
-                    self.ensure_path_binding_for_port(
-                        tenant_id, eid, encap, switch, module, port,
-                        transaction=trs)
+            for switch, module, port in host_config:
+                self.ensure_path_binding_for_port(
+                    tenant_id, eid, encap, switch, module, port,
+                    transaction=trs)
 
     def ensure_path_binding_for_port(self, tenant_id, epg_id, encap,
                                      switch, module, port, transaction=None):
@@ -602,12 +566,8 @@ class APICManager(object):
 
         with self.apic.transaction(transaction) as trs:
             hostlinks = []
-            try:
-                for hlink in self.db.get_switch_and_port_for_host(host):
-                    hostlinks.append(hlink)
-            except AttributeError:
-                pass
-
+            for hlink in self.db.get_switch_and_port_for_host(host):
+                hostlinks.append(hlink)
             if switch in self.vpc_dict:
                 # with VPC, we support exactly one link for switch/host
                 update = True
@@ -623,11 +583,8 @@ class APICManager(object):
                     update = True
 
             if update:
-                try:
-                    self.db.add_hostlink(host, ifname, ifmac,
-                                         switch, module, port)
-                except AttributeError:
-                    pass
+                self.db.add_hostlink(host, ifname, ifmac,
+                                     switch, module, port)
                 self.ensure_infra_created_for_switch(switch,
                                                      transaction=trs)
                 if switch2 is not None:
@@ -639,14 +596,10 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             segments = self.db.get_tenant_network_vlan_for_host(host)
             for tenant, network, encap in segments:
-                try:
-                    tenant_id = self.db.get_apic_name(
-                        tenant, apic_mapper.NAME_TYPE_TENANT)[0]
-                    network_id = self.db.get_apic_name(
-                        network, apic_mapper.NAME_TYPE_NETWORK)[0]
-                except:
-                    tenant_id = tenant
-                    network_id = network
+                tenant_id = self.db.get_apic_name(
+                    tenant, apic_mapper.NAME_TYPE_TENANT)[0]
+                network_id = self.db.get_apic_name(
+                    network, apic_mapper.NAME_TYPE_NETWORK)[0]
                 self.ensure_path_created_for_port(
                     tenant_id, network_id, host, encap, transaction=trs)
 
@@ -804,242 +757,3 @@ class APICManager(object):
                                                transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extOut.delete(owner, network_id, transaction=trs)
-
-    ### BACKWARD COMPATIBLE METHODS ###
-
-    def ensure_tenant_created_on_apic(self, tenant_id):
-        """Make sure a tenant exists on the APIC."""
-        if not self.apic.fvTenant.get(tenant_id):
-            self.apic.fvTenant.create(tenant_id)
-
-    def ensure_epg_created_for_network(self, tenant_id, network_id, net_name):
-        """Creates an End Point Group on the APIC.
-
-        Create a new EPG on the APIC for the network spcified. This information
-        is also tracked in the local DB and associate the bridge domain for the
-        network with the EPG created.
-        """
-        # Check if an EPG is already present for this network
-        epg = self.db.get_epg_for_network(network_id)
-        if epg:
-            return epg
-
-        # Create a new EPG on the APIC
-        epg_uid = '-'.join([str(net_name), str(uuid.uuid4())])
-        try:
-            self.apic.fvAEPg.create(tenant_id, self.apic_system_id, epg_uid)
-
-            # Add bd to EPG
-            bd_name = net_name
-
-            # Create fvRsBd
-            self.apic.fvRsBd.create(tenant_id, self.apic_system_id, epg_uid,
-                                    tnFvBDName=bd_name)
-
-            # Add EPG to physical domain
-            self.apic.fvRsDomAtt.create(tenant_id, self.apic_system_id,
-                                        epg_uid, self.phys_domain_dn)
-        except (cexc.ApicResponseNotOk, KeyError):
-            self.apic.fvAEPg.delete(tenant_id, self.apic_system_id, epg_uid)
-            raise
-
-        # Stick it in the DB
-        epg = self.db.write_epg_for_network(network_id, epg_uid)
-
-        return epg
-
-    def create_tenant_contract(self, tenant_id):
-        """Creates a tenant contract.
-
-        Create a tenant contract if one doesn't exist. Also create a
-        subject, filter and entry and set the filters to allow all
-        protocol traffic on all ports
-        """
-        contract = self.db.get_contract_for_tenant(tenant_id)
-        if not contract:
-            cuuid = uuid.uuid4()
-            try:
-                # Create contract
-                self.apic.vzBrCP.create(tenant_id, cuuid, scope=SCOPE_TENANT)
-                acontract = self.apic.vzBrCP.get(tenant_id, cuuid)
-                # Create subject
-                suuid = uuid.uuid4()
-                self.apic.vzSubj.create(tenant_id, cuuid, suuid)
-                # Create filter and entry
-                self.create_tenant_filter(tenant_id, CP_FILTER)
-                # Create interm and outterm
-                self.apic.vzInTerm.create(tenant_id, cuuid, suuid)
-                self.apic.vzRsFiltAtt__In.create(tenant_id, cuuid,
-                                                 suuid, CP_FILTER)
-                self.apic.vzOutTerm.create(tenant_id, cuuid, suuid)
-                self.apic.vzRsFiltAtt__Out.create(tenant_id, cuuid,
-                                                  suuid, CP_FILTER)
-                # Create contract interface
-                iuuid = uuid.uuid4()
-                self.apic.vzCPIf.create(tenant_id, iuuid)
-                self.apic.vzRsIf.create(tenant_id, iuuid,
-                                        tDn=acontract[DN_KEY])
-                # Store contract in DB
-                contract = self.db.write_contract_for_tenant(tenant_id,
-                                                             cuuid, CP_FILTER)
-            except (cexc.ApicResponseNotOk, KeyError):
-                # Delete tenant contract
-                self.apic.vzBrCP.delete(tenant_id, cuuid)
-                raise
-
-        return contract
-
-    def backward_configure_manual_switches(self):
-        # Loop over switches
-        for switch in self.switch_dict:
-            # Create a node profile for this switch
-            self.bw_ensure_node_profile_created_for_switch(switch)
-
-            # Check if a port profile exists for this node
-            ppname = self.bw_check_infra_port_profiles(switch)
-
-            # Gather port ranges for this switch
-            modules = self.bw_gather_infra_module_ports(switch)
-
-            # Setup each module and port range
-            for module in modules:
-                profile = self.db.get_profile_for_module(switch, ppname,
-                                                         module)
-                if not profile:
-                    # Create host port selector for this module
-                    hname = uuid.uuid4()
-                    try:
-                        self.apic.infraHPortS.create(ppname, hname, 'range')
-                        # Add relation to the function profile
-                        fpdn = self.function_profile
-                        self.apic.infraRsAccBaseGrp.create(ppname, hname,
-                                                           'range', tDn=fpdn)
-                        modules[module].sort()
-                    except (cexc.ApicResponseNotOk, KeyError):
-                        self.apic.infraHPortS.delete(ppname, hname,
-                                                     'range')
-                else:
-                    hname = profile.hpselc_id
-
-                ranges = self.bw_group_by_ranges(modules[module])
-                # Add this module and ports to the profile
-                for prange in ranges:
-                    # Check if this port block is already added to the profile
-                    if not self.db.get_profile_for_module_and_ports(
-                            switch, ppname, module, prange[0], prange[-1]):
-                        # Create port block for this port range
-                        pbname = uuid.uuid4()
-                        self.apic.infraPortBlk.create(ppname, hname, 'range',
-                                                      pbname, fromCard=module,
-                                                      toCard=module,
-                                                      fromPort=str(prange[0]),
-                                                      toPort=str(prange[-1]))
-                        # Add DB row
-                        self.db.add_profile_for_module_and_ports(
-                            switch, ppname, hname, module,
-                            prange[0], prange[-1])
-
-    def bw_group_by_ranges(self, i):
-        import itertools
-        for a, b in itertools.groupby(enumerate(sorted(i)),
-                                      lambda (x, y): y - x):
-            b = list(b)
-            yield b[0][1], b[-1][1]
-
-    def bw_ensure_node_profile_created_for_switch(self, switch_id):
-        """Creates a switch node profile.
-
-        Create a node profile for a switch and add a switch
-        to the leaf node selector
-        """
-        sobj = self.apic.infraNodeP.get(switch_id)
-        if not sobj:
-            try:
-                # Create Node profile
-                self.apic.infraNodeP.create(switch_id)
-                # Create leaf selector
-                lswitch_id = uuid.uuid4()
-                self.apic.infraLeafS.create(switch_id, lswitch_id, 'range')
-                # Add leaf nodes to the selector
-                name = uuid.uuid4()
-                self.apic.infraNodeBlk.create(switch_id, lswitch_id, 'range',
-                                              name, from_=switch_id,
-                                              to_=switch_id)
-                sobj = self.apic.infraNodeP.get(switch_id)
-            except (cexc.ApicResponseNotOk, KeyError):
-                # Remove the node profile
-                self.apic.infraNodeP.delete(switch_id)
-        self.bw_node_profiles = {}
-        self.bw_node_profiles[switch_id] = {
-            'object': sobj
-        }
-
-    def bw_check_infra_port_profiles(self, switch):
-        """Check and create infra port profiles for a node."""
-        sprofile = self.db.get_port_profile_for_node(switch)
-        if not sprofile:
-            # Generate uuid for port profile name
-            ppname = uuid.uuid4()
-            try:
-                # Create port profile for this switch
-                pprofile = self.bw_ensure_port_profile_created_on_apic(ppname)
-                # Add port profile to node profile
-                ppdn = pprofile[DN_KEY]
-                self.apic.infraRsAccPortP.create(switch, ppdn)
-            except (cexc.ApicResponseNotOk, KeyError):
-                # Delete port profile
-                self.apic.infraAccPortP.delete(ppname)
-        else:
-            ppname = sprofile.profile_id
-
-        return ppname
-
-    def bw_ensure_port_profile_created_on_apic(self, name):
-        """Create a port profile."""
-        try:
-            self.apic.infraAccPortP.create(name)
-            return self.apic.infraAccPortP.get(name)
-        except (cexc.ApicResponseNotOk, KeyError):
-            self.apic.infraAccPortP.delete(name)
-
-    def bw_gather_infra_module_ports(self, switch):
-        """Build modules and ports per module dictionary."""
-        ports = self.switch_dict[switch]
-        # Gather common modules
-        modules = {}
-        for port in ports:
-            module, sw_port = port.split('/')
-            if module not in modules:
-                modules[module] = []
-            modules[module].append(int(sw_port))
-        return modules
-
-    def bw_ensure_path_created_for_port(self, tenant_id, network_id,
-                                        host_id, encap):
-        net_name = network_id
-        encap = 'vlan-' + str(encap)
-        epg = self.ensure_epg_created_for_network(tenant_id, network_id,
-                                                  net_name)
-        eid = epg.epg_id
-
-        # Get attached switch and port for this host
-        host_config = self.bw_get_switch_and_port_for_host(host_id)
-        if not host_config:
-            raise cexc.ApicHostNotConfigured(host=host_id)
-        switch, port = host_config
-        pdn = 'topology/pod-1/paths-%s/pathep-[eth%s]' % (switch, port)
-
-        # Check if exists
-        patt = self.apic.fvRsPathAtt.get(tenant_id, self.apic_system_id,
-                                         eid, pdn)
-        if not patt:
-            self.apic.fvRsPathAtt.create(tenant_id, self.apic_system_id, eid,
-                                         pdn,
-                                         encap=encap, mode="regular",
-                                         instrImedcy="immediate")
-
-    def bw_get_switch_and_port_for_host(self, host_id):
-        for switch, connected in self.switch_dict.items():
-            for port, hosts in connected.items():
-                if host_id in hosts:
-                    return switch, port
