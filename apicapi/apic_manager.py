@@ -527,7 +527,9 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             host_config = self.db.get_switch_and_port_for_host(host_id)
             if not host_config or not host_config.count():
-                raise cexc.ApicHostNotConfigured(host=host_id)
+                LOG.warn("The switch and port for host '%s' "
+                         "are not configured" % host_id)
+                return
             for switch, module, port in host_config:
                 pdn = PORT_DN_PATH % (switch, module, port)
                 self.apic.fvRsPathAtt.delete(tenant_id, self.app_profile_name,
@@ -581,7 +583,14 @@ class APICManager(object):
                 # no VPC, we support exactly one link from this host
                 if not hostlinks:
                     update = True
-
+                elif hostlinks[0] != (switch, module, port):
+                    try:
+                        self.db.delete_hostlink(
+                            host,
+                            self.db.get_hostlinks_for_host(host)[0]['ifname'])
+                    except Exception as e:
+                        LOG.exception(e)
+                    update = True
             if update:
                 self.db.add_hostlink(host, ifname, ifmac,
                                      switch, module, port)
