@@ -5,6 +5,6 @@ How to install:
 
 ```
 git clone https://github.com/noironetworks/apicapi
-cd apicapic
+cd apicapi
 sudo python setup.py install
 ```
