@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name = "apicapi",
-    version = "0.9.0",
+    version = "0.9.1",
     packages = ["apicapi"],
     author = "Cisco Systems, Inc.",
     author_email = "apicapi@noironetworks.com",
