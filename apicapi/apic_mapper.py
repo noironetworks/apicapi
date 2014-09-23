@@ -131,9 +131,9 @@ class APICNameMapper(object):
 
     @mapper(NAME_TYPE_ROUTER)
     def router(self, context, router_id):
-        router = context._plugin.get_router(context._plugin_context, router_id)
-        router_name = router['name']
-        return router_name
+        return context._plugin_context.session.execute(
+            'SELECT name * routers WHERE id = :id',
+            {'id': router_id}).fetchone().name
 
     def app_profile(self, context, app_profile, remap=False):
         if remap:
