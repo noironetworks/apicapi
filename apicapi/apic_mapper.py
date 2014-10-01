@@ -132,7 +132,7 @@ class APICNameMapper(object):
     @mapper(NAME_TYPE_ROUTER)
     def router(self, context, router_id):
         return context._plugin_context.session.execute(
-            'SELECT * routers WHERE id = :id',
+            'SELECT * from routers WHERE id = :id',
             {'id': router_id}).fetchone().name
 
     def app_profile(self, context, app_profile, remap=False):
