@@ -133,7 +133,7 @@ class ManagedObjectClass(object):
         'infraRsLacpPol': ManagedObjectName('infraAccBndlGrp', 'rslacpPol'),
         'lacpLagPol': ManagedObjectName('infraInfra', 'lacplagp-%s'),
 
-        'fvnsVlanInstP': ManagedObjectName('infraInfra', 'vlanns-%s-%s'),
+        'fvnsVlanInstP': ManagedObjectName('infraInfra', 'vlanns-[%s]-%s'),
         'fvnsEncapBlk__vlan': ManagedObjectName('fvnsVlanInstP',
                                                 'from-%s-to-%s'),
         'fvnsVxlanInstP': ManagedObjectName('infraInfra', 'vxlanns-%s'),
