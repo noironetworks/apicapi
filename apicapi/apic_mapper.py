@@ -15,6 +15,8 @@
 #
 # @author: Mandeep Dhami (dhami@noironetworks.com), Cisco Systems Inc.
 
+import re
+
 import contextlib
 
 LOG = None
@@ -78,6 +80,7 @@ class APICNameMapper(object):
                         result = name
                     elif inst.strategy == NAMING_STRATEGY_UUID:
                         result = name + "-" + result
+                result = re.sub(r"-+", "-", result)
                 inst.db.update_apic_name(resource_id, name_type, result)
                 return ApicName(result, resource_id, context, inst,
                                 func.__name__)
