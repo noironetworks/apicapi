@@ -265,7 +265,7 @@ class ApicSession(object):
         """Use this method to wrap all the http requests."""
         for x in range(len(self.api_base)):
             try:
-                return request(self.api_base[0] + url, **kwargs)
+                return request(self.api_base[0] + url, verify=False, **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
                 LOG.debug(('%s, falling back to a '
                           'new address'), ex.message)
