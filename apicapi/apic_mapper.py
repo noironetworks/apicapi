@@ -31,6 +31,7 @@ NAME_TYPE_PORT = 'port'
 NAME_TYPE_ROUTER = 'router'
 NAME_TYPE_APP_PROFILE = 'app-profile'
 
+MAX_APIC_NAME_LENGTH = 64
 
 @contextlib.contextmanager
 def mapper_context(context):
@@ -41,6 +42,12 @@ def mapper_context(context):
         context._plugin_context = None     # break circular reference
     else:
         yield context
+
+
+def truncate(string, max_length):
+    if max_length < 0:
+        return ''
+    return string[:max_length] if len(string) > max_length else string
 
 
 class APICNameMapper(object):
@@ -74,13 +81,18 @@ class APICNameMapper(object):
                                   name_type)
                     raise
 
-                result = resource_id
+                result = re.sub(r"-+", "-", resource_id)
                 if name:
+                    name = re.sub(r"-+", "-", name)
                     if inst.strategy == NAMING_STRATEGY_NAMES:
                         result = name
                     elif inst.strategy == NAMING_STRATEGY_UUID:
-                        result = name + "-" + result
-                result = re.sub(r"-+", "-", result)
+                        # Keep as many uuid chars as possible
+                        id_suffix = "_" + result
+                        max_name_length = MAX_APIC_NAME_LENGTH - len(id_suffix)
+                        result = truncate(name, max_name_length) + id_suffix
+
+                result = truncate(result, MAX_APIC_NAME_LENGTH)
                 inst.db.update_apic_name(resource_id, name_type, result)
                 return ApicName(result, resource_id, context, inst,
                                 func.__name__)
