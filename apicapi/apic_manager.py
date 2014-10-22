@@ -83,8 +83,6 @@ class APICManager(object):
         self._apic_mapper = apic_mapper.APICNameMapper(
             self.db, log, keyclient, keystone_authtoken,
             name_mapping)
-        self.phys_domain_dn = None
-        self.entity_profile_dn = None
         self.apic_system_id = apic_system_id
         self.app_profile_name = self.apic_mapper.app_profile(
             None, self.apic_config.apic_app_profile_name)
@@ -415,14 +413,66 @@ class APICManager(object):
             self.apic.fvAEPg.delete(tenant_id, self.app_profile_name,
                                     network_id, transaction=trs)
 
-    def create_tenant_filter(self, tenant_id, fuuid, transaction=None):
+    def create_contract(self, contract_id, owner=TENANT_COMMON,
+                        transaction=None):
+        scope = SCOPE_GLOBAL if owner == TENANT_COMMON else SCOPE_TENANT
+        with self.apic.transaction(transaction) as trs:
+            self.apic.vzBrCP.create(owner, contract_id, scope=scope,
+                                    transaction=trs)
+
+    def delete_contract(self, contract_id, owner=TENANT_COMMON,
+                        transaction=None):
+        self.apic.vzBrCP.delete(owner, contract_id, transaction=transaction)
+
+    def create_contract_subject(self, contract_id, subject_id,
+                                owner=TENANT_COMMON,
+                                transaction=None):
+        with self.apic.transaction(transaction) as trs:
+            self.apic.vzSubj.create(owner, contract_id, subject_id,
+                                    transaction=trs)
+
+    def manage_contract_subject_in_filter(self, contract_id, subject_id,
+                                          filter_ref, owner=TENANT_COMMON,
+                                          transaction=None, unset=False):
+        self._manage_contract_subject_filter(self.apic.vzRsFiltAtt_In,
+                                             contract_id, subject_id,
+                                             filter_ref, owner=owner,
+                                             transaction=transaction,
+                                             unset=unset)
+
+    def manage_contract_subject_out_filter(self, contract_id, subject_id,
+                                           filter_ref, owner=TENANT_COMMON,
+                                           transaction=None, unset=False):
+        self._manage_contract_subject_filter(self.apic.vzRsFiltAtt_Out,
+                                             contract_id, subject_id,
+                                             filter_ref, owner=owner,
+                                             transaction=transaction,
+                                             unset=unset)
+
+    def _manage_contract_subject_filter(self, mo, contract_id, subject_id,
+                                        filter_ref, owner=TENANT_COMMON,
+                                        transaction=None, unset=False):
+        with self.apic.transaction(transaction) as trs:
+            if not unset:
+                self.apic.mo.create(owner, contract_id,
+                                    subject_id, filter_ref, transaction=trs)
+            else:
+                self.apic.mo.delete(owner, contract_id, subject_id,
+                                    filter_ref, transaction=trs)
+
+    def create_tenant_filter(self, filter_id, owner=TENANT_COMMON,
+                             transaction=None, **kwargs):
         """Creates a tenant filter and a generic entry under it."""
         with self.apic.transaction(transaction) as trs:
             # Create a new tenant filter
-            self.apic.vzFilter.create(tenant_id, fuuid, transaction=trs)
+            self.apic.vzFilter.create(owner, filter_id, transaction=trs)
             # Create a new entry
-            self.apic.vzEntry.create(tenant_id, fuuid,
-                                     CP_ENTRY, transaction=trs)
+            self.apic.vzEntry.create(owner, filter_id,
+                                     CP_ENTRY, transaction=trs, **kwargs)
+
+    def delete_tenant_filter(self, filter_id, owner=TENANT_COMMON,
+                             transaction=None):
+        self.apic.vzFilter.delete(owner, filter_id, transaction=transaction)
 
     def set_contract_for_epg(self, tenant_id, epg_id,
                              contract_id, provider=False, transaction=None):
@@ -438,6 +488,19 @@ class APICManager(object):
                     transaction=trs)
             else:
                 self.apic.fvRsCons.create(
+                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    transaction=trs)
+
+    def unset_contract_for_epg(self, tenant_id, epg_id,
+                               contract_id, provider=False, transaction=None):
+
+        with self.apic.transaction(transaction) as trs:
+            if provider:
+                self.apic.fvRsProv.delete(
+                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    transaction=trs)
+            else:
+                self.apic.fvRsCons.delete(
                     tenant_id, self.app_profile_name, epg_id, contract_id,
                     transaction=trs)
 
@@ -470,12 +533,13 @@ class APICManager(object):
         cuuid = 'contract-%s' % router_id.uid
         with self.apic.transaction(transaction) as trs:
             # Create contract
-            scope = SCOPE_GLOBAL if owner == TENANT_COMMON else SCOPE_TENANT
-            self.apic.vzBrCP.create(owner, cuuid, scope=scope)
+            self.create_contract(cuuid, owner=owner,
+                                 transaction=trs)
             # Create subject
-            self.apic.vzSubj.create(owner, cuuid, suuid, transaction=trs)
+            self.create_contract_subject(cuuid, suuid, owner=owner,
+                                         transaction=trs)
             # Create filter and entry
-            self.create_tenant_filter(owner, fuuid, transaction=trs)
+            self.create_tenant_filter(fuuid, owner=owner, transaction=trs)
             # Create contract interface
             self.apic.vzCPIf.create(owner, iuuid, transaction=trs)
             self.apic.vzRsIf.create(owner, iuuid,
@@ -495,10 +559,12 @@ class APICManager(object):
             self.db.delete_contract_for_router(router_id.uid)
 
     def ensure_path_created_for_port(self, tenant_id, network_id,
-                                     host_id, encap, transaction=None):
+                                     host_id, encap, bd_name=None,
+                                     transaction=None):
         """Create path attribute for an End Point Group."""
         with self.apic.transaction(transaction) as trs:
             eid = self.ensure_epg_created(tenant_id, network_id,
+                                          bd_name=bd_name,
                                           transaction=trs)
 
             # Get attached switch and port for this host

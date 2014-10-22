@@ -30,6 +30,11 @@ NAME_TYPE_SUBNET = 'subnet'
 NAME_TYPE_PORT = 'port'
 NAME_TYPE_ROUTER = 'router'
 NAME_TYPE_APP_PROFILE = 'app-profile'
+NAME_TYPE_ENDPOINT_GROUP = 'endpoint_group'
+NAME_TYPE_L3_POLICY = 'l3_policy'
+NAME_TYPE_L2_POLICY = 'l2_policy'
+NAME_TYPE_CONTRACT = 'contract'
+NAME_TYPE_POLICY_RULE = 'policy_rule'
 
 MAX_APIC_NAME_LENGTH = 64
 
@@ -149,6 +154,36 @@ class APICNameMapper(object):
         return context._plugin_context.session.execute(
             'SELECT * from routers WHERE id = :id',
             {'id': router_id}).fetchone().name
+
+    @mapper(NAME_TYPE_ENDPOINT_GROUP)
+    def endpoint_group(self, context, endpoint_group_id):
+        epg = context._plugin.get_endpoint_group(context._plugin_context,
+                                                 endpoint_group_id)
+        return epg['name']
+
+    @mapper(NAME_TYPE_L3_POLICY)
+    def l3_policy(self, context, l3_policy_id):
+        l3_policy = context._plugin.get_l3_policy(context._plugin_context,
+                                                  l3_policy_id)
+        return l3_policy['name']
+
+    @mapper(NAME_TYPE_L3_POLICY)
+    def l2_policy(self, context, l2_policy_id):
+        l2_policy = context._plugin.get_l2_policy(context._plugin_context,
+                                                  l2_policy_id)
+        return l2_policy['name']
+
+    @mapper(NAME_TYPE_CONTRACT)
+    def contract(self, context, contract_id):
+        contract = context._plugin.get_contract(context._plugin_context,
+                                                contract_id)
+        return contract['name']
+
+    @mapper(NAME_TYPE_POLICY_RULE)
+    def policy_rule(self, context, policy_rule_id):
+        policy_rule = context._plugin.get_policy_rule(context._plugin_context,
+                                                      policy_rule_id)
+        return policy_rule['name']
 
     def app_profile(self, context, app_profile, remap=False):
         if remap:
