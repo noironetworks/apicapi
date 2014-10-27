@@ -46,6 +46,8 @@ CP_FILTER = 'os-filter'
 CP_ENTRY = 'os-entry'
 CP_INTERFACE = 'os-interface'
 
+MAX_APIC_SYSID_LEN = 16
+
 LOG = None
 
 
@@ -65,6 +67,9 @@ class APICManager(object):
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
         self.ext_net_dict = network_config.get('external_network_dict', {})
+        if len(apic_system_id) > MAX_APIC_SYSID_LEN:
+            raise Exception(
+                'Apic system ID max length is ' + str(MAX_APIC_SYSID_LEN))
         self.apic_system_id = apic_system_id
         global LOG
         LOG = log.getLogger(__name__)

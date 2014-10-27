@@ -36,7 +36,7 @@ NAME_TYPE_L2_POLICY = 'l2_policy'
 NAME_TYPE_CONTRACT = 'contract'
 NAME_TYPE_POLICY_RULE = 'policy_rule'
 
-MAX_APIC_NAME_LENGTH = 64
+MAX_APIC_NAME_LENGTH = 46
 
 @contextlib.contextmanager
 def mapper_context(context):
