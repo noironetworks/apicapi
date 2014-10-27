@@ -434,7 +434,7 @@ class APICManager(object):
     def manage_contract_subject_in_filter(self, contract_id, subject_id,
                                           filter_ref, owner=TENANT_COMMON,
                                           transaction=None, unset=False):
-        self._manage_contract_subject_filter(self.apic.vzRsFiltAtt_In,
+        self._manage_contract_subject_filter(self.apic.vzRsFiltAtt__In,
                                              contract_id, subject_id,
                                              filter_ref, owner=owner,
                                              transaction=transaction,
@@ -443,7 +443,7 @@ class APICManager(object):
     def manage_contract_subject_out_filter(self, contract_id, subject_id,
                                            filter_ref, owner=TENANT_COMMON,
                                            transaction=None, unset=False):
-        self._manage_contract_subject_filter(self.apic.vzRsFiltAtt_Out,
+        self._manage_contract_subject_filter(self.apic.vzRsFiltAtt__Out,
                                              contract_id, subject_id,
                                              filter_ref, owner=owner,
                                              transaction=transaction,
@@ -454,11 +454,11 @@ class APICManager(object):
                                         transaction=None, unset=False):
         with self.apic.transaction(transaction) as trs:
             if not unset:
-                self.apic.mo.create(owner, contract_id,
-                                    subject_id, filter_ref, transaction=trs)
+                mo.create(owner, contract_id,
+                          subject_id, filter_ref, transaction=trs)
             else:
-                self.apic.mo.delete(owner, contract_id, subject_id,
-                                    filter_ref, transaction=trs)
+                mo.delete(owner, contract_id, subject_id,
+                          filter_ref, transaction=trs)
 
     def create_tenant_filter(self, filter_id, owner=TENANT_COMMON,
                              transaction=None, **kwargs):
