@@ -16,10 +16,14 @@
 # @author: Arvind Somya (asomya@cisco.com), Cisco Systems Inc.
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
 
+from oslo.config import cfg
+
 from apicapi import apic_mapper
 from apicapi import apic_client
 from apicapi import exceptions as cexc
-import uuid
+
+
+apic_opts = [cfg.BoolOpt('enable_aci_routing', default=True)]
 
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
@@ -63,6 +67,9 @@ class APICManager(object):
                  apic_system_id='openstack'):
         self.db = db
         self.apic_config = apic_config
+        self.apic_config._conf.register_opts(
+            apic_opts, self.apic_config._group.name)
+        self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.vlan_ranges = network_config.get('vlan_ranges')
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
@@ -373,8 +380,10 @@ class APICManager(object):
         The gateway ip (gw_ip) should be specified as a CIDR
         e.g. 10.0.0.1/24
         """
-        with self.apic.transaction(transaction) as trs:
-            self.apic.fvSubnet.create(tenant_id, bd_id, gw_ip, transaction=trs)
+        if self.aci_routing_enabled:
+            with self.apic.transaction(transaction) as trs:
+                self.apic.fvSubnet.create(tenant_id, bd_id, gw_ip,
+                                          transaction=trs)
 
     def ensure_subnet_deleted_on_apic(self, tenant_id, bd_id, gw_ip,
                                       transaction=None):
