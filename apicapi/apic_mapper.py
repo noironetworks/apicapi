@@ -38,6 +38,7 @@ NAME_TYPE_POLICY_RULE = 'policy_rule'
 
 MAX_APIC_NAME_LENGTH = 46
 
+
 @contextlib.contextmanager
 def mapper_context(context):
     if context and (not hasattr(context, '_plugin_context') or

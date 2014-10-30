@@ -18,8 +18,8 @@
 
 from oslo.config import cfg
 
-from apicapi import apic_mapper
 from apicapi import apic_client
+from apicapi import apic_mapper
 from apicapi import exceptions as cexc
 
 
@@ -94,6 +94,8 @@ class APICManager(object):
             self.apic_config.apic_use_ssl
         )
 
+        self.phys_domain_dn = None
+        self.entity_profile_dn = None
         name_mapping = self.apic_config.apic_name_mapping
         self._apic_mapper = apic_mapper.APICNameMapper(
             self.db, log, keyclient, keystone_authtoken,

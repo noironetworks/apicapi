@@ -18,8 +18,8 @@
 
 import collections
 import contextlib
-import time
 import json
+import time
 
 import requests
 import requests.exceptions as rexc
@@ -246,7 +246,7 @@ class ApicSession(object):
     """Manages a session with the APIC."""
 
     def __init__(self, hosts, usr, pwd, ssl):
-        protocol = ssl and 'https' or 'http'
+        protocol = 'https' if ssl else 'http'
         self.api_base = collections.deque(['%s://%s/api' % (protocol, host)
                                            for host in hosts])
         self.session = requests.Session()
