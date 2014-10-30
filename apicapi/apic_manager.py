@@ -23,10 +23,12 @@ from apicapi import apic_client
 from apicapi import exceptions as cexc
 
 
-apic_opts = [cfg.BoolOpt('enable_aci_routing', default=True)]
+apic_opts = [cfg.BoolOpt('enable_aci_routing', default=True),
+             cfg.BoolOpt('enable_arp_flooding', default=False)]
 
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
+YES_NO = {True: 'yes', False: 'no'}
 CONTEXT_SHARED = 'shared'
 DN_KEY = 'dn'
 PORT_DN_PATH = 'topology/pod-1/paths-%s/pathep-[eth%s/%s]'
@@ -70,6 +72,7 @@ class APICManager(object):
         self.apic_config._conf.register_opts(
             apic_opts, self.apic_config._group.name)
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
+        self.arp_flooding_enabled = self.apic_config.enable_arp_flooding
         self.vlan_ranges = network_config.get('vlan_ranges')
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
@@ -361,7 +364,9 @@ class APICManager(object):
         """Creates a Bridge Domain on the APIC."""
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
-            self.apic.fvBD.create(tenant_id, bd_id, transaction=trs)
+            self.apic.fvBD.create(tenant_id, bd_id,
+                                  arpFlood=YES_NO[self.arp_flooding_enabled],
+                                  transaction=trs)
             # Add default context to the BD
             self.apic.fvRsCtx.create(
                 tenant_id, bd_id,
