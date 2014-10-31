@@ -396,6 +396,24 @@ class ApicSession(object):
         url = self._mo_url(mo, *params)
         return self._send(self.session.delete, url)
 
+    def GET(self, url, data=None):
+        return self._send(self.session.get, url, data=data)
+
+    def POST(self, url, data=None):
+        return self._send(self.session.post, url, data=data)
+
+    def DELETE(self, url, data=None):
+        return self._send(self.session.delete, url, data=data)
+
+    def delete_class(self, klass):
+        nodes = self.GET('/node/class/%s.json' % klass)
+        for node in nodes:
+            dn = node[klass]['attributes']['dn']
+            try:
+                self.DELETE('/node/mo/' + dn + '.json')
+            except Exception as e:
+                LOG.debug(e)
+
     # Session management
 
     def _save_cookie(self, request, response):
@@ -408,7 +426,7 @@ class ApicSession(object):
             except KeyError:
                 raise cexc.ApicResponseNoCookie(request=request)
             timeout = int(attributes['refreshTimeoutSeconds'])
-            LOG.debug(("APIC session will expire in %d seconds"), timeout)
+            LOG.debug("APIC session will expire in %d seconds", timeout)
             # Give ourselves a few seconds to refresh before timing out
             self.session_timeout = timeout - 5
             self.session_deadline = time.time() + self.session_timeout

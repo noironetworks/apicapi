@@ -16,14 +16,15 @@
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
 
 import argparse
+import logging as log
 
 from apicapi import apic_client
 
 
 def clean(args):
-    apic_session = apic_client.ApicSession(args.apic_ip, args.apic_port,
-                                           args.apic_username,
-                                           args.apic_password, args.ssl)
+    apic_session = apic_client.RestClient(log, "", [args.apic_ip],
+                                          args.apic_username,
+                                          args.apic_password, args.ssl)
     apic_session.login()
     classes = ['infraNodeP', 'infraAccPortP', 'fvTenant',
                'physDomP', 'infraNodeP', 'infraLeafS',
@@ -39,7 +40,6 @@ def clean(args):
 
 parser = argparse.ArgumentParser(description='Cleans APIC infra profiles')
 parser.add_argument('apic_ip', help='APIC ip address')
-parser.add_argument('apic_port', help='APIC port')
 parser.add_argument('apic_username', help='APIC username')
 parser.add_argument('apic_password', help='APIC password')
 parser.add_argument('--ssl', help='Wether to use SSL or not', default=False)
