@@ -30,6 +30,7 @@ setuptools.setup(
     description="This library provides an interface to the APIC REST api.",
     entry_points={
         'console_scripts': [
-            'apic_cleanup = apicapi.tools.cleanup:main']
+            'apic-cleanup = apicapi.tools.cleanup:main',
+            'apic-route-reflector = apicapi.tools.reflector:main']
     }
 )

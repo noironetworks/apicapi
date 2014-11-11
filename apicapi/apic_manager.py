@@ -336,28 +336,32 @@ class APICManager(object):
                                               p_selector_name='default',
                                               transaction=None):
         """Set the route reflector for the fabric if missing."""
-        with self.apic.transaction(transaction) as trs:
-            self.apic.bgpInstPol.create(bgp_pol_name, transaction=trs)
-            if not self.apic.bgpRRP.get_subtree(bgp_pol_name):
-                for node in self.apic.fabricNode.list_all(role='spine'):
-                    self.apic.bgpRRNodePEp.create(bgp_pol_name, node['id'],
-                                                  transaction=trs)
+        # REVISIT(ivar): This may break connectivity when the APIC is owned by
+        # multiple users. Ideally the drivers should avoid running this method,
+        # but since those fixes need to go upstream is ok for now to just make
+        # this a noop.
+        #with self.apic.transaction(transaction) as trs:
+        #    self.apic.bgpInstPol.create(bgp_pol_name, transaction=trs)
+        #    if not self.apic.bgpRRP.get_subtree(bgp_pol_name):
+        #        for node in self.apic.fabricNode.list_all(role='spine'):
+        #            self.apic.bgpRRNodePEp.create(bgp_pol_name, node['id'],
+        #                                          transaction=trs)
 
-            self.apic.bgpAsP.create(bgp_pol_name, asn=asn, transaction=trs)
+        #    self.apic.bgpAsP.create(bgp_pol_name, asn=asn, transaction=trs)
 
-            self.apic.fabricPodPGrp.create(pp_group_name, transaction=trs)
-            reference = self.apic.fabricRsPodPGrpBGPRRP.get(pp_group_name)
-            if not reference or not reference['tnBgpInstPolName']:
-                self.apic.fabricRsPodPGrpBGPRRP.update(
-                    pp_group_name,
-                    tnBgpInstPolName=self.apic.bgpInstPol.name(bgp_pol_name),
-                    transaction=trs)
+        #    self.apic.fabricPodPGrp.create(pp_group_name, transaction=trs)
+        #    reference = self.apic.fabricRsPodPGrpBGPRRP.get(pp_group_name)
+        #    if not reference or not reference['tnBgpInstPolName']:
+        #        self.apic.fabricRsPodPGrpBGPRRP.update(
+        #            pp_group_name,
+        #            tnBgpInstPolName=self.apic.bgpInstPol.name(bgp_pol_name),
+        #            transaction=trs)
 
-            self.apic.fabricPodS__ALL.create(p_selector_name, type='ALL',
-                                             transaction=trs)
-            self.apic.fabricRsPodPGrp.create(
-                p_selector_name, tDn=POD_POLICY_GROUP_DN_PATH % pp_group_name,
-                transaction=trs)
+        #    self.apic.fabricPodS__ALL.create(p_selector_name, type='ALL',
+        #                                     transaction=trs)
+        #    self.apic.fabricRsPodPGrp.create(
+        #        p_selector_name, tDn=POD_POLICY_GROUP_DN_PATH % pp_group_name,
+        #        transaction=trs)
 
     def ensure_bd_created_on_apic(self, tenant_id, bd_id,
                                   ctx_owner=TENANT_COMMON,
