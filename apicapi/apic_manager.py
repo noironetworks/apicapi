@@ -402,7 +402,7 @@ class APICManager(object):
             self.apic.fvSubnet.delete(tenant_id, bd_id, gw_ip, transaction=trs)
 
     def ensure_epg_created(self, tenant_id, network_id,
-                           bd_name=None, transaction=None):
+                           bd_name=None, bd_owner=None, transaction=None):
         """Creates an End Point Group on the APIC.
 
         Create a new EPG on the APIC for the network spcified. This information
@@ -412,13 +412,18 @@ class APICManager(object):
         # Check if an EPG is already present for this network
         # Create a new EPG on the APIC
         epg_uid = network_id
+        bd_owner = bd_owner or tenant_id
         with self.apic.transaction(transaction) as trs:
             self.apic.fvAEPg.create(tenant_id, self.app_profile_name, epg_uid,
                                     transaction=trs)
 
             # Add bd to EPG
-            bd_name = bd_name or network_id
-            self.apic.fvBD.create(tenant_id, bd_name, transaction=trs)
+            if bd_owner == tenant_id:
+                # BD can't be created here unless it belongs to the same tenant
+                # that's because any transaction can only exist within one
+                # tenant
+                bd_name = bd_name or network_id
+                self.apic.fvBD.create(bd_owner, bd_name, transaction=trs)
 
             # create fvRsBd
             self.apic.fvRsBd.create(tenant_id, self.app_profile_name, epg_uid,
@@ -458,7 +463,8 @@ class APICManager(object):
 
     def manage_contract_subject_in_filter(self, contract_id, subject_id,
                                           filter_ref, owner=TENANT_COMMON,
-                                          transaction=None, unset=False):
+                                          transaction=None, unset=False,
+                                          rule_owner=None):
         self._manage_contract_subject_filter(self.apic.vzRsFiltAtt__In,
                                              contract_id, subject_id,
                                              filter_ref, owner=owner,
@@ -467,7 +473,8 @@ class APICManager(object):
 
     def manage_contract_subject_out_filter(self, contract_id, subject_id,
                                            filter_ref, owner=TENANT_COMMON,
-                                           transaction=None, unset=False):
+                                           transaction=None, unset=False,
+                                           rule_owner=None):
         self._manage_contract_subject_filter(self.apic.vzRsFiltAtt__Out,
                                              contract_id, subject_id,
                                              filter_ref, owner=owner,
@@ -500,7 +507,8 @@ class APICManager(object):
         self.apic.vzFilter.delete(owner, filter_id, transaction=transaction)
 
     def set_contract_for_epg(self, tenant_id, epg_id,
-                             contract_id, provider=False, transaction=None):
+                             contract_id, contract_owner=None,
+                             provider=False, transaction=None):
         """Set the contract for an EPG.
 
         By default EPGs are consumers of a contract.
@@ -517,7 +525,8 @@ class APICManager(object):
                     transaction=trs)
 
     def unset_contract_for_epg(self, tenant_id, epg_id,
-                               contract_id, provider=False, transaction=None):
+                               contract_id, contract_owner=None,
+                               provider=False, transaction=None):
 
         with self.apic.transaction(transaction) as trs:
             if provider:
