@@ -391,15 +391,17 @@ class APICManager(object):
         The gateway ip (gw_ip) should be specified as a CIDR
         e.g. 10.0.0.1/24
         """
-        if self.aci_routing_enabled:
+        if self.aci_routing_enabled and gw_ip:
             with self.apic.transaction(transaction) as trs:
                 self.apic.fvSubnet.create(tenant_id, bd_id, gw_ip,
                                           transaction=trs)
 
     def ensure_subnet_deleted_on_apic(self, tenant_id, bd_id, gw_ip,
                                       transaction=None):
-        with self.apic.transaction(transaction) as trs:
-            self.apic.fvSubnet.delete(tenant_id, bd_id, gw_ip, transaction=trs)
+        if gw_ip:
+            with self.apic.transaction(transaction) as trs:
+                self.apic.fvSubnet.delete(tenant_id, bd_id, gw_ip,
+                                          transaction=trs)
 
     def ensure_epg_created(self, tenant_id, network_id,
                            bd_name=None, bd_owner=None, transaction=None):
