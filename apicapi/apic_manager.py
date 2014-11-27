@@ -668,51 +668,47 @@ class APICManager(object):
         switch2 = None
         update = False
 
-        with self.apic.transaction(transaction) as trs:
-            hostlinks = []
-            for hlink in self.db.get_switch_and_port_for_host(host):
-                hostlinks.append(hlink)
-            if switch in self.vpc_dict:
-                # with VPC, we support exactly one link for switch/host
+        hostlinks = []
+        for hlink in self.db.get_switch_and_port_for_host(host):
+            hostlinks.append(hlink)
+        if switch in self.vpc_dict:
+            # with VPC, we support exactly one link for switch/host
+            update = True
+            switch2 = self.vpc_dict[switch]
+            for link in hostlinks:
+                switch1, module1, port1 = link
+                if switch1 == switch:
+                    update = False
+                    break
+        else:
+            # no VPC, we support exactly one link from this host
+            if not hostlinks:
                 update = True
-                switch2 = self.vpc_dict[switch]
-                for link in hostlinks:
-                    switch1, module1, port1 = link
-                    if switch1 == switch:
-                        update = False
-                        break
-            else:
-                # no VPC, we support exactly one link from this host
-                if not hostlinks:
-                    update = True
-                elif hostlinks[0] != (switch, module, port):
-                    try:
-                        self.db.delete_hostlink(
-                            host,
-                            self.db.get_hostlinks_for_host(host)[0]['ifname'])
-                    except Exception as e:
-                        LOG.exception(e)
-                    update = True
-            if update:
-                self.db.add_hostlink(host, ifname, ifmac,
-                                     switch, module, port)
-                self.ensure_infra_created_for_switch(switch,
-                                                     transaction=trs)
-                if switch2 is not None:
-                    self.ensure_infra_created_for_switch(switch2,
-                                                         transaction=trs)
-                self.ensure_vlans_created_for_host(host, transaction=trs)
+            elif hostlinks[0] != (switch, module, port):
+                try:
+                    self.db.delete_hostlink(
+                        host,
+                        self.db.get_hostlinks_for_host(host)[0]['ifname'])
+                except Exception as e:
+                    LOG.exception(e)
+                update = True
+        if update:
+            self.db.add_hostlink(host, ifname, ifmac,
+                                 switch, module, port)
+            self.ensure_infra_created_for_switch(switch)
+            if switch2 is not None:
+                self.ensure_infra_created_for_switch(switch2)
+            self.ensure_vlans_created_for_host(host)
 
-    def ensure_vlans_created_for_host(self, host, transaction=None):
-        with self.apic.transaction(transaction) as trs:
-            segments = self.db.get_tenant_network_vlan_for_host(host)
-            for tenant, network, encap in segments:
-                tenant_id = self.db.get_apic_name(
-                    tenant, apic_mapper.NAME_TYPE_TENANT)[0]
-                network_id = self.db.get_apic_name(
-                    network, apic_mapper.NAME_TYPE_NETWORK)[0]
-                self.ensure_path_created_for_port(
-                    tenant_id, network_id, host, encap, transaction=trs)
+    def ensure_vlans_created_for_host(self, host):
+        segments = self.db.get_tenant_network_vlan_for_host(host)
+        for tenant, network, encap in segments:
+            tenant_id = self.db.get_apic_name(
+                tenant, apic_mapper.NAME_TYPE_TENANT)[0]
+            network_id = self.db.get_apic_name(
+                network, apic_mapper.NAME_TYPE_NETWORK)[0]
+            self.ensure_path_created_for_port(
+                tenant_id, network_id, host, encap)
 
     def remove_hostlink(self, host, ifname, ifmac, switch, module, port):
         self.db.delete_hostlink(host, ifname)
