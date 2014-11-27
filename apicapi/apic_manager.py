@@ -94,7 +94,8 @@ class APICManager(object):
             self.apic_config.apic_use_ssl
         )
 
-        self.phys_domain_dn = None
+        self.phys_domain_dn = self.apic.physDomP.dn(
+            self.apic_config.apic_domain_name)
         self.entity_profile_dn = None
         name_mapping = self.apic_config.apic_name_mapping
         self._apic_mapper = apic_mapper.APICNameMapper(
@@ -310,7 +311,6 @@ class APICManager(object):
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs.create(phys_name,
                                                tDn=vlan_ns_dn, transaction=trs)
-        self.phys_domain_dn = self.apic.physDomP.dn(phys_name)
 
     def ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
                                        transaction=None):
@@ -426,7 +426,6 @@ class APICManager(object):
                 # tenant
                 bd_name = bd_name or network_id
                 self.apic.fvBD.create(bd_owner, bd_name, transaction=trs)
-
             # create fvRsBd
             self.apic.fvRsBd.create(tenant_id, self.app_profile_name, epg_uid,
                                     tnFvBDName=self.apic.fvBD.name(bd_name),
