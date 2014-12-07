@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-# @author: Arvind Somya (asomya@cisco.com), Cisco Systems Inc.
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
+# @author: Mandeep Dhami (madhami@cisco.com), Cisco Systems Inc.
+# @author: Arvind Somya (asomya@cisco.com), Cisco Systems Inc.
 
 from oslo.config import cfg
 
@@ -23,8 +24,12 @@ from apicapi import apic_mapper
 from apicapi import exceptions as cexc
 
 
-apic_opts = [cfg.BoolOpt('enable_aci_routing', default=True),
-             cfg.BoolOpt('enable_arp_flooding', default=False)]
+apic_opts = [
+    cfg.BoolOpt('enable_aci_routing', default=True),
+    cfg.BoolOpt('enable_arp_flooding', default=False),
+    cfg.BoolOpt('provision_infra', default=True),
+    cfg.BoolOpt('provision_hostlinks', default=True),
+]
 
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
@@ -33,8 +38,11 @@ CONTEXT_SHARED = 'shared'
 DN_KEY = 'dn'
 PORT_DN_PATH = 'topology/pod-1/paths-%s/pathep-[eth%s/%s]'
 NODE_DN_PATH = 'topology/pod-1/node-%s'
+ENCAP_VLAN='vlan-%s'
 POD_POLICY_GROUP_DN_PATH = 'uni/fabric/funcprof/podpgrp-%s'
 CP_PATH_DN = 'uni/tn-%s/brc-%s'
+VPCPORT_DN_PATH = 'topology/pod-1/protpaths-%s-%s/pathep-[%s]'
+VPCBUNDLE_NAME = 'bundle-%s-%s-%s-and-%s-%s-%s'
 SCOPE_GLOBAL = 'global'
 SCOPE_TENANT = 'tenant'
 TENANT_COMMON = 'common'
@@ -71,8 +79,12 @@ class APICManager(object):
         self.apic_config = apic_config
         self.apic_config._conf.register_opts(
             apic_opts, self.apic_config._group.name)
+
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.arp_flooding_enabled = self.apic_config.enable_arp_flooding
+        self.provision_infra =  self.apic_config.provision_infra
+        self.provision_hostlinks =  self.apic_config.provision_hostlinks
+
         self.vlan_ranges = network_config.get('vlan_ranges')
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
@@ -169,6 +181,9 @@ class APICManager(object):
 
     def ensure_entity_profile_created_on_apic(self, name, transaction=None):
         """Create the infrastructure entity profile."""
+        if not self.provision_infra:
+            return
+
         with self.apic.transaction(transaction) as trs:
             self.apic.infraAttEntityP.create(name, transaction=trs)
             # Attach phys domain to entity profile
@@ -178,6 +193,9 @@ class APICManager(object):
 
     def ensure_function_profile_created_on_apic(self, name, transaction=None):
         """Create the infrastructure function profile."""
+        if not self.provision_infra:
+            return
+
         with self.apic.transaction(transaction) as trs:
             self.apic.infraAccPortGrp.create(name, transaction=trs)
             # Attach entity profile to function profile
@@ -187,11 +205,17 @@ class APICManager(object):
 
     def ensure_lacp_profile_created_on_apic(self, name, transaction=None):
         """Create the lacp profile."""
+        if not self.provision_infra:
+            return
+
         with self.apic.transaction(transaction) as trs:
             self.apic.lacpLagPol.create(name, mode='active', transaction=trs)
 
     def ensure_infra_created_for_switch(self, switch, transaction=None):
         # Create a node and profile for this switch
+        if not self.provision_infra:
+            return
+
         with self.apic.transaction(transaction) as trs:
             self.ensure_node_profile_created_for_switch(switch,
                                                         transaction=trs)
@@ -245,19 +269,20 @@ class APICManager(object):
     def ensure_vpc_profile_created(self, link1, link2, transaction=None):
         sw1, mod1, port1 = link1
         sw2, mod2, port2 = link2
-        bname = 'bundle-%s-%s-%s-and-%s-%s-%s' % (
-            sw1, mod1, port1, sw2, mod1, port2)
+        bname = VPCBUNDLE_NAME % (sw1, mod1, port1, sw2, mod1, port2)
 
         bundle = self.apic.infraAccBndlGrp.get(bname)
         if bundle:
             dn = self.apic.infraAccBndlGrp.dn(bname)
+        elif not self.provision_infra:
+            dn = None
         else:
             with self.apic.transaction(transaction) as trs:
                 self.apic.infraAccBndlGrp.create(bname, lagT='node',
                                                  transaction=trs)
                 dn = self.apic.infraAccBndlGrp.dn(bname)
                 ep = self.entity_profile_dn
-                self.apic.infraRsAttEntP.create(bname, tDn=ep,
+                self.apic.infraRsAttEntP2.create(bname, tDn=ep,
                                                 transaction=trs)
                 lp = self.lacp_profile
                 self.apic.infraRsLacpPol.create(bname,
@@ -306,6 +331,9 @@ class APICManager(object):
         Creates the physical domain on the APIC and adds a VLAN or VXLAN
         namespace to that physical domain.
         """
+        if not self.provision_infra:
+            return
+
         with self.apic.transaction(transaction) as trs:
             self.apic.physDomP.create(phys_name, transaction=trs)
             if vlan_ns_dn:
@@ -315,9 +343,9 @@ class APICManager(object):
     def ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
                                        transaction=None):
         """Creates a static VLAN namespace with the given vlan range."""
-        with self.apic.transaction(transaction) as trs:
-            ns_args = name, 'static'
-            self.apic.fvnsVlanInstP.create(*ns_args, transaction=trs)
+
+        ns_args = name, 'static'
+        if self.provision_infra:
             vlan_min = 'vlan-' + vlan_min
             vlan_max = 'vlan-' + vlan_max
             ns_blk_args = name, 'static', vlan_min, vlan_max
@@ -326,9 +354,11 @@ class APICManager(object):
                 'from': vlan_min,
                 'to': vlan_max
             }
-            self.apic.fvnsEncapBlk__vlan.create(*ns_blk_args,
-                                                transaction=trs,
-                                                **ns_kw_args)
+            with self.apic.transaction(transaction) as trs:
+                self.apic.fvnsVlanInstP.create(*ns_args, transaction=trs)
+                self.apic.fvnsEncapBlk__vlan.create(*ns_blk_args,
+                                                    transaction=trs,
+                                                    **ns_kw_args)
         return self.apic.fvnsVlanInstP.dn(*ns_args)
 
     def ensure_bgp_pod_policy_created_on_apic(self, bgp_pol_name='default',
@@ -612,12 +642,25 @@ class APICManager(object):
                     tenant_id, eid, encap, switch, module, port,
                     transaction=trs)
 
+    def get_static_binding_pdn(self, switch, module, port):
+        pdn = PORT_DN_PATH % (switch, module, port)
+        if switch in self.vpc_dict and module == 'vpc':
+            switch1 = min(switch, self.vpc_dict(switch))
+            switch2 = max(switch, self.vpc_dict(switch))
+            pdn = VPCPORT_DN_PATH % (switch1, switch2, port)
+        return pdn
+
+    def get_static_binding_encap(self, encap):
+        # TODO: non-vlan encap
+        encap = ENCAP_VLAN % str(encap)
+        return encap
+
     def ensure_path_binding_for_port(self, tenant_id, epg_id, encap,
                                      switch, module, port, transaction=None):
         # Verify that it exists, or create it if required
         with self.apic.transaction(transaction) as trs:
-            encap = 'vlan-' + str(encap)
-            pdn = PORT_DN_PATH % (switch, module, port)
+            encap = self.get_static_binding_encap(encap)
+            pdn = self.get_static_binding_pdn(switch, module, port)
             self.apic.fvRsPathAtt.create(
                 tenant_id, self.app_profile_name, epg_id, pdn,
                 encap=encap, mode="regular",
@@ -632,7 +675,7 @@ class APICManager(object):
                          "are not configured" % host_id)
                 return
             for switch, module, port in host_config:
-                pdn = PORT_DN_PATH % (switch, module, port)
+                pdn = self.get_static_binding_pdn(switch, module, port)
                 self.apic.fvRsPathAtt.delete(tenant_id, self.app_profile_name,
                                              network_id, pdn, transaction=trs)
 
@@ -645,13 +688,13 @@ class APICManager(object):
             if not host_config or not host_config.count():
                 raise cexc.ApicHostNotConfigured(host=host_id)
 
-            encap = 'vlan-' + str(encap)
+            encap = self.get_static_binding_encap(encap)
             self.apic.fvStCEp.create(
                 tenant_id, self.app_profile_name, epg_id,
                 mac_address, 'tep', encap=encap, ip=ip_address,
                 transaction=trs)
             for switch, module, port in host_config:
-                pdn = PORT_DN_PATH % (switch, module, port)
+                pdn = self.get_static_binding_pdn(switch, module, port)
                 self.apic.fvRsStCEpToPathEp.create(
                     tenant_id, self.app_profile_name, epg_id,
                     mac_address, 'tep', pdn, transaction=trs)
@@ -809,7 +852,7 @@ class APICManager(object):
                 NODE_DN_PATH % switch, rtrId='1.0.0.1', transaction=trs)
             self.apic.l3extRsPathL3OutAtt.create(
                 owner, network_id, EXT_NODE,
-                EXT_INTERFACE, PORT_DN_PATH % (switch, module, port),
+                EXT_INTERFACE, self.get_static_binding_pdn(switch, module, port),
                 encap=encap or 'unknown', addr=address,
                 ifInstT='l3-port' if not encap else 'sub-interface',
                 transaction=trs)
