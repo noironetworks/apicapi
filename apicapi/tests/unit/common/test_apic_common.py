@@ -185,7 +185,7 @@ class ConfigMixin(object):
             'apic_hosts': APIC_HOSTS,
             'apic_username': APIC_USR,
             'apic_password': APIC_PWD,
-            'apic_domain_name': APIC_SYSTEM_ID,
+            'apic_domain_name': APIC_DOMAIN,
             'apic_vlan_ns_name': APIC_VLAN_NAME,
             'apic_vlan_range': '%d:%d' % (APIC_VLANID_FROM, APIC_VLANID_TO),
             'apic_node_profile': APIC_NODE_PROF,
