@@ -755,7 +755,11 @@ class APICManager(object):
         if switch not in self.vpc_dict:
             return
 
-        vpcmodule = VPCMODULE_NAME % (module, port)
+        if self.get_vpc_module_port(module):
+            vpcmodule = module
+            (module, port) = self.get_vpc_module_port(module)
+        else:
+            vpcmodule = VPCMODULE_NAME % (module, port)
         switch2 = self.vpc_dict[switch]
         module2 = None
         port2 = None
