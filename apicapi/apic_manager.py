@@ -29,6 +29,8 @@ apic_opts = [
     cfg.BoolOpt('enable_arp_flooding', default=False),
     cfg.BoolOpt('provision_infra', default=True),
     cfg.BoolOpt('provision_hostlinks', default=True),
+    cfg.StrOpt('apic_model',
+        default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
 ]
 
 CONTEXT_ENFORCED = '1'
@@ -38,7 +40,7 @@ CONTEXT_SHARED = 'shared'
 DN_KEY = 'dn'
 PORT_DN_PATH = 'topology/pod-1/paths-%s/pathep-[eth%s/%s]'
 NODE_DN_PATH = 'topology/pod-1/node-%s'
-ENCAP_VLAN='vlan-%s'
+ENCAP_VLAN = 'vlan-%s'
 POD_POLICY_GROUP_DN_PATH = 'uni/fabric/funcprof/podpgrp-%s'
 CP_PATH_DN = 'uni/tn-%s/brc-%s'
 VPCPORT_DN_PATH = 'topology/pod-1/protpaths-%s-%s/pathep-[%s]'
@@ -83,8 +85,9 @@ class APICManager(object):
 
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.arp_flooding_enabled = self.apic_config.enable_arp_flooding
-        self.provision_infra =  self.apic_config.provision_infra
-        self.provision_hostlinks =  self.apic_config.provision_hostlinks
+        self.provision_infra = self.apic_config.provision_infra
+        self.provision_hostlinks = self.apic_config.provision_hostlinks
+        self.apic_model = self.apic_config.apic_model
 
         self.vlan_ranges = network_config.get('vlan_ranges')
         self.switch_dict = network_config.get('switch_dict', {})
@@ -227,9 +230,14 @@ class APICManager(object):
             for module in self.db.get_modules_for_switch(switch):
                 # Add this module and ports to the profile
                 module = module[0]
-                ports = [p[0] for p in
-                         self.db.get_ports_for_switch_module(switch, module)]
-                ports.sort()
+                if self.get_vpc_module_port(module):
+                    (module, port) = self.get_vpc_module_port(module)
+                    ports = [port]
+                else:
+                    ports = [p[0] for p in
+                             self.db.get_ports_for_switch_module(switch,
+                                                                 module)]
+                    ports.sort()
                 for port in ports:
                     pbname = '%s-%s' % (port, port)
                     hname = 'hports-%s-%s' % (module, pbname)
@@ -260,6 +268,9 @@ class APICManager(object):
                 for link in links:
                     switch2, module2, port2 = link
                     if switch2 == self.vpc_dict[switch]:
+                        if self.get_vpc_module_port(module2):
+                            (module2, port2) = \
+                                self.get_vpc_module_port(module2)
                         link2 = switch2, module2, port2
                         break
                 if link2 is not None:
@@ -645,14 +656,13 @@ class APICManager(object):
 
     def get_static_binding_pdn(self, switch, module, port):
         pdn = PORT_DN_PATH % (switch, module, port)
-        if switch in self.vpc_dict and module.startswith('vpc'):
+        if switch in self.vpc_dict and self.get_vpc_module_port(module):
             switch1 = min(switch, self.vpc_dict[switch])
             switch2 = max(switch, self.vpc_dict[switch])
             pdn = VPCPORT_DN_PATH % (switch1, switch2, port)
         return pdn
 
     def get_static_binding_encap(self, encap):
-        # TODO: non-vlan encap
         encap = ENCAP_VLAN % str(encap)
         return encap
 
@@ -740,7 +750,6 @@ class APICManager(object):
             self.ensure_vlans_created_for_host(host)
         return
 
-
     def add_vpclink(self, host, ifname, ifmac, switch, module, port,
                     transaction=None):
         if switch not in self.vpc_dict:
@@ -770,10 +779,37 @@ class APICManager(object):
 
             self.db.add_hostlink(host, ifname, ifmac,
                                  switch, vpcmodule, vpcport)
+            self.hostlink_update_port(host, switch2, vpcmodule2, vpcport)
             if self.provision_hostlinks:
                 self.ensure_infra_created_for_switch(switch)
                 self.ensure_infra_created_for_switch(switch2)
                 self.ensure_vlans_created_for_host(host)
+
+    def get_vpc_module_port(self, module):
+        if module.startswith(VPCMODULE_NAME.split('-')[0]):
+            return module.split('-')[1:]
+        else:
+            return None
+
+    def hostlink_update_port(self, host, switch, module, port):
+        try:
+            import sys
+            __import__(self.apic_model)
+            HostLink = sys.modules[self.apic_model].HostLink
+            with self.db.session.begin(subtransactions=True):
+                hostlink = self.db.session.query(HostLink).filter_by(
+                    host=host,
+                    swid=switch,
+                    module=module).with_lockmode('update').first()
+                if hostlink:
+                    hostlink.port = port
+                    self.db.session.merge(hostlink)
+                else:
+                    self.db.add_hostlink(host, 'static', '',
+                                         switch, module, port)
+        except Exception as e:
+            LOG.error("Not able to import apic_model")
+            LOG.exception(e)
 
     def ensure_vlans_created_for_host(self, host):
         segments = self.db.get_tenant_network_vlan_for_host(host)
@@ -884,8 +920,8 @@ class APICManager(object):
                 owner, network_id, EXT_NODE,
                 NODE_DN_PATH % switch, rtrId='1.0.0.1', transaction=trs)
             self.apic.l3extRsPathL3OutAtt.create(
-                owner, network_id, EXT_NODE,
-                EXT_INTERFACE, self.get_static_binding_pdn(switch, module, port),
+                owner, network_id, EXT_NODE, EXT_INTERFACE,
+                self.get_static_binding_pdn(switch, module, port),
                 encap=encap or 'unknown', addr=address,
                 ifInstT='l3-port' if not encap else 'sub-interface',
                 transaction=trs)
