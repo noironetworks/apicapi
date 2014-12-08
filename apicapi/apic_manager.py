@@ -43,6 +43,7 @@ POD_POLICY_GROUP_DN_PATH = 'uni/fabric/funcprof/podpgrp-%s'
 CP_PATH_DN = 'uni/tn-%s/brc-%s'
 VPCPORT_DN_PATH = 'topology/pod-1/protpaths-%s-%s/pathep-[%s]'
 VPCBUNDLE_NAME = 'bundle-%s-%s-%s-and-%s-%s-%s'
+VPCMODULE_NAME = 'vpc-%s-%s'
 SCOPE_GLOBAL = 'global'
 SCOPE_TENANT = 'tenant'
 TENANT_COMMON = 'common'
@@ -644,9 +645,9 @@ class APICManager(object):
 
     def get_static_binding_pdn(self, switch, module, port):
         pdn = PORT_DN_PATH % (switch, module, port)
-        if switch in self.vpc_dict and module == 'vpc':
-            switch1 = min(switch, self.vpc_dict(switch))
-            switch2 = max(switch, self.vpc_dict(switch))
+        if switch in self.vpc_dict and module.startswith('vpc'):
+            switch1 = min(switch, self.vpc_dict[switch])
+            switch2 = max(switch, self.vpc_dict[switch])
             pdn = VPCPORT_DN_PATH % (switch1, switch2, port)
         return pdn
 
@@ -707,40 +708,72 @@ class APICManager(object):
 
     def add_hostlink(self, host, ifname, ifmac, switch, module, port,
                      transaction=None):
-        switch2 = None
-        update = False
+        if switch in self.vpc_dict:
+            self.add_vpclink(host, ifname, ifmac, switch, module, port,
+                             transaction=None)
+            return
 
+        # detect old link (say, if changing port on switch)
         hostlinks = []
         for hlink in self.db.get_switch_and_port_for_host(host):
-            hostlinks.append(hlink)
-        if switch in self.vpc_dict:
-            # with VPC, we support exactly one link for switch/host
-            update = True
-            switch2 = self.vpc_dict[switch]
-            for link in hostlinks:
-                switch1, module1, port1 = link
-                if switch1 == switch:
-                    update = False
-                    break
-        else:
-            # no VPC, we support exactly one link from this host
-            if not hostlinks:
-                update = True
-            elif hostlinks[0] != (switch, module, port):
-                try:
-                    self.db.delete_hostlink(
-                        host,
-                        self.db.get_hostlinks_for_host(host)[0]['ifname'])
-                except Exception as e:
-                    LOG.exception(e)
-                update = True
-        if update:
-            self.db.add_hostlink(host, ifname, ifmac,
-                                 switch, module, port)
+            if hlink[0] == switch:
+                if hlink == (switch, module, port):
+                    # add is no-op, it already exists in DB
+                    return
+                else:
+                    # any other link to the same switch is old
+                    hostlinks.append(hlink)
+        if hostlinks:
+            LOG.warn("Deleting unexpected link: %r" % hostlinks)
+            try:
+                self.db.delete_hostlink(
+                    host,
+                    self.db.get_hostlinks_for_host(host)[0]['ifname'])
+            except Exception as e:
+                LOG.exception(e)
+
+        # provision the link
+        self.db.add_hostlink(host, ifname, ifmac,
+                             switch, module, port)
+        if self.provision_hostlinks:
             self.ensure_infra_created_for_switch(switch)
-            if switch2 is not None:
-                self.ensure_infra_created_for_switch(switch2)
             self.ensure_vlans_created_for_host(host)
+        return
+
+
+    def add_vpclink(self, host, ifname, ifmac, switch, module, port,
+                    transaction=None):
+        if switch not in self.vpc_dict:
+            return
+
+        vpcmodule = VPCMODULE_NAME % (module, port)
+        switch2 = self.vpc_dict[switch]
+        module2 = None
+        port2 = None
+
+        # Get the other link connected to this host
+        link2 = None
+        for hlink in self.db.get_switch_and_port_for_host(host):
+            if hlink[0] == switch2:
+                link2 = hlink
+                break
+
+        if link2 is None:
+            # not enough information to do provisioning
+            self.db.add_hostlink(host, ifname, ifmac,
+                                switch, vpcmodule, '')
+        else:
+            vpcmodule2 = link2[1]
+            (vpcstr, module2, port2) = vpcmodule2.split('-')
+            vpcport = VPCBUNDLE_NAME % (
+                switch, module, port, switch2, module2, port2)
+
+            self.db.add_hostlink(host, ifname, ifmac,
+                                 switch, vpcmodule, vpcport)
+            if self.provision_hostlinks:
+                self.ensure_infra_created_for_switch(switch)
+                self.ensure_infra_created_for_switch(switch2)
+                self.ensure_vlans_created_for_host(host)
 
     def ensure_vlans_created_for_host(self, host):
         segments = self.db.get_tenant_network_vlan_for_host(host)
