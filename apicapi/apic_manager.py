@@ -25,10 +25,16 @@ from apicapi import exceptions as cexc
 
 
 apic_opts = [
-    cfg.BoolOpt('enable_aci_routing', default=True),
-    cfg.BoolOpt('enable_arp_flooding', default=False),
-    cfg.BoolOpt('provision_infra', default=True),
-    cfg.BoolOpt('provision_hostlinks', default=True),
+    cfg.BoolOpt('enable_aci_routing',
+        default=True),
+    cfg.BoolOpt('enable_arp_flooding',
+        default=False),
+    cfg.BoolOpt('apic_provision_infra',
+        default=True),
+    cfg.BoolOpt('apic_provision_hostlinks',
+        default=True),
+    cfg.BoolOpt('apic_multiple_hostlinks',
+        default=False),
     cfg.StrOpt('apic_model',
         default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
 ]
@@ -85,8 +91,9 @@ class APICManager(object):
 
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.arp_flooding_enabled = self.apic_config.enable_arp_flooding
-        self.provision_infra = self.apic_config.provision_infra
-        self.provision_hostlinks = self.apic_config.provision_hostlinks
+        self.provision_infra = self.apic_config.apic_provision_infra
+        self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
+        self.multiple_hostlinks = self.apic_config.apic_multiple_hostlinks
         self.apic_model = self.apic_config.apic_model
 
         self.vlan_ranges = network_config.get('vlan_ranges')
@@ -261,21 +268,24 @@ class APICManager(object):
             if switch in self.vpc_dict:
                 link1 = switch, module, port
                 link2 = None
+                vpcmodule = VPCMODULE_NAME % (module, port)
+                hostlinks = self.hostlink_get_for_switch_module(
+                    switch, vpcmodule)
 
-                host = self.db.get_hostlinks_for_switchport(
-                    switch, module, port)[0][0]
-                links = self.db.get_switch_and_port_for_host(host)
-                for link in links:
-                    switch2, module2, port2 = link
-                    if switch2 == self.vpc_dict[switch]:
-                        if self.get_vpc_module_port(module2):
-                            (module2, port2) = \
-                                self.get_vpc_module_port(module2)
-                        link2 = switch2, module2, port2
-                        break
-                if link2 is not None:
-                    fpdn = self.ensure_vpc_profile_created(link1, link2,
-                                                           transaction=trs)
+                if hostlinks:
+                    host = hostlinks[0]['host']
+                    links = self.db.get_switch_and_port_for_host(host)
+                    for link in links:
+                        switch2, module2, port2 = link
+                        if switch2 == self.vpc_dict[switch]:
+                            if self.get_vpc_module_port(module2):
+                                (module2, port2) = \
+                                    self.get_vpc_module_port(module2)
+                            link2 = switch2, module2, port2
+                            break
+                    if link2 is not None:
+                        fpdn = self.ensure_vpc_profile_created(link1, link2,
+                                                               transaction=trs)
         return fpdn
 
     def ensure_vpc_profile_created(self, link1, link2, transaction=None):
@@ -795,26 +805,6 @@ class APICManager(object):
         else:
             return None
 
-    def hostlink_update_port(self, host, switch, module, port):
-        try:
-            import sys
-            __import__(self.apic_model)
-            HostLink = sys.modules[self.apic_model].HostLink
-            with self.db.session.begin(subtransactions=True):
-                hostlink = self.db.session.query(HostLink).filter_by(
-                    host=host,
-                    swid=switch,
-                    module=module).with_lockmode('update').first()
-                if hostlink:
-                    hostlink.port = port
-                    self.db.session.merge(hostlink)
-                else:
-                    self.db.add_hostlink(host, 'static', '',
-                                         switch, module, port)
-        except Exception as e:
-            LOG.error("Not able to import apic_model")
-            LOG.exception(e)
-
     def ensure_vlans_created_for_host(self, host):
         segments = self.db.get_tenant_network_vlan_for_host(host)
         for tenant, network, encap in segments:
@@ -979,3 +969,35 @@ class APICManager(object):
                                                transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extOut.delete(owner, network_id, transaction=trs)
+
+    #
+    # crteating these DB access functions here to avoid patching apic_model
+    #
+    def hostlink_update_port(self, host, switch, module, port):
+        try:
+            import sys
+            __import__(self.apic_model)
+            HostLink = sys.modules[self.apic_model].HostLink
+            with self.db.session.begin(subtransactions=True):
+                hostlink = self.db.session.query(HostLink).filter_by(
+                    host=host,
+                    swid=switch,
+                    module=module).with_lockmode('update').first()
+                if hostlink:
+                    hostlink.port = port
+                    self.db.session.merge(hostlink)
+                else:
+                    self.db.add_hostlink(host, 'static', '',
+                                         switch, module, port)
+        except Exception as e:
+            LOG.exception(e)
+
+    def hostlink_get_for_switch_module(self, swid, module):
+        try:
+            import sys
+            __import__(self.apic_model)
+            HostLink = sys.modules[self.apic_model].HostLink
+            return self.db.session.query(HostLink).filter_by(
+                swid=swid, module=module).all()
+        except Exception as e:
+            LOG.exception(e)
