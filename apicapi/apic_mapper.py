@@ -35,6 +35,10 @@ NAME_TYPE_L3_POLICY = 'l3_policy'
 NAME_TYPE_L2_POLICY = 'l2_policy'
 NAME_TYPE_POLICY_RULE_SET = 'policy_rule_set'
 NAME_TYPE_POLICY_RULE = 'policy_rule'
+NAME_TYPE_EXTERNAL_SEGMENT = 'external_segment'
+NAME_TYPE_EXTERNAL_POLICY = 'external_policy'
+NAME_TYPE_NAT_POOL = 'nat_pool'
+
 
 MAX_APIC_NAME_LENGTH = 46
 
@@ -185,6 +189,24 @@ class APICNameMapper(object):
         policy_rule = context._plugin.get_policy_rule(context._plugin_context,
                                                       policy_rule_id)
         return policy_rule['name']
+
+    @mapper(NAME_TYPE_EXTERNAL_SEGMENT)
+    def external_segment(self, context, external_segment_id):
+        external_segment = context._plugin.get_external_segment(
+            context._plugin_context, external_segment_id)
+        return external_segment['name']
+
+    @mapper(NAME_TYPE_EXTERNAL_POLICY)
+    def external_policy(self, context, external_policy_id):
+        external_policy = context._plugin.get_external_policy(
+            context._plugin_context,  external_policy_id)
+        return external_policy['name']
+
+    @mapper(NAME_TYPE_NAT_POOL)
+    def nat_pool(self, context, nat_pool_id):
+        nat_pool = context._plugin.get_nat_pool(context._plugin_context,
+                                                nat_pool_id)
+        return nat_pool['name']
 
     def app_profile(self, context, app_profile, remap=False):
         if remap:
