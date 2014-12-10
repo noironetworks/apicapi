@@ -887,12 +887,12 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.delete_router_contract(router_id, transaction=trs)
 
-    def delete_external_routed_network(self, network_id, owner=TENANT_COMMON,
+    def delete_external_routed_network(self, ext_out_id, owner=TENANT_COMMON,
                                        transaction=None):
         with self.apic.transaction(transaction) as trs:
-            self.apic.l3extOut.delete(owner, network_id, transaction=trs)
+            self.apic.l3extOut.delete(owner, ext_out_id, transaction=trs)
 
-    def ensure_external_routed_network_created(self, network_id,
+    def ensure_external_routed_network_created(self, ext_out_id,
                                                owner=TENANT_COMMON,
                                                context=CONTEXT_SHARED,
                                                transaction=None):
@@ -900,54 +900,100 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             # Link external context to the internal router ctx
             self.apic.l3extRsEctx.create(
-                owner, network_id, tnFvCtxName=self.apic.fvCtx.name(context),
+                owner, ext_out_id, tnFvCtxName=self.apic.fvCtx.name(context),
                 transaction=trs)
 
-    def ensure_logical_node_profile_created(self, network_id,
+    def ensure_external_routed_network_deleted(self, ext_out_id,
+                                               owner=TENANT_COMMON,
+                                               transaction=None):
+        with self.apic.transaction(transaction) as trs:
+            self.apic.l3extOut.delete(owner, ext_out_id, transaction=trs)
+
+    def ensure_logical_node_profile_created(self, ext_out_id,
                                             switch, module, port, encap,
                                             address, owner=TENANT_COMMON,
-                                            transaction=None):
+                                            transaction=None,
+                                            router_id='1.0.0.1'):
         """Creates Logical Node Profile for External Network in APIC."""
         with self.apic.transaction(transaction) as trs:
             # TODO(ivar): default value for router id
             self.apic.l3extRsNodeL3OutAtt.create(
-                owner, network_id, EXT_NODE,
-                NODE_DN_PATH % switch, rtrId='1.0.0.1', transaction=trs)
+                owner, ext_out_id, EXT_NODE,
+                NODE_DN_PATH % switch, rtrId=router_id, transaction=trs)
             self.apic.l3extRsPathL3OutAtt.create(
-                owner, network_id, EXT_NODE, EXT_INTERFACE,
+                owner, ext_out_id, EXT_NODE, EXT_INTERFACE,
                 self.get_static_binding_pdn(switch, module, port),
                 encap=encap or 'unknown', addr=address,
                 ifInstT='l3-port' if not encap else 'sub-interface',
                 transaction=trs)
 
-    def ensure_static_route_created(self, network_id, switch,
+    def ensure_static_route_created(self, ext_out_id, switch,
                                     next_hop, subnet='0.0.0.0/0',
                                     owner=TENANT_COMMON, transaction=None):
         """Add static route to existing External Routed Network."""
         with self.apic.transaction(transaction) as trs:
             self.apic.ipNexthopP.create(
-                owner, network_id, EXT_NODE, NODE_DN_PATH % switch, subnet,
+                owner, ext_out_id, EXT_NODE, NODE_DN_PATH % switch, subnet,
                 next_hop, transaction=trs)
 
-    def ensure_external_epg_created(self, router_id, subnet='0.0.0.0/0',
-                                    owner=TENANT_COMMON, transaction=None):
+    def ensure_static_route_deleted(self, ext_out_id, switch,
+                                    subnet, owner=TENANT_COMMON,
+                                    transaction=None):
+        """Remove static route to existing External Routed Network."""
+        with self.apic.transaction(transaction) as trs:
+            self.apic.ipRouteP.delete(
+                owner, ext_out_id, EXT_NODE, NODE_DN_PATH % switch, subnet,
+                transaction=trs)
+
+    def ensure_next_hop_deleted(self, ext_out_id, switch, subnet, next_hop,
+                                owner=TENANT_COMMON, transaction=None):
+        """Remove next hop to existing External Routed Network."""
+        with self.apic.transaction(transaction) as trs:
+            self.apic.ipNexthopP.delete(
+                owner, ext_out_id, EXT_NODE, NODE_DN_PATH % switch, subnet,
+                next_hop, transaction=trs)
+
+    def ensure_external_epg_created(self, ext_out_id, subnet=None,
+                                    external_epg=EXT_EPG, owner=TENANT_COMMON,
+                                    transaction=None):
         """Add EPG to existing External Routed Network."""
         with self.apic.transaction(transaction) as trs:
-            self.apic.l3extSubnet.create(owner, router_id, EXT_EPG, subnet,
-                                         transaction=trs)
+            subnet = subnet or '0.0.0.0/0'
+            self.apic.l3extSubnet.create(owner, ext_out_id, external_epg,
+                                         subnet, transaction=trs)
 
-    def ensure_external_epg_consumed_contract(self, network_id, contract_id,
+    def ensure_external_epg_routes_deleted(self, ext_out_id, subnets=None,
+                                           external_epg=EXT_EPG,
+                                           owner=TENANT_COMMON,
+                                           transaction=None):
+        """Add EPG to existing External Routed Network."""
+        with self.apic.transaction(transaction) as trs:
+            for s in subnets:
+                self.apic.l3extSubnet.delete(owner, ext_out_id, external_epg,
+                                             s, transaction=trs)
+
+    def ensure_external_epg_deleted(self, ext_out_id, owner=TENANT_COMMON,
+                                    external_epg=EXT_EPG,
+                                    transaction=None):
+        """Add EPG to existing External Routed Network."""
+        with self.apic.transaction(transaction) as trs:
+            self.apic.l3extInstP.delete(owner, ext_out_id, external_epg,
+                                        transaction=trs)
+
+    def ensure_external_epg_consumed_contract(self, ext_out_id, contract_id,
+                                              external_epg=EXT_EPG,
                                               owner=TENANT_COMMON,
                                               transaction=None):
         with self.apic.transaction(transaction) as trs:
-            self.apic.fvRsCons__Ext.create(owner, network_id, EXT_EPG,
+            self.apic.fvRsCons__Ext.create(owner, ext_out_id, external_epg,
                                            contract_id, transaction=trs)
 
-    def ensure_external_epg_provided_contract(self, network_id, contract_id,
+    def ensure_external_epg_provided_contract(self, ext_out_id, contract_id,
+                                              external_epg=EXT_EPG,
                                               owner=TENANT_COMMON,
                                               transaction=None):
         with self.apic.transaction(transaction) as trs:
-            self.apic.fvRsProv__Ext.create(owner, network_id, EXT_EPG,
+            self.apic.fvRsProv__Ext.create(owner, ext_out_id, external_epg,
                                            contract_id, transaction=trs)
 
     def delete_external_epg_contract(self, router_id, network_id,
@@ -964,11 +1010,41 @@ class APICManager(object):
                                                'contract-%s' % router_id.uid,
                                                transaction=trs)
 
-    def ensure_external_routed_network_deleted(self, network_id,
-                                               owner=TENANT_COMMON,
-                                               transaction=None):
-        with self.apic.transaction(transaction) as trs:
-            self.apic.l3extOut.delete(owner, network_id, transaction=trs)
+    def ensure_external_epg_provided_contract_deleted(
+            self, ext_out_id, contract_id, external_epg=EXT_EPG,
+            owner=TENANT_COMMON, transaction=None):
+        self.apic.fvRsProv__Ext.delete(owner, ext_out_id, external_epg,
+                                       contract_id, transaction=transaction)
+
+    def ensure_external_epg_consumed_contract_deleted(
+            self, ext_out_id, contract_id, external_epg=EXT_EPG,
+            owner=TENANT_COMMON, transaction=None):
+        self.apic.fvRsCons__Ext.delete(owner, ext_out_id, external_epg,
+                                       contract_id, transaction=transaction)
+
+    def set_contract_for_external_epg(self, ext_out_id, contract_id,
+                                      external_epg=EXT_EPG, provided=True,
+                                      owner=TENANT_COMMON, transaction=None):
+        if provided:
+            self.ensure_external_epg_provided_contract(
+                ext_out_id, contract_id, external_epg=external_epg,
+                owner=owner, transaction=transaction)
+        else:
+            self.ensure_external_epg_consumed_contract(
+                ext_out_id, contract_id, external_epg=external_epg,
+                owner=owner, transaction=transaction)
+
+    def unset_contract_for_external_epg(
+            self, ext_out_id, contract_id, external_epg=EXT_EPG,
+            owner=TENANT_COMMON, provided=True, transaction=None):
+        if provided:
+            self.ensure_external_epg_provided_contract_deleted(
+                ext_out_id, contract_id, external_epg=external_epg,
+                owner=owner, transaction=transaction)
+        else:
+            self.ensure_external_epg_consumed_contract_deleted(
+                ext_out_id, contract_id, external_epg=external_epg,
+                owner=owner, transaction=transaction)
 
     #
     # crteating these DB access functions here to avoid patching apic_model
