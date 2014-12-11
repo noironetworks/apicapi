@@ -269,7 +269,7 @@ class APICManager(object):
                 link1 = switch, module, port
                 link2 = None
                 vpcmodule = VPCMODULE_NAME % (module, port)
-                hostlinks = self.hostlink_get_for_switch_module(
+                hostlinks = self.get_hostlink_for_switch_module(
                     switch, vpcmodule)
 
                 if hostlinks:
@@ -777,12 +777,17 @@ class APICManager(object):
         # Get the other link connected to this host
         link2 = None
         for hlink in self.db.get_switch_and_port_for_host(host):
+            if hlink[0] == switch and hlink[1] == vpcmodule:
+                # add is no-op, it already exists in DB
+                return
             if hlink[0] == switch2:
                 link2 = hlink
                 break
 
         if link2 is None:
             # not enough information to do provisioning
+            if ifname == 'static':
+                ifname = 'static-vpc1'
             self.db.add_hostlink(host, ifname, ifmac,
                                 switch, vpcmodule, '')
         else:
@@ -791,9 +796,11 @@ class APICManager(object):
             vpcport = VPCBUNDLE_NAME % (
                 switch, module, port, switch2, module2, port2)
 
+            if ifname == 'static':
+                ifname = 'static-vpc2'
             self.db.add_hostlink(host, ifname, ifmac,
                                  switch, vpcmodule, vpcport)
-            self.hostlink_update_port(host, switch2, vpcmodule2, vpcport)
+            self.update_hostlink_port(host, switch2, vpcmodule2, vpcport)
             if self.provision_hostlinks:
                 self.ensure_infra_created_for_switch(switch)
                 self.ensure_infra_created_for_switch(switch2)
@@ -1049,26 +1056,20 @@ class APICManager(object):
     #
     # crteating these DB access functions here to avoid patching apic_model
     #
-    def hostlink_update_port(self, host, switch, module, port):
+    def update_hostlink_port(self, host, switch, module, port):
         try:
             import sys
             __import__(self.apic_model)
             HostLink = sys.modules[self.apic_model].HostLink
             with self.db.session.begin(subtransactions=True):
-                hostlink = self.db.session.query(HostLink).filter_by(
+                self.db.session.query(HostLink).filter_by(
                     host=host,
                     swid=switch,
-                    module=module).with_lockmode('update').first()
-                if hostlink:
-                    hostlink.port = port
-                    self.db.session.merge(hostlink)
-                else:
-                    self.db.add_hostlink(host, 'static', '',
-                                         switch, module, port)
+                    module=module).update({'port': port})
         except Exception as e:
             LOG.exception(e)
 
-    def hostlink_get_for_switch_module(self, swid, module):
+    def get_hostlink_for_switch_module(self, swid, module):
         try:
             import sys
             __import__(self.apic_model)
