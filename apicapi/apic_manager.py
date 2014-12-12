@@ -288,10 +288,16 @@ class APICManager(object):
                                                                transaction=trs)
         return fpdn
 
+    def get_bundle_name(self, sw1, mod1, port1, sw2, mod2, port2):
+        if (sw1, mod1, port1) < ( sw2, mod1, port2):
+            return VPCBUNDLE_NAME % (sw1, mod1, port1, sw2, mod2, port2)
+        else:
+            return VPCBUNDLE_NAME % (sw2, mod2, port2, sw1, mod1, port1)
+
     def ensure_vpc_profile_created(self, link1, link2, transaction=None):
         sw1, mod1, port1 = link1
         sw2, mod2, port2 = link2
-        bname = VPCBUNDLE_NAME % (sw1, mod1, port1, sw2, mod1, port2)
+        bname = self.get_bundle_name(sw1, mod1, port1, sw2, mod2, port2)
 
         bundle = self.apic.infraAccBndlGrp.get(bname)
         if bundle:
@@ -793,9 +799,9 @@ class APICManager(object):
         else:
             vpcmodule2 = link2[1]
             (vpcstr, module2, port2) = vpcmodule2.split('-')
-            vpcport = VPCBUNDLE_NAME % (
-                switch, module, port, switch2, module2, port2)
 
+            vpcport = self.get_bundle_name(
+                switch, module, port, switch2, module2, port2)
             if ifname == 'static':
                 ifname = 'static-vpc2'
             self.db.add_hostlink(host, ifname, ifmac,
