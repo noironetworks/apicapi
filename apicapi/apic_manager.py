@@ -165,6 +165,9 @@ class APICManager(object):
         func_name = self.function_profile
         self.ensure_function_profile_created_on_apic(func_name)
 
+        # clear local hostlinks in DB (as it is discovered state)
+        self.clear_all_hostlinks()
+
         # first make sure that all existing switches in DB are in apic
         for switch in self.db.get_switches():
             self.ensure_infra_created_for_switch(switch[0])
@@ -289,7 +292,7 @@ class APICManager(object):
         return fpdn
 
     def get_bundle_name(self, sw1, mod1, port1, sw2, mod2, port2):
-        if (sw1, mod1, port1) < ( sw2, mod1, port2):
+        if (sw1, mod1, port1) < (sw2, mod1, port2):
             return VPCBUNDLE_NAME % (sw1, mod1, port1, sw2, mod2, port2)
         else:
             return VPCBUNDLE_NAME % (sw2, mod2, port2, sw1, mod1, port1)
@@ -771,6 +774,7 @@ class APICManager(object):
         if switch not in self.vpc_dict:
             return
 
+        oport = port
         if self.get_vpc_module_port(module):
             vpcmodule = module
             (module, port) = self.get_vpc_module_port(module)
@@ -793,17 +797,22 @@ class APICManager(object):
         if link2 is None:
             # not enough information to do provisioning
             if ifname == 'static':
-                ifname = 'static-vpc1'
+                ifname = 'static-vpc-%s' % switch
+            vpcport = ''
+            if not self.provision_infra and oport is not None:
+                vpcport = oport
             self.db.add_hostlink(host, ifname, ifmac,
-                                switch, vpcmodule, '')
+                                 switch, vpcmodule, vpcport)
         else:
             vpcmodule2 = link2[1]
             (vpcstr, module2, port2) = vpcmodule2.split('-')
 
             vpcport = self.get_bundle_name(
                 switch, module, port, switch2, module2, port2)
+            if not self.provision_infra and oport is not None:
+                vpcport = oport
             if ifname == 'static':
-                ifname = 'static-vpc2'
+                ifname = 'static-vpc-%s' % switch
             self.db.add_hostlink(host, ifname, ifmac,
                                  switch, vpcmodule, vpcport)
             self.update_hostlink_port(host, switch2, vpcmodule2, vpcport)
@@ -1062,25 +1071,39 @@ class APICManager(object):
     #
     # crteating these DB access functions here to avoid patching apic_model
     #
-    def update_hostlink_port(self, host, switch, module, port):
+    HostLink = None
+
+    def get_hostlink_class(self):
         try:
             import sys
             __import__(self.apic_model)
-            HostLink = sys.modules[self.apic_model].HostLink
+            return sys.modules[self.apic_model].HostLink
+        except Exception as e:
+            LOG.exception(e)
+        return None
+
+    def update_hostlink_port(self, host, switch, module, port):
+        HostLink = self.get_hostlink_class()
+        if HostLink:
             with self.db.session.begin(subtransactions=True):
                 self.db.session.query(HostLink).filter_by(
                     host=host,
                     swid=switch,
                     module=module).update({'port': port})
-        except Exception as e:
-            LOG.exception(e)
 
     def get_hostlink_for_switch_module(self, swid, module):
-        try:
-            import sys
-            __import__(self.apic_model)
-            HostLink = sys.modules[self.apic_model].HostLink
-            return self.db.session.query(HostLink).filter_by(
-                swid=swid, module=module).all()
-        except Exception as e:
-            LOG.exception(e)
+        HostLink = self.get_hostlink_class()
+        if HostLink:
+            with self.db.session.begin(subtransactions=True):
+                return self.db.session.query(HostLink).filter_by(
+                    swid=swid, module=module).all()
+
+    def clear_all_hostlinks(self):
+        from sqlalchemy import orm
+        HostLink = self.get_hostlink_class()
+        if HostLink:
+            with self.db.session.begin(subtransactions=True):
+                try:
+                    self.db.session.query(HostLink).delete()
+                except orm.exc.NoResultFound:
+                    return
