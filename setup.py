@@ -20,7 +20,7 @@ import setuptools
 
 setuptools.setup(
     name="apicapi",
-    version="1.0.0",
+    version="1.0.1",
     packages=setuptools.find_packages(exclude=["*.tests", "*.tests.*",
                                                "tests.*", "tests"]),
     author="Cisco Systems, Inc.",
