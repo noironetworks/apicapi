@@ -569,8 +569,8 @@ class APICManager(object):
         self.apic.vzFilter.delete(owner, filter_id, transaction=transaction)
 
     def set_contract_for_epg(self, tenant_id, epg_id,
-                             contract_id, contract_owner=None,
-                             provider=False, transaction=None):
+                             contract_id, provider=False, contract_owner=None,
+                             transaction=None,):
         """Set the contract for an EPG.
 
         By default EPGs are consumers of a contract.
@@ -587,8 +587,8 @@ class APICManager(object):
                     transaction=trs)
 
     def unset_contract_for_epg(self, tenant_id, epg_id,
-                               contract_id, contract_owner=None,
-                               provider=False, transaction=None):
+                               contract_id, provider=False,
+                               contract_owner=None, transaction=None):
 
         with self.apic.transaction(transaction) as trs:
             if provider:
@@ -878,11 +878,12 @@ class APICManager(object):
                 tenant_id, bd_id, tnFvCtxName=self.apic.fvCtx.name(context),
                 transaction=trs)
             # set the EPG to provide this contract
-            self.set_contract_for_epg(tenant_id, eid, cid, True,
+            self.set_contract_for_epg(tenant_id, eid, cid, provider=True,
                                       transaction=trs)
 
             # set the EPG to consume this contract
-            self.set_contract_for_epg(tenant_id, eid, cid, transaction=trs)
+            self.set_contract_for_epg(tenant_id, eid, cid, provider=False,
+                                      transaction=trs)
 
     def remove_router_interface(self, tenant_id, router_id,
                                 network_id, context=CONTEXT_SHARED,
@@ -976,8 +977,8 @@ class APICManager(object):
                 next_hop, transaction=trs)
 
     def ensure_external_epg_created(self, ext_out_id, subnet=None,
-                                    external_epg=EXT_EPG, owner=TENANT_COMMON,
-                                    transaction=None):
+                                    owner=TENANT_COMMON,
+                                    external_epg=EXT_EPG, transaction=None):
         """Add EPG to existing External Routed Network."""
         with self.apic.transaction(transaction) as trs:
             subnet = subnet or '0.0.0.0/0'
@@ -985,8 +986,8 @@ class APICManager(object):
                                          subnet, transaction=trs)
 
     def ensure_external_epg_routes_deleted(self, ext_out_id, subnets=None,
-                                           external_epg=EXT_EPG,
                                            owner=TENANT_COMMON,
+                                           external_epg=EXT_EPG,
                                            transaction=None):
         """Add EPG to existing External Routed Network."""
         with self.apic.transaction(transaction) as trs:
@@ -1003,16 +1004,16 @@ class APICManager(object):
                                         transaction=trs)
 
     def ensure_external_epg_consumed_contract(self, ext_out_id, contract_id,
-                                              external_epg=EXT_EPG,
                                               owner=TENANT_COMMON,
+                                              external_epg=EXT_EPG,
                                               transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.fvRsCons__Ext.create(owner, ext_out_id, external_epg,
                                            contract_id, transaction=trs)
 
     def ensure_external_epg_provided_contract(self, ext_out_id, contract_id,
-                                              external_epg=EXT_EPG,
                                               owner=TENANT_COMMON,
+                                              external_epg=EXT_EPG,
                                               transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.fvRsProv__Ext.create(owner, ext_out_id, external_epg,
@@ -1033,14 +1034,14 @@ class APICManager(object):
                                                transaction=trs)
 
     def ensure_external_epg_provided_contract_deleted(
-            self, ext_out_id, contract_id, external_epg=EXT_EPG,
-            owner=TENANT_COMMON, transaction=None):
+            self, ext_out_id, contract_id, owner=TENANT_COMMON,
+            external_epg=EXT_EPG, transaction=None):
         self.apic.fvRsProv__Ext.delete(owner, ext_out_id, external_epg,
                                        contract_id, transaction=transaction)
 
     def ensure_external_epg_consumed_contract_deleted(
-            self, ext_out_id, contract_id, external_epg=EXT_EPG,
-            owner=TENANT_COMMON, transaction=None):
+            self, ext_out_id, contract_id, owner=TENANT_COMMON,
+            external_epg=EXT_EPG, transaction=None):
         self.apic.fvRsCons__Ext.delete(owner, ext_out_id, external_epg,
                                        contract_id, transaction=transaction)
 
