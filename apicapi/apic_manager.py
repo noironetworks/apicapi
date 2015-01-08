@@ -831,11 +831,12 @@ class APICManager(object):
         segments = self.db.get_tenant_network_vlan_for_host(host)
         for tenant, network, encap in segments:
             tenant_id = self.db.get_apic_name(
-                tenant, apic_mapper.NAME_TYPE_TENANT)[0]
+                tenant, apic_mapper.NAME_TYPE_TENANT)
             network_id = self.db.get_apic_name(
-                network, apic_mapper.NAME_TYPE_NETWORK)[0]
-            self.ensure_path_created_for_port(
-                tenant_id, network_id, host, encap)
+                network, apic_mapper.NAME_TYPE_NETWORK)
+            if tenant_id and network_id:
+                self.ensure_path_created_for_port(
+                    tenant_id[0], network_id[0], host, encap)
 
     def remove_hostlink(self, host, ifname, ifmac, switch, module, port):
         self.db.delete_hostlink(host, ifname)
