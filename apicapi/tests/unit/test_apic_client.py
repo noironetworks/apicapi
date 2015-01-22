@@ -308,3 +308,21 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self.mock_response_for_get('fvSubnet', name=s_name)
         self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd', s_name)
         self.assertFalse(s_name.renew.called)
+
+    def test_dn_manager(self):
+        manager = self.apic.dn_manager
+        ctx = 'uni/tn-common/ctx-default'
+        self.assertEqual(['common', 'default'], manager.decompose_context(ctx))
+        ctx = 'uni/tn-common/WRONG-default'
+        self.assertIsNone(manager.decompose_context(ctx))
+        ctx = 'tn-common/ctx-default'
+        self.assertEqual(['common', 'default'], manager.decompose_context(ctx))
+        bd = 'uni/tn-common/BD-default'
+        self.assertEqual(['common', 'default'],
+                         manager.decompose_bridge_domain(bd))
+        epg = ('uni/tn-_openstack-maple_/ap-openstack-maple_app/'
+               'epg-public_ff5b842c-8a76-4cb4-8197-9f9726be44ac')
+        self.assertEqual(
+            ['_openstack-maple_', 'openstack-maple_app',
+             'public_ff5b842c-8a76-4cb4-8197-9f9726be44ac'],
+            manager.decompose_endpoint_group(epg))

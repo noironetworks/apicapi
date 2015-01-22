@@ -834,7 +834,7 @@ class APICManager(object):
                 tenant, apic_mapper.NAME_TYPE_TENANT)
             network_id = self.db.get_apic_name(
                 network, apic_mapper.NAME_TYPE_NETWORK)
-            if tenant_id and network_id:
+            if tenant_id and network_id and encap:
                 self.ensure_path_created_for_port(
                     tenant_id[0], network_id[0], host, encap)
 
