@@ -199,7 +199,7 @@ class APICNameMapper(object):
     @mapper(NAME_TYPE_EXTERNAL_POLICY)
     def external_policy(self, context, external_policy_id):
         external_policy = context._plugin.get_external_policy(
-            context._plugin_context,  external_policy_id)
+            context._plugin_context, external_policy_id)
         return external_policy['name']
 
     @mapper(NAME_TYPE_NAT_POOL)

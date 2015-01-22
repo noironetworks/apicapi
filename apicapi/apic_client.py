@@ -19,6 +19,7 @@
 import collections
 import contextlib
 import json
+import re
 import time
 
 import requests
@@ -668,6 +669,7 @@ class RestClient(ApicSession):
         LOG = log.getLogger(__name__)
         super(RestClient, self).__init__(hosts, usr, pwd, ssl)
         ManagedObjectClass.scope = '_' + system_id + '_'
+        self.dn_manager = DNManager()
 
     def __getattr__(self, mo_class):
         """Add supported MOs as properties on demand."""
@@ -700,3 +702,54 @@ class RestClient(ApicSession):
         else:
             # Only the top owner will commit the transaction
             yield transaction
+
+
+class DNManager(object):
+    """ DN Manager.
+
+    Utility methods for dn management, such us param decomposition.
+    """
+    class InvalidNameFormat(Exception):
+        pass
+
+    nice_to_rn = {'context': 'fvCtx',
+                  'bridge_domain': 'fvBD',
+                  'endpoint_group': 'fvAEPg',
+                  'contract': 'vzBrCP'}
+
+    def __getattr__(self, item):
+        if item.startswith('decompose_'):
+            if item[len('decompose_'):] in DNManager.nice_to_rn:
+                def decompose_wrapper(dn):
+                    return self._decompose_mo(dn, item[len('decompose_'):])
+                return decompose_wrapper
+
+        raise AttributeError
+
+    def _decompose(self, dn, mo):
+        if not dn:
+            raise DNManager.InvalidNameFormat()
+        fmt = (mo.rn_fmt.replace('__', '').replace('%s', '(.+)').
+               replace('[', '\[').replace(']', '\]'))
+
+        split = dn.split('/')
+        param = re.findall(fmt, split[-1])
+        if not param or len(param) != mo.rn_param_count:
+            raise DNManager.InvalidNameFormat()
+        if mo.container:
+            return self._decompose(
+                dn[:-(len(split[-1]) + 1)],
+                ManagedObjectClass(mo.container)) + param
+        else:
+            if len(split) > 2:
+                raise DNManager.InvalidNameFormat()
+            if len(split) == 2 and split[0] != 'uni':
+                raise DNManager.InvalidNameFormat()
+            return param
+
+    def _decompose_mo(self, dn, nice):
+        try:
+            return self._decompose(
+                dn, ManagedObjectClass(DNManager.nice_to_rn[nice]))
+        except DNManager.InvalidNameFormat:
+            return None
