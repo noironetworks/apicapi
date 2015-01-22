@@ -35,6 +35,8 @@ apic_opts = [
         default=True),
     cfg.BoolOpt('apic_multiple_hostlinks',
         default=False),
+    cfg.BoolOpt('scope_names',
+        default=True),
     cfg.StrOpt('apic_model',
         default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
 ]
@@ -114,7 +116,8 @@ class APICManager(object):
             self.apic_config.apic_hosts,
             self.apic_config.apic_username,
             self.apic_config.apic_password,
-            self.apic_config.apic_use_ssl
+            self.apic_config.apic_use_ssl,
+            scope_names=self.apic_config.scope_names
         )
 
         self.phys_domain_dn = self.apic.physDomP.dn(

@@ -172,7 +172,7 @@ class APICNameMapper(object):
                                                   l3_policy_id)
         return l3_policy['name']
 
-    @mapper(NAME_TYPE_L3_POLICY)
+    @mapper(NAME_TYPE_L2_POLICY)
     def l2_policy(self, context, l2_policy_id):
         l2_policy = context._plugin.get_l2_policy(context._plugin_context,
                                                   l2_policy_id)
