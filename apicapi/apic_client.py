@@ -220,9 +220,13 @@ class ManagedObjectClass(object):
         return 'uni/%s' % self.rn_fmt, param
 
     def _scope(self, fmt, *params):
-        exc = ManagedObjectClass.scope_exceptions.get(self.klass)
-        res = fmt.replace(
-            '__', '' if exc and params in exc else ManagedObjectClass.scope)
+        if ManagedObjectClass.scope_exceptions:
+            exc = ManagedObjectClass.scope_exceptions.get(self.klass)
+            res = fmt.replace(
+                '__', '' if exc and params in exc else
+                ManagedObjectClass.scope)
+        else:
+            res = fmt.replace('__', '')
         return res % params
 
     def dn(self, *params):
@@ -663,8 +667,11 @@ class RestClient(ApicSession):
     transactions.
     """
 
-    def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True):
+    def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True,
+                 scope_names=True):
         """Establish a session with the APIC."""
+        if not scope_names:
+            ManagedObjectClass.scope_exceptions = None
         global LOG
         LOG = log.getLogger(__name__)
         super(RestClient, self).__init__(hosts, usr, pwd, ssl)
@@ -686,8 +693,11 @@ class RestClient(ApicSession):
             if renewable:
                 current = self.get_mo(mo, *params)
                 if not current:
-                    map(lambda y: y.renew(), renewable)
-                    return True
+                    try:
+                        map(lambda y: y.renew(), renewable)
+                        return True
+                    except Exception as e:
+                        LOG.error(e.message)
         return False
 
     @contextlib.contextmanager
