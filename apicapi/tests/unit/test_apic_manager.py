@@ -44,6 +44,7 @@ class TestCiscoApicManager(base.BaseTestCase,
             apic_config=self.apic_config,
             network_config= {
                 'vlan_ranges': self.vlan_ranges,
+                'vni_ranges': self.vni_ranges,
                 'switch_dict': self.switch_dict,
                 'vpc_dict': self.vpc_dict,
                 'external_network_dict': self.external_network_dict,
@@ -55,6 +56,7 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assert_responses_drained()
         self.reset_reponses()
         self.addCleanup(mock.patch.stopall)
+        self.mgr.use_vmm = True
 
     def test_mgr_session_login(self):
         login = self.mgr.apic.authentication
