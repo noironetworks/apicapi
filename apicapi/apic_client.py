@@ -128,7 +128,9 @@ class ManagedObjectClass(object):
         'infraAttEntityP': ManagedObjectName('infraInfra', 'attentp-%(name)s',
                                              name_fmt='__%s'),
         'infraRsDomP': ManagedObjectName('infraAttEntityP', 'rsdomP-[%s]'),
-        'infraRsVlanNs': ManagedObjectName('physDomP', 'rsvlanNs'),
+        'infraRsVlanNs__phys': ManagedObjectName('physDomP', 'rsvlanNs'),
+        'infraRsVlanNs__vmm': ManagedObjectName('vmmDomP', 'rsvlanNs'),
+        'infraRsVxlanNs': ManagedObjectName('physDomP', 'rsvxlanNs'),
         'infraAccBndlGrp': ManagedObjectName('infraFuncP', 'accbundle-%s'),
         'infraRsAttEntP2': ManagedObjectName('infraAccBndlGrp', 'rsattEntP'),
         'infraRsLacpPol': ManagedObjectName('infraAccBndlGrp', 'rslacpPol'),
@@ -165,6 +167,16 @@ class ManagedObjectClass(object):
         'fabricPathEp': ManagedObjectName('fabricPathEpCont', 'pathep-%s',
                                           False),
         'fabricNode': ManagedObjectName('fabricPod', 'node-%s', False),
+        'vmmProvP': ManagedObjectName(None, 'vmmp-OpenStack', False),
+        'vmmDomP': ManagedObjectName('vmmProvP', 'dom-%s'),
+        'vmmUsrAccP': ManagedObjectName('vmmDomP', 'usracc-%s'),
+        'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrl-%s'),
+        'vmmRsVxlanNs': ManagedObjectName('vmmCtrlrP', 'rsvxlanNs'),
+        'vmmRsMcastAddrNs': ManagedObjectName('vmmCtrlrP', 'rsmcastaddrNs'),
+
+        'fvnsMcastAddrInstP': ManagedObjectName('infraInfra', 'maddrns-%s'),
+        'fvnsMcastAddrBlk': ManagedObjectName('fvnsMcastAddrInstP',
+                                              'fromaddr-[%s]-toaddr-[%s]'),
     }
 
     # The ManagedObjects specified below will not be scoped whenever
