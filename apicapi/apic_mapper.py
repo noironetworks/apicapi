@@ -39,6 +39,12 @@ NAME_TYPE_EXTERNAL_SEGMENT = 'external_segment'
 NAME_TYPE_EXTERNAL_POLICY = 'external_policy'
 NAME_TYPE_NAT_POOL = 'nat_pool'
 
+NAME_TYPES = {NAME_TYPE_TENANT, NAME_TYPE_NETWORK, NAME_TYPE_SUBNET,
+              NAME_TYPE_PORT, NAME_TYPE_ROUTER, NAME_TYPE_APP_PROFILE,
+              NAME_TYPE_POLICY_TARGET_GROUP, NAME_TYPE_L3_POLICY,
+              NAME_TYPE_L2_POLICY, NAME_TYPE_POLICY_RULE_SET,
+              NAME_TYPE_POLICY_RULE, NAME_TYPE_EXTERNAL_SEGMENT,
+              NAME_TYPE_EXTERNAL_POLICY, NAME_TYPE_NAT_POOL}
 
 MAX_APIC_NAME_LENGTH = 46
 
@@ -239,6 +245,9 @@ class APICNameMapper(object):
             result = saved_name[0]
         return ApicName(result, app_profile, None,
                         self, self.app_profile.__name__)
+
+    def is_valid_name_type(self, name_type):
+        return name_type in NAME_TYPES
 
 
 class ApicName(object):
