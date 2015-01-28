@@ -24,6 +24,8 @@ from apicapi import apic_mapper
 from apicapi import exceptions as cexc
 
 
+# TODO(ivar): Switch Policies -> policy Groups and connect it to profiles
+
 apic_opts = [
     cfg.BoolOpt('enable_aci_routing',
         default=True),
@@ -62,6 +64,15 @@ apic_opts = [
     cfg.StrOpt('multicast_address',
                default='225.1.2.3',
                help=("Multicast address used by the VMM domain.")),
+    cfg.ListOpt('vlan_ranges',
+                default=[],
+                help=("List of <vlan_min>:<vlan_max> used for vlan pool "
+                      "configuration")),
+    cfg.ListOpt('vni_ranges',
+                default=[],
+                help=("List of <vni_min>:<vni_max> used for vni pool "
+                      "configuration"))
+
 ]
 
 CONTEXT_ENFORCED = '1'
@@ -122,8 +133,13 @@ class APICManager(object):
         self.multiple_hostlinks = self.apic_config.apic_multiple_hostlinks
         self.apic_model = self.apic_config.apic_model
 
-        self.vlan_ranges = network_config.get('vlan_ranges')
-        self.vni_ranges = network_config.get('vni_ranges')
+        self.vlan_ranges = self.apic_config.vlan_ranges
+        if not self.vlan_ranges and network_config.get('vlan_ranges'):
+            self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
+                                network_config.get('vlan_ranges')]
+
+        self.vni_ranges = self.apic_config.vni_ranges or network_config.get(
+            'vni_ranges')
         self.mcast_ranges = self.apic_config.mcast_ranges
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
@@ -181,7 +197,7 @@ class APICManager(object):
         if self.vlan_ranges:
             vlan_ns_name = self.apic_config.apic_vlan_ns_name
             vlan_range = self.vlan_ranges[0]
-            (vlan_min, vlan_max) = vlan_range.split(':')[-2:]
+            (vlan_min, vlan_max) = vlan_range.split(':')
             vlan_ns_dn = self.ensure_vlan_ns_created_on_apic(
                 vlan_ns_name, vlan_min, vlan_max)
         if self.vni_ranges:
@@ -259,6 +275,7 @@ class APICManager(object):
 
         with self.apic.transaction(transaction) as trs:
             self.apic.infraAttEntityP.create(name, transaction=trs)
+            self.apic.infraProvAcc.create(name, transaction=trs)
             # Attach phys domain to entity profile
             self.apic.infraRsDomP.create(
                 name, self.domain_dn, transaction=trs)
@@ -324,6 +341,21 @@ class APICManager(object):
                                                   fromPort=str(port),
                                                   toPort=str(port),
                                                   transaction=trs)
+                    # Enrich function profile
+                    self.apic.infraConnNodeS.create(
+                        self.function_profile, switch)
+                    self.apic.infraConnNodeBlk.create(
+                        self.function_profile, switch, from_=switch,
+                        to_=switch)
+                    self.apic.infraHConnPortS.create(
+                        self.function_profile, switch, 'range')
+                    self.apic.infraConnPortBlk.create(
+                        self.function_profile, switch, 'range', fromPort=port,
+                        toPort=port)
+                    dn = self.apic.infraHConnPortS.dn(
+                        self.function_profile, switch, 'range')
+                    self.apic.infraRsConnPortS.create(
+                        self.function_profile, switch, dn)
 
     def get_function_profile(self, switch, module, port, transaction=None):
         fpdn = self.apic.infraAccPortGrp.dn(self.function_profile)
