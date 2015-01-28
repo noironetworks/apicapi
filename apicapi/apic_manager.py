@@ -50,6 +50,10 @@ apic_opts = [
                default='${apic_system_id}_mcast_ns',
                help=("Name for the multicast namespace to be used for "
                      "Openstack")),
+    cfg.StrOpt('apic_switch_pg_name',
+               default='${apic_system_id}_sw_pg',
+               help=("Name for the switch policy group to be used for "
+                     "Openstack")),
     cfg.ListOpt('mcast_ranges', default=['225.1.1.1:225.1.1.128'],
                 help=("Comma-separated list of "
                       "<mcast_addr_min>:<mcast_addr_max> tuples enumerating "
@@ -179,6 +183,7 @@ class APICManager(object):
 
         self.function_profile = self.apic_config.apic_function_profile
         self.lacp_profile = self.apic_config.apic_lacp_profile
+        self.switch_pg_dn = None
 
     @property
     def apic_mapper(self):
@@ -239,6 +244,9 @@ class APICManager(object):
         func_name = self.function_profile
         self.ensure_function_profile_created_on_apic(func_name)
 
+        sw_pg_name = self.apic_config.apic_switch_pg_name
+        self.ensure_switch_pg_on_apic(sw_pg_name)
+
         # clear local hostlinks in DB (as it is discovered state)
         self.clear_all_hostlinks()
 
@@ -293,6 +301,16 @@ class APICManager(object):
             self.apic.infraRsAttEntP.create(name,
                                             tDn=self.entity_profile_dn,
                                             transaction=trs)
+
+    def ensure_switch_pg_on_apic(self, name, transaction=None):
+        """Create the infrastructure function profile."""
+        if not self.provision_infra:
+            return
+
+        with self.apic.transaction(transaction) as trs:
+            self.apic.infraAccNodePGrp.create(name, transaction=trs)
+
+        self.switch_pg_dn = self.apic.infraAccNodePGrp.dn(name)
 
     def ensure_lacp_profile_created_on_apic(self, name, transaction=None):
         """Create the lacp profile."""
@@ -432,6 +450,9 @@ class APICManager(object):
             self.apic.infraNodeBlk.create(switch_id, lswitch_id, 'range',
                                           name, from_=switch_id,
                                           to_=switch_id, transaction=trs)
+            self.apic.infraRsAccNodePGrp.create(
+                switch_id, lswitch_id, 'range', tDn=self.switch_pg_dn,
+                transaction=trs)
 
     def ensure_port_profile_created_for_switch(self, switch, transaction=None):
         """Check and create infra port profiles for a node."""
@@ -481,11 +502,14 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.vmmDomP.create(vmm_name, enfPref="sw", mode="ovs",
                                      mcastAddr=multicast_addr, transaction=trs)
-            self.apic.vmmUsrAccP.create(vmm_name, usr=usr, pwd=pwd,
+            self.apic.vmmUsrAccP.create(vmm_name, vmm_name, usr=usr, pwd=pwd,
                                         transaction=trs)
+            usracc_dn = self.apic.vmmUsrAccP.dn(vmm_name, vmm_name)
             self.apic.vmmCtrlrP.create(
-                vmm_name, scope="openstack", rootContName="openstack",
-                hostOrIp="192.168.65.154", mode="ovs")
+                vmm_name, vmm_name, scope="openstack",
+                rootContName="openstack", hostOrIp="192.168.65.154",
+                mode="ovs")
+            self.apic.vmmRsAcc.create(vmm_name, vmm_name, tDn=usracc_dn)
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_name, tDn=vlan_ns_dn, transaction=trs)
