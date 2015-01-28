@@ -116,6 +116,7 @@ class ManagedObjectClass(object):
         'infraLeafS': ManagedObjectName('infraNodeP', 'leaves-%s-typ-%s'),
         'infraNodeBlk': ManagedObjectName('infraLeafS', 'nodeblk-%s'),
         'infraRsAccPortP': ManagedObjectName('infraNodeP', 'rsaccPortP-[%s]'),
+        'infraRsAccNodePGrp': ManagedObjectName('infraLeafS', 'rsaccNodePGrp'),
         'infraAccPortP': ManagedObjectName('infraInfra',
                                            'accportprof-%(name)s',
                                            name_fmt='__%s'),
@@ -123,6 +124,7 @@ class ManagedObjectClass(object):
         'infraPortBlk': ManagedObjectName('infraHPortS', 'portblk-%s'),
         'infraRsAccBaseGrp': ManagedObjectName('infraHPortS', 'rsaccBaseGrp'),
         'infraFuncP': ManagedObjectName('infraInfra', 'funcprof'),
+        'infraAccNodePGrp': ManagedObjectName('infraFuncP', 'accnodepgrp-%s'),
         'infraAccPortGrp': ManagedObjectName('infraFuncP', 'accportgrp-%s'),
         'infraRsAttEntP': ManagedObjectName('infraAccPortGrp', 'rsattEntP'),
 
@@ -190,6 +192,7 @@ class ManagedObjectClass(object):
         'fvnsMcastAddrInstP': ManagedObjectName('infraInfra', 'maddrns-%s'),
         'fvnsMcastAddrBlk': ManagedObjectName('fvnsMcastAddrInstP',
                                               'fromaddr-[%s]-toaddr-[%s]'),
+        'vmmRsAcc': ManagedObjectName('vmmCtrlrP', 'rsacc'),
     }
 
     # The ManagedObjects specified below will not be scoped whenever
