@@ -33,6 +33,9 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def setUp(self):
         super(TestCiscoApicManager, self).setUp()
+        self._initialize_manager()
+
+    def _initialize_manager(self):
         mocked.ControllerMixin.set_up_mocks(self)
         mocked.ConfigMixin.set_up_mocks(self)
         mocked.DbModelMixin.set_up_mocks(self)
@@ -293,9 +296,13 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_ensure_vlan_ns_created_new_with_encap(self):
         ns = mocked.APIC_VLAN_NAME
         self._mock_new_vlan_instance()
-        new_ns = self.mgr.ensure_vlan_ns_created_on_apic(ns, '300', '399')
-        self.assert_responses_drained()
-        self.assertEqual(new_ns, self.mgr.apic.fvnsVlanInstP.dn(ns, 'static'))
+        ft = [False, True]
+        for x in ft:
+            self.mgr.use_vmm = x
+            new_ns = self.mgr.ensure_vlan_ns_created_on_apic(ns, '300', '399')
+            self.assert_responses_drained()
+            self.assertEqual(new_ns, self.mgr.apic.fvnsVlanInstP.dn(
+                ns, 'static' if not x else 'dynamic'))
 
     def test_ensure_bd_created(self):
         self.mock_response_for_post(self.get_top_container(
@@ -485,3 +492,18 @@ class TestCiscoApicManager(base.BaseTestCase,
             self.mgr.apic.fvRsProv__Ext.mo))
         self.mgr.ensure_external_epg_provided_contract(mocked.APIC_NETWORK,
                                                        mocked.APIC_CONTRACT)
+
+    def test_segment_config(self):
+        vlan_ranges = ['200:299']
+        vni_ranges = ['160000:190000']
+        self.override_config('vlan_ranges', vlan_ranges, 'ml2_cisco_apic')
+        self.override_config('vni_ranges', vni_ranges, 'ml2_cisco_apic')
+        self._initialize_manager()
+        self.assertEqual(self.mgr.vlan_ranges, vlan_ranges)
+        self.assertEqual(self.mgr.vni_ranges, vni_ranges)
+        self.override_config('vlan_ranges', [], 'ml2_cisco_apic')
+        self.override_config('vni_ranges', [], 'ml2_cisco_apic')
+        self._initialize_manager()
+        self.assertEqual(self.mgr.vlan_ranges,
+                         [':'.join(self.vlan_ranges[0].split(':')[-2:])])
+        self.assertEqual(self.mgr.vni_ranges, self.vni_ranges)

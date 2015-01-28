@@ -125,8 +125,21 @@ class ManagedObjectClass(object):
         'infraFuncP': ManagedObjectName('infraInfra', 'funcprof'),
         'infraAccPortGrp': ManagedObjectName('infraFuncP', 'accportgrp-%s'),
         'infraRsAttEntP': ManagedObjectName('infraAccPortGrp', 'rsattEntP'),
+
+        'infraConnNodeS': ManagedObjectName('infraRsAttEntP',
+                                            'nodes-selector%s'),
+        'infraConnNodeBlk': ManagedObjectName('infraConnNodeS',
+                                              'nodeblk-block1'),
+        'infraRsConnPortS': ManagedObjectName('infraConnNodeS',
+                                              'rsconnPortS-[%s]'),
+        'infraHConnPortS': ManagedObjectName(
+            'infraRsAttEntP', 'hports-selector%sLeafPorts-typ-%s'),
+        'infraConnPortBlk': ManagedObjectName('infraHConnPortS',
+                                              'portblk-block1'),
+
         'infraAttEntityP': ManagedObjectName('infraInfra', 'attentp-%(name)s',
                                              name_fmt='__%s'),
+        'infraProvAcc': ManagedObjectName('infraAttEntityP', 'provacc'),
         'infraRsDomP': ManagedObjectName('infraAttEntityP', 'rsdomP-[%s]'),
         'infraRsVlanNs__phys': ManagedObjectName('physDomP', 'rsvlanNs'),
         'infraRsVlanNs__vmm': ManagedObjectName('vmmDomP', 'rsvlanNs'),
