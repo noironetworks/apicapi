@@ -193,7 +193,7 @@ class ConfigMixin(object):
             'apic_function_profile': APIC_FUNC_PROF,
         }
         for opt, val in apic_test_config.items():
-            cfg.CONF.set_override(opt, val, 'ml2_cisco_apic')
+            self.override_config(opt, val, 'ml2_cisco_apic')
         self.apic_config = cfg.CONF.ml2_cisco_apic
 
         # Configure switch topology
@@ -230,6 +230,9 @@ class ConfigMixin(object):
             cfg, 'MultiConfigParser').start()
         self.mocked_parser.return_value.read.return_value = [apic_switch_cfg]
         self.mocked_parser.return_value.parsed = [apic_switch_cfg]
+
+    def override_config(self, opt, val, group=None):
+        cfg.CONF.set_override(opt, val, group)
 
 
 class DbModelMixin(object):
