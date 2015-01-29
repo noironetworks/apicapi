@@ -32,6 +32,11 @@ class ApicException(Exception):
         return unicode(self.msg)
 
 
+class InvalidConfig(ApicException):
+    message = 'Value %(value)s is invalid for config config %(ctype)s: ' \
+              '%(reason)s'
+
+
 class BadRequest(ApicException):
     message = 'Bad %(resource)s request: %(msg)s'
 

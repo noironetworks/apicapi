@@ -17,67 +17,10 @@
 # @author: Mandeep Dhami (madhami@cisco.com), Cisco Systems Inc.
 # @author: Arvind Somya (asomya@cisco.com), Cisco Systems Inc.
 
-from oslo.config import cfg
-
 from apicapi import apic_client
 from apicapi import apic_mapper
+from apicapi import config
 from apicapi import exceptions as cexc
-
-
-# TODO(ivar): Switch Policies -> policy Groups and connect it to profiles
-
-apic_opts = [
-    cfg.BoolOpt('enable_aci_routing',
-        default=True),
-    cfg.BoolOpt('enable_arp_flooding',
-        default=False),
-    cfg.BoolOpt('apic_provision_infra',
-        default=True),
-    cfg.BoolOpt('apic_provision_hostlinks',
-        default=True),
-    cfg.BoolOpt('apic_multiple_hostlinks',
-        default=False),
-    cfg.BoolOpt('scope_names',
-        default=True),
-    cfg.StrOpt('apic_model',
-        default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
-    cfg.BoolOpt('use_vmm', default=False),
-    cfg.StrOpt('apic_vxlan_ns_name',
-               default='${apic_system_id}_vxlan_ns',
-               help=("Name for the vxlan namespace to be used for "
-                     "Openstack")),
-    cfg.StrOpt('apic_multicast_ns_name',
-               default='${apic_system_id}_mcast_ns',
-               help=("Name for the multicast namespace to be used for "
-                     "Openstack")),
-    cfg.StrOpt('apic_switch_pg_name',
-               default='${apic_system_id}_sw_pg',
-               help=("Name for the switch policy group to be used for "
-                     "Openstack")),
-    cfg.ListOpt('mcast_ranges', default=['225.1.1.1:225.1.1.128'],
-                help=("Comma-separated list of "
-                      "<mcast_addr_min>:<mcast_addr_max> tuples enumerating "
-                      "ranges of Multicast addresses.")),
-    cfg.StrOpt('openstack_user',
-               default='admin',
-               help=("Name of the Openstack user used by the VMM domain.")),
-    cfg.StrOpt('openstack_password',
-               default='somepassword', secret=True,
-               help=("Password of the Openstack user used by the VMM "
-                     "domain.")),
-    cfg.StrOpt('multicast_address',
-               default='225.1.2.3',
-               help=("Multicast address used by the VMM domain.")),
-    cfg.ListOpt('vlan_ranges',
-                default=[],
-                help=("List of <vlan_min>:<vlan_max> used for vlan pool "
-                      "configuration")),
-    cfg.ListOpt('vni_ranges',
-                default=[],
-                help=("List of <vni_min>:<vni_max> used for vni pool "
-                      "configuration"))
-
-]
 
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
@@ -127,7 +70,9 @@ class APICManager(object):
         self.db = db
         self.apic_config = apic_config
         self.apic_config._conf.register_opts(
-            apic_opts, self.apic_config._group.name)
+            config.apic_opts, self.apic_config._group.name)
+        # Config pre validation
+        config.ConfigValidator(log).validate(self.apic_config)
 
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.arp_flooding_enabled = self.apic_config.enable_arp_flooding
