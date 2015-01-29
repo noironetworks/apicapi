@@ -90,12 +90,12 @@ class APICNameMapper(object):
                     if saved_name:
                         return ApicName(saved_name[0], resource_id, context,
                                         inst, func.__name__)
+                name = ''
                 try:
                     name = func(inst, context, resource_id)
-                except Exception:
-                    LOG.exception(("Exception in looking up name %s"),
-                                  name_type)
-                    raise
+                except Exception as e:
+                    LOG.warn(("Exception in looking up name %s"), name_type)
+                    LOG.error(e.message)
 
                 result = re.sub(r"-+", "-", resource_id)
                 if name:
@@ -122,19 +122,28 @@ class APICNameMapper(object):
             tenant_name = self.tenants.get(tenant_id)
         else:
             if self.keystone is None:
-                keystone_conf = self.keystone_authtoken
-                auth_url = ('%s://%s:%s/v2.0/' % (
-                    keystone_conf.auth_protocol,
-                    keystone_conf.auth_host,
-                    keystone_conf.auth_port))
-                username = keystone_conf.admin_user
-                password = keystone_conf.admin_password
-                project_name = keystone_conf.admin_tenant_name
-                self.keystone = self.keyclient.Client(
-                    auth_url=auth_url,
-                    username=username,
-                    password=password,
-                    tenant_name=project_name)
+                try:
+                    keystone_conf = self.keystone_authtoken
+                    if keystone_conf.get('auth_uri'):
+                        auth_url = keystone_conf.auth_uri
+                    else:
+                        auth_url = ('%s://%s:%s/v2.0/' % (
+                            keystone_conf.auth_protocol,
+                            keystone_conf.auth_host,
+                            keystone_conf.auth_port))
+                    user = (keystone_conf.get('admin_user') or
+                            keystone_conf.username)
+                    pw = (keystone_conf.get('admin_password') or
+                          keystone_conf.password)
+                    tenant = (keystone_conf.get('admin_tenant_name') or
+                              keystone_conf.project_name)
+                    self.keystone = self.keyclient.Client(
+                        username=user, password=pw, tenant_name=tenant,
+                        auth_url=auth_url)
+                except Exception as ex:
+                    LOG.exception(ex)
+                    return tenant_id
+
             for tenant in self.keystone.tenants.list():
                 self.tenants[tenant.id] = tenant.name
                 if tenant.id == tenant_id:

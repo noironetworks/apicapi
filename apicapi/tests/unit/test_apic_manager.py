@@ -20,6 +20,7 @@ import mock
 from webob import exc as wexc
 
 from apicapi import apic_manager
+from apicapi import config
 from apicapi.db import apic_model
 from apicapi import exceptions as cexc
 from apicapi.tests import base
@@ -43,6 +44,10 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.mock_apic_manager_login_responses()
         mock.patch('apicapi.apic_mapper.'
                    'APICNameMapper.app_profile').start()
+        self.apic_config._conf.register_opts(
+            config.apic_opts, self.apic_config._group.name)
+        self.override_config('apic_model', 'apicapi.db.apic_model',
+                             'ml2_cisco_apic')
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
             network_config= {
