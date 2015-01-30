@@ -185,7 +185,7 @@ class ManagedObjectClass(object):
         'vmmProvP': ManagedObjectName(None, 'vmmp-OpenStack', False),
         'vmmDomP': ManagedObjectName('vmmProvP', 'dom-%s'),
         'vmmUsrAccP': ManagedObjectName('vmmDomP', 'usracc-%s'),
-        'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrl-%s'),
+        'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrlr-%s'),
         'vmmRsVxlanNs': ManagedObjectName('vmmCtrlrP', 'rsvxlanNs'),
         'vmmRsMcastAddrNs': ManagedObjectName('vmmCtrlrP', 'rsmcastaddrNs'),
 
