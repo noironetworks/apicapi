@@ -187,7 +187,8 @@ class ManagedObjectClass(object):
         'vmmUsrAccP': ManagedObjectName('vmmDomP', 'usracc-%s'),
         'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrlr-%s'),
         'vmmRsVxlanNs': ManagedObjectName('vmmCtrlrP', 'rsvxlanNs'),
-        'vmmRsMcastAddrNs': ManagedObjectName('vmmCtrlrP', 'rsmcastaddrNs'),
+        'vmmRsDomMcastAddrNs': ManagedObjectName('vmmDomP',
+                                                 'rsdomMcastAddrNs'),
 
         'fvnsMcastAddrInstP': ManagedObjectName('infraInfra', 'maddrns-%s'),
         'fvnsMcastAddrBlk': ManagedObjectName('fvnsMcastAddrInstP',
