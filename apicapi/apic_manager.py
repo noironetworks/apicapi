@@ -163,12 +163,6 @@ class APICManager(object):
             self.ensure_phys_domain_created_on_apic(phys_name, vlan_ns_dn,
                                                     vxlan_ns_dn)
         else:
-            # Create Multicast namespace for VMM
-            mcast_name = self.apic_config.apic_multicast_ns_name
-            mcast_range = self.mcast_ranges[0]
-            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-            self.ensure_mcast_ns_created_on_apic(mcast_name, mcast_min,
-                                                 mcast_max)
             # Create VMM domain
             vmm_name = self.apic_config.apic_domain_name
             self.ensure_vmm_domain_created_on_apic(
@@ -176,6 +170,12 @@ class APICManager(object):
                 self.apic_config.openstack_password,
                 self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn,
                 vxlan_ns_dn=vxlan_ns_dn)
+            # Create Multicast namespace for VMM
+            mcast_name = self.apic_config.apic_multicast_ns_name
+            mcast_range = self.mcast_ranges[0]
+            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
+            self.ensure_mcast_ns_created_on_apic(vmm_name, mcast_name,
+                                                 mcast_min, mcast_max)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
@@ -505,11 +505,13 @@ class APICManager(object):
                                                      **ns_kw_args)
         return self.apic.fvnsVxlanInstP.dn(*ns_args)
 
-    def ensure_mcast_ns_created_on_apic(self, name, mcast_min, mcast_max,
+    def ensure_mcast_ns_created_on_apic(self, vmm_name,
+                                        name, mcast_min, mcast_max,
                                         transaction=None):
         """Creates a Multicast namespace with the given vni range."""
 
         ns_args = (name,)
+        dn = self.apic.fvnsMcastAddrInstP.dn(*ns_args)
         if self.provision_infra:
             ns_blk_args = name, mcast_min, mcast_max
             ns_kw_args = {
@@ -521,7 +523,8 @@ class APICManager(object):
                 self.apic.fvnsMcastAddrBlk.create(*ns_blk_args,
                                                   transaction=trs,
                                                   **ns_kw_args)
-        return self.apic.fvnsMcastAddrInstP.dn(*ns_args)
+            self.apic.vmmRsDomMcastAddrNs.create(vmm_name, tDn=dn)
+        return dn
 
     def ensure_bgp_pod_policy_created_on_apic(self, bgp_pol_name='default',
                                               asn='1', pp_group_name='default',
