@@ -305,20 +305,21 @@ class APICManager(object):
                                                   toPort=str(port),
                                                   transaction=trs)
                     # Enrich function profile
+                    nname = switch + '-' + port
                     self.apic.infraConnNodeS.create(
-                        self.function_profile, switch)
+                        self.function_profile, nname)
                     self.apic.infraConnNodeBlk.create(
-                        self.function_profile, switch, from_=switch,
+                        self.function_profile, nname, from_=switch,
                         to_=switch)
                     self.apic.infraHConnPortS.create(
-                        self.function_profile, switch, 'range')
+                        self.function_profile, nname, 'range')
                     self.apic.infraConnPortBlk.create(
-                        self.function_profile, switch, 'range', fromPort=port,
+                        self.function_profile, nname, 'range', fromPort=port,
                         toPort=port)
                     dn = self.apic.infraHConnPortS.dn(
-                        self.function_profile, switch, 'range')
+                        self.function_profile, nname, 'range')
                     self.apic.infraRsConnPortS.create(
-                        self.function_profile, switch, dn)
+                        self.function_profile, nname, dn)
 
     def get_function_profile(self, switch, module, port, transaction=None):
         fpdn = self.apic.infraAccPortGrp.dn(self.function_profile)
