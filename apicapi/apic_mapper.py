@@ -75,15 +75,19 @@ class APICNameMapper(object):
     def mapper(name_type):
         """Wrapper to land all the common operations between mappers."""
         def wrap(func):
-            def inner(inst, context, resource_id, remap=False):
+            def inner(inst, context, resource_id, remap=False, prefix=''):
                 if remap:
                     inst.db.delete_apic_name(resource_id)
                 else:
                     saved_name = inst.db.get_apic_name(resource_id,
                                                        name_type)
                     if saved_name:
-                        return ApicName(saved_name[0], resource_id, context,
-                                        inst, func.__name__)
+                        result = saved_name[0]
+                        if prefix:
+                            result = prefix + result
+                            result = truncate(result, MAX_APIC_NAME_LENGTH)
+                        return ApicName(result, resource_id, context,
+                                        inst, func.__name__, prefix=prefix)
                 name = ''
                 try:
                     name = func(inst, context, resource_id)
@@ -101,11 +105,13 @@ class APICNameMapper(object):
                         id_suffix = "_" + result
                         max_name_length = MAX_APIC_NAME_LENGTH - len(id_suffix)
                         result = truncate(name, max_name_length) + id_suffix
-
                 result = truncate(result, MAX_APIC_NAME_LENGTH)
                 inst.db.update_apic_name(resource_id, name_type, result)
+                if prefix:
+                    result = prefix + result
+                    result = truncate(result, MAX_APIC_NAME_LENGTH)
                 return ApicName(result, resource_id, context, inst,
-                                func.__name__)
+                                func.__name__, prefix=prefix)
             return inner
         return wrap
 
@@ -235,19 +241,21 @@ class APICNameMapper(object):
 
 class ApicName(object):
 
-    def __init__(self, mapped, uid='', context=None, inst=None, fname=''):
+    def __init__(self, mapped, uid='', context=None, inst=None, fname='',
+                 prefix=''):
         self.uid = uid
         self.context = context
         self.inst = inst
         self.fname = fname
         self.value = mapped
+        self.prefix = prefix
 
     def renew(self):
         if self.uid and self.inst and self.fname:
             # temporary circular reference
             with mapper_context(self.context) as ctx:
-                result = getattr(self.inst, self.fname)(ctx, self.uid,
-                                                        remap=True)
+                result = getattr(self.inst, self.fname)(
+                    ctx, self.uid, remap=True, prefix=self.prefix)
             self.value = result.value
             return self
 
