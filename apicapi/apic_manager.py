@@ -677,6 +677,16 @@ class APICManager(object):
                                              transaction=transaction,
                                              unset=unset)
 
+    def manage_contract_subject_bi_filter(self, contract_id, subject_id,
+                                          filter_ref, owner=TENANT_COMMON,
+                                          transaction=None, unset=False,
+                                          rule_owner=None):
+        self._manage_contract_subject_filter(self.apic.vzRsSubjFiltAtt,
+                                             contract_id, subject_id,
+                                             filter_ref, owner=owner,
+                                             transaction=transaction,
+                                             unset=unset)
+
     def _manage_contract_subject_filter(self, mo, contract_id, subject_id,
                                         filter_ref, owner=TENANT_COMMON,
                                         transaction=None, unset=False):
