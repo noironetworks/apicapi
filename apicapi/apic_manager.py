@@ -25,6 +25,7 @@ from apicapi import exceptions as cexc
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
 YES_NO = {True: 'yes', False: 'no'}
+FLOOD_PROXY = {True: 'flood', False: 'proxy'}
 CONTEXT_SHARED = 'shared'
 DN_KEY = 'dn'
 PORT_DN_PATH = 'topology/pod-1/paths-%s/pathep-[eth%s/%s]'
@@ -561,18 +562,20 @@ class APICManager(object):
     def ensure_bd_created_on_apic(self, tenant_id, bd_id,
                                   ctx_owner=TENANT_COMMON,
                                   ctx_name=CONTEXT_SHARED,
-                                  transaction=None):
+                                  transaction=None, allow_broadcast=False):
         """Creates a Bridge Domain on the APIC."""
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.create(tenant_id, bd_id,
-                                  arpFlood=YES_NO[self.arp_flooding_enabled],
+                                  arpFlood=YES_NO[allow_broadcast],
+                                  unkMacUcastAct=FLOOD_PROXY[allow_broadcast],
                                   transaction=trs)
             # Add default context to the BD
-            self.apic.fvRsCtx.create(
-                tenant_id, bd_id,
-                tnFvCtxName=self.apic.fvCtx.name(ctx_name),
-                transaction=trs)
+            if ctx_name is not None:
+                self.apic.fvRsCtx.create(
+                    tenant_id, bd_id,
+                    tnFvCtxName=self.apic.fvCtx.name(ctx_name),
+                    transaction=trs)
 
     def delete_bd_on_apic(self, tenant_id, bd_id, transaction=None):
         """Deletes a Bridge Domain from the APIC."""
@@ -699,14 +702,14 @@ class APICManager(object):
                           filter_ref, transaction=trs)
 
     def create_tenant_filter(self, filter_id, owner=TENANT_COMMON,
-                             transaction=None, **kwargs):
+                             transaction=None, entry=CP_ENTRY, **kwargs):
         """Creates a tenant filter and a generic entry under it."""
         with self.apic.transaction(transaction) as trs:
             # Create a new tenant filter
             self.apic.vzFilter.create(owner, filter_id, transaction=trs)
             # Create a new entry
             self.apic.vzEntry.create(owner, filter_id,
-                                     CP_ENTRY, transaction=trs, **kwargs)
+                                     entry, transaction=trs, **kwargs)
 
     def delete_tenant_filter(self, filter_id, owner=TENANT_COMMON,
                              transaction=None):
