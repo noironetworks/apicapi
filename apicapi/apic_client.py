@@ -344,7 +344,7 @@ class ApicSession(object):
         if time.time() > self.session_deadline:
             self.refresh()
 
-    def _send(self, request, url, data=None, refreshed=None):
+    def _send(self, request, url, data=None, refreshed=None, accepted=None):
         """Send a request and process the response."""
         if data is None:
             response = self._do_request(request, url, cookies=self.cookie)
@@ -371,10 +371,12 @@ class ApicSession(object):
                 err_code = '[code for APIC error not found]'
                 err_text = '[text for APIC error not found]'
             # If invalid token then re-login and retry once
-            if (not refreshed and err_code == APIC_CODE_FORBIDDEN and
-                    err_text.lower().startswith('token was invalid')):
+            if ((not refreshed and err_code == APIC_CODE_FORBIDDEN and
+                    err_text.lower().startswith('token was invalid'))):
                 self.login()
                 return self._send(request, url, data=data, refreshed=True)
+            if not accepted and response.status_code == 202:
+                return self._send(request, url, data=data, accepted=True)
             raise cexc.ApicResponseNotOk(request=request_str,
                                          status=response.status_code,
                                          reason=response.reason,
