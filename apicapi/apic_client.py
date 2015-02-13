@@ -34,6 +34,8 @@ APIC_CODE_FORBIDDEN = str(requests.codes.forbidden)
 
 FALLBACK_EXCEPTIONS = (rexc.ConnectionError, rexc.Timeout,
                        rexc.TooManyRedirects, rexc.InvalidURL)
+SLEEP_TIME = 0.03
+SLEEP_ON_FULL_QUEUE = 1
 
 
 # Info about a Managed Object's relative name (RN) and container.
@@ -294,6 +296,10 @@ class ApicSession(object):
         self.password = None
         if usr and pwd:
             self.login(usr, pwd)
+        # Init last call to current time
+        self.last_call = time.time()
+        # 30 ms sleep time
+        self.sleep = SLEEP_TIME
 
     def _do_request(self, request, url, **kwargs):
         """Use this method to wrap all the http requests."""
@@ -344,13 +350,22 @@ class ApicSession(object):
         if time.time() > self.session_deadline:
             self.refresh()
 
-    def _send(self, request, url, data=None, refreshed=None, accepted=None):
+    def _send(self, request, url, data=None, refreshed=None, accepted=None,
+              sleep_offset=0):
         """Send a request and process the response."""
+        curr_call = time.time()
+        try:
+            time.sleep((self.sleep + sleep_offset) -
+                       (curr_call - self.last_call))
+        except IOError:
+            # Negative sleep value
+            pass
         if data is None:
             response = self._do_request(request, url, cookies=self.cookie)
         else:
             response = self._do_request(request, url, data=data,
                                         cookies=self.cookie)
+        self.last_call = time.time()
         if response is None:
             raise cexc.ApicHostNoResponse(url=url)
         # Every request refreshes the timeout
@@ -376,7 +391,9 @@ class ApicSession(object):
                 self.login()
                 return self._send(request, url, data=data, refreshed=True)
             if not accepted and response.status_code == 202:
-                return self._send(request, url, data=data, accepted=True)
+                # The APIC queue is full, slow down significantly
+                return self._send(request, url, data=data, accepted=True,
+                                  sleep_offset=SLEEP_ON_FULL_QUEUE)
             raise cexc.ApicResponseNotOk(request=request_str,
                                          status=response.status_code,
                                          reason=response.reason,
