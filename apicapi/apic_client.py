@@ -716,7 +716,7 @@ class RestClient(ApicSession):
     """
 
     def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True,
-                 scope_names=True):
+                 scope_names=True, renew_names=True):
         """Establish a session with the APIC."""
         if not scope_names:
             ManagedObjectClass.scope_exceptions = None
@@ -725,6 +725,7 @@ class RestClient(ApicSession):
         super(RestClient, self).__init__(hosts, usr, pwd, ssl)
         ManagedObjectClass.scope = '_' + system_id + '_'
         self.dn_manager = DNManager()
+        self.renew_names = renew_names
 
     def __getattr__(self, mo_class):
         """Add supported MOs as properties on demand."""
@@ -735,17 +736,18 @@ class RestClient(ApicSession):
 
     def renew(self, mo, *params):
         """Verify that an object exists and renew it if needed."""
-        if mo.rn_fmt.count("%s") > 0:
-            renewable = [x for x in params[(0 - mo.rn_fmt.count("%s")):]
-                         if hasattr(x, 'uid')]
-            if renewable:
-                current = self.get_mo(mo, *params)
-                if not current:
-                    try:
-                        map(lambda y: y.renew(), renewable)
-                        return True
-                    except Exception as e:
-                        LOG.error(e.message)
+        if self.renew_names:
+            if mo.rn_fmt.count("%s") > 0:
+                renewable = [x for x in params[(0 - mo.rn_fmt.count("%s")):]
+                             if hasattr(x, 'uid')]
+                if renewable:
+                    current = self.get_mo(mo, *params)
+                    if not current:
+                        try:
+                            map(lambda y: y.renew(), renewable)
+                            return True
+                        except Exception as e:
+                            LOG.error(e.message)
         return False
 
     @contextlib.contextmanager
