@@ -109,7 +109,8 @@ class APICManager(object):
             self.apic_config.apic_username,
             self.apic_config.apic_password,
             self.apic_config.apic_use_ssl,
-            scope_names=self.apic_config.scope_names
+            scope_names=self.apic_config.scope_names,
+            renew_names=self.apic_config.renew_names
         )
 
         self.phys_domain_dn = self.apic.physDomP.dn(
