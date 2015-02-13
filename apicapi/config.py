@@ -37,6 +37,7 @@ apic_opts = [
         default=False),
     cfg.BoolOpt('scope_names',
         default=True),
+    cfg.BoolOpt('renew_names', default=True),
     cfg.StrOpt('apic_model',
         default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
     cfg.BoolOpt('use_vmm', default=False),
