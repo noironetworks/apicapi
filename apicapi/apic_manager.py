@@ -563,13 +563,15 @@ class APICManager(object):
     def ensure_bd_created_on_apic(self, tenant_id, bd_id,
                                   ctx_owner=TENANT_COMMON,
                                   ctx_name=CONTEXT_SHARED,
-                                  transaction=None, allow_broadcast=False):
+                                  transaction=None, allow_broadcast=False,
+                                  unicast_route=True):
         """Creates a Bridge Domain on the APIC."""
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.create(tenant_id, bd_id,
                                   arpFlood=YES_NO[allow_broadcast],
                                   unkMacUcastAct=FLOOD_PROXY[allow_broadcast],
+                                  unicastRoute=YES_NO[unicast_route],
                                   transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
