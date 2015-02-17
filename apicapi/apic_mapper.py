@@ -132,6 +132,8 @@ class APICNameMapper(object):
                     keystone_conf = self.keystone_authtoken
                     if keystone_conf.get('auth_uri'):
                         auth_url = keystone_conf.auth_uri
+                        if not auth_url.endswith('/v2.0/'):
+                            auth_url += '/v2.0/'
                     else:
                         auth_url = ('%s://%s:%s/v2.0/' % (
                             keystone_conf.auth_protocol,
