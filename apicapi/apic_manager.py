@@ -94,11 +94,6 @@ class APICManager(object):
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
         self.ext_net_dict = network_config.get('external_network_dict', {})
-        # Update switch dictionary
-        self.switch_dict.update(
-            dict([(self.ext_net_dict[x]['switch'],
-                   {self.ext_net_dict[x]['port']: [x]})
-                  for x in self.ext_net_dict]))
         if len(apic_system_id) > MAX_APIC_SYSID_LEN:
             raise Exception(
                 'Apic system ID max length is ' + str(MAX_APIC_SYSID_LEN))
