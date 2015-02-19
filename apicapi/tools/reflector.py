@@ -17,7 +17,8 @@ def ensure_bgp_pod_policy_created_on_apic(args):
     with apic.transaction() as trs:
         apic.bgpInstPol.create(bgp_pol_name, transaction=trs)
         if not apic.bgpRRP.get_subtree(bgp_pol_name):
-            for node in apic.fabricNode.list_all(role='spine'):
+            for node in [x for x in apic.fabricNode.list_all()
+                         if x['role'] == 'spine']:
                 apic.bgpRRNodePEp.create(bgp_pol_name, node['id'],
                                          transaction=trs)
 
