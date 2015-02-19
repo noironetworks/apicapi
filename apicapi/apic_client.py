@@ -31,11 +31,14 @@ from apicapi import exceptions as cexc
 LOG = None
 
 APIC_CODE_FORBIDDEN = str(requests.codes.forbidden)
+APIC_CODE_SSL_ERROR = str(requests.codes.gateway_timeout)
 
 FALLBACK_EXCEPTIONS = (rexc.ConnectionError, rexc.Timeout,
                        rexc.TooManyRedirects, rexc.InvalidURL)
 SLEEP_TIME = 0.03
 SLEEP_ON_FULL_QUEUE = 1
+
+REFRESH_CODES = [APIC_CODE_FORBIDDEN, ]
 
 
 # Info about a Managed Object's relative name (RN) and container.
@@ -386,8 +389,7 @@ class ApicSession(object):
                 err_code = '[code for APIC error not found]'
                 err_text = '[text for APIC error not found]'
             # If invalid token then re-login and retry once
-            if ((not refreshed and err_code == APIC_CODE_FORBIDDEN and
-                    err_text.lower().startswith('token was invalid'))):
+            if not refreshed and (err_code in REFRESH_CODES):
                 self.login()
                 return self._send(request, url, data=data, refreshed=True)
             if not accepted and response.status_code == 202:
