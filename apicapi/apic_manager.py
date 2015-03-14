@@ -1024,16 +1024,16 @@ class APICManager(object):
                                            contract_id, transaction=trs)
 
     def delete_external_epg_contract(self, router_id, network_id,
-                                     transaction=None):
+                                     transaction=None, external_epg=EXT_EPG):
         contract = self.db.get_contract_for_router(router_id.uid)
         with self.apic.transaction(transaction) as trs:
             if contract:
                 self.apic.fvRsCons__Ext.delete(contract.tenant_id, network_id,
-                                               EXT_EPG,
+                                               external_epg,
                                                'contract-%s' % router_id.uid,
                                                transaction=trs)
                 self.apic.fvRsProv__Ext.delete(contract.tenant_id, network_id,
-                                               EXT_EPG,
+                                               external_epg,
                                                'contract-%s' % router_id.uid,
                                                transaction=trs)
 
