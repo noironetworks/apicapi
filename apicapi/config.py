@@ -25,21 +25,15 @@ from apicapi import apic_mapper
 from apicapi import exceptions as exc
 
 apic_opts = [
-    cfg.BoolOpt('enable_aci_routing',
-        default=True),
-    cfg.BoolOpt('enable_arp_flooding',
-        default=False),
-    cfg.BoolOpt('apic_provision_infra',
-        default=True),
-    cfg.BoolOpt('apic_provision_hostlinks',
-        default=True),
-    cfg.BoolOpt('apic_multiple_hostlinks',
-        default=False),
-    cfg.BoolOpt('scope_names',
-        default=True),
+    cfg.BoolOpt('enable_aci_routing', default=True),
+    cfg.BoolOpt('enable_arp_flooding', default=False),
+    cfg.BoolOpt('apic_provision_infra', default=True),
+    cfg.BoolOpt('apic_provision_hostlinks', default=True),
+    cfg.BoolOpt('apic_multiple_hostlinks', default=False),
+    cfg.BoolOpt('scope_names', default=True),
     cfg.BoolOpt('renew_names', default=True),
     cfg.StrOpt('apic_model',
-        default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
+               default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
     cfg.BoolOpt('use_vmm', default=False),
     cfg.StrOpt('apic_vxlan_ns_name',
                default='${apic_system_id}_vxlan_ns',
@@ -82,6 +76,83 @@ APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
 NOT_SET = object()
 
 
+def valid_path(key, value):
+    # Verify value is in path and supports certain objects
+    try:
+        __import__(value)
+        sys.modules[value].HostLink
+    except Exception as e:
+        ConfigValidator.RaiseUtils(value, key).re(reason=e.message)
+
+
+def not_null(key, value):
+    util = ConfigValidator.RaiseUtils(value, key)
+    if not value:
+        util.re(reason='%s cannot be None or Empty' % key)
+
+
+def valid_apic_name(key, value):
+    util = ConfigValidator.RaiseUtils(value, key)
+    not_null(key, value)
+    if len(value) > apic_mapper.MAX_APIC_NAME_LENGTH:
+        util.re(reason='APIC name max length is ' +
+                str(apic_mapper.MAX_APIC_NAME_LENGTH))
+
+
+def valid_range(key, value):
+    # Not None
+    util = ConfigValidator.RaiseUtils(value, key)
+    if value is None:
+        util.re("Should be a iterable")
+    if value:
+        if isinstance(value, list):
+            # Only one range
+            if len(value) > 1:
+                raise util.re("Only one range definition is currently "
+                              "supported")
+            # Valid range
+            if len(value[0].split(':')) != 2:
+                raise util.re("Range should be in the form <min>:<max>")
+        elif isinstance(value, str):
+            if len(value.split(':')) != 2:
+                raise util.re("Range should be in the form <min>:<max>")
+
+
+def valid_ip(key, value):
+    util = ConfigValidator.RaiseUtils(value, key)
+    try:
+        netaddr.IPAddress(value, version=4)
+    except netaddr.AddrFormatError as e:
+        util.re(reason=e.message)
+
+
+def valid_ip_range(key, value):
+    util = ConfigValidator.RaiseUtils(value, key)
+    valid_range(key, value)
+    # Valid IPv4 address
+    for x in value[0].split(':'):
+        valid_ip(key, x)
+    if (netaddr.IPAddress(value[0].split(':')[0]) >=
+            netaddr.IPAddress(value[0].split(':')[1])):
+        util.re("min address has to be smaller than max address")
+
+
+def valid_app_profile(key, value):
+    valid_apic_name(key, value)
+    util = ConfigValidator.RaiseUtils(value, key)
+    match = re.match(APP_PROFILE_REGEX, value)
+    if not match or match.group() != value:
+        util.re("Valid regex: %s" % APP_PROFILE_REGEX)
+
+
+def valid_name_strategy(key, value):
+    # This is needed until the choice option is fixed upstream
+    util = ConfigValidator.RaiseUtils(value, key)
+    valid = ['use_name', 'use_uuid']
+    if value not in valid:
+        util.re("Allowed values: %s" % str(valid))
+
+
 class ConfigValidator(object):
     """Configuration validator for APICAPI.
 
@@ -89,6 +160,27 @@ class ConfigValidator(object):
     option. validate(conf, *args) will lookup the
     proper validator by name.
     """
+
+    validators = {
+        'apic_model': [valid_path],
+        'apic_vxlan_ns_name': [valid_apic_name],
+        'apic_multicast_ns_name': [valid_apic_name],
+        'apic_switch_pg_name': [valid_apic_name],
+        'openstack_user': [not_null],
+        'multicast_address': [valid_ip],
+        'vlan_ranges': [valid_range],
+        'vni_ranges': [valid_range],
+        'mcast_ranges': [valid_ip_range],
+        'apic_name_mapping': [valid_name_strategy],
+        'apic_domain_name': [valid_apic_name],
+        'apic_app_profile_name': [valid_app_profile],
+        'apic_vlan_ns_name': [valid_apic_name],
+        'apic_node_profile': [valid_apic_name],
+        'apic_entity_profile': [valid_apic_name],
+        'apic_function_profile': [valid_apic_name],
+        'apic_lacp_profile': [valid_apic_name],
+        'apic_vlan_range': [valid_range],
+    }
 
     class RaiseUtils(object):
 
@@ -103,75 +195,25 @@ class ConfigValidator(object):
     def __init__(self, log):
         self.log = log
 
-    def _validate_apic_names(self, name, ctype):
-        if len(name) > apic_mapper.MAX_APIC_NAME_LENGTH:
-            raise exc.InvalidConfig(
-                value=name, ctype=ctype,
-                reason='Apic system ID max length is ' +
-                       str(apic_mapper.MAX_APIC_NAME_LENGTH))
-
-    def _validate_ranges(self, value, util):
-        # Not None
-        if value is None:
-            util.re("Should be a iterable")
-        if value:
-            # Only one range
-            if len(value) > 1:
-                raise util.re("Only one range definition is currently "
-                              "supported")
-            # Valid range
-            if len(value[0].split(':')) != 2:
-                raise util.re("Range should be in the form <min>:<max>")
-
-    def validate_apic_model(self, value):
-        # Verify apic model is in path and supports certain objects
-        util = ConfigValidator.RaiseUtils(value, 'apic_model')
-        try:
-            __import__(value)
-            sys.modules[value].HostLink
-        except Exception as e:
-            util.re(reason=e.message)
-
-    def validate_mcast_ranges(self, value):
-        util = ConfigValidator.RaiseUtils(value, 'mcast_ranges')
-        self._validate_ranges(value, util)
-        # Valid IPv4 address
-        try:
-            for x in value[0].split(':'):
-                netaddr.IPAddress(x, version=4)
-        except netaddr.AddrFormatError as e:
-            util.re(reason=e.message)
-        if (netaddr.IPAddress(value[0].split(':')[0]) >=
-                netaddr.IPAddress(value[0].split(':')[1])):
-            util.re("min multicast address has to be smaller than "
-                    "max multicast address")
-
-    def validate_apic_app_profile_name(self, value):
-        util = ConfigValidator.RaiseUtils(value, 'apic_app_profile_name')
-        match = re.match(APP_PROFILE_REGEX, value)
-        if not match or match.group() != value:
-            util.re("Valid regex: %s" % APP_PROFILE_REGEX)
+    def _validate(self, key, value):
+        for x in self.validators[key]:
+            x(key, value)
 
     def validate(self, conf, *args):
         if args:
-            for option in args:
+            for opt in args:
                 try:
-                    getattr(self, 'validate_' + option)(conf.get(option))
-                except AttributeError:
+                    self._validate(opt, conf.get(opt))
+                except KeyError:
                     self.log.warn("There's no validation for option "
-                                  "%s" % option)
+                                  "%s" % opt)
+                except cfg.NoSuchOptError:
+                    self.log.warn("Option %s is not configured" % opt)
         else:
-            # Validate all
-            for method in dir(self):
-                if (callable(getattr(self, method)) and
-                        method.startswith('validate_')):
-                    opt = method[len('validate_'):]
-                    try:
-                        if conf.get(opt, NOT_SET) is NOT_SET:
-                            self.log.warn(
-                                "%s option is not set "
-                                "in group %s" % (opt, conf._group.name))
-                    except cfg.NoSuchOptError:
-                        self.log.warn("No such option %s" % opt)
-                    else:
-                        getattr(self, method)(conf.get(opt))
+            # Validate all known options
+            for opt in self.validators:
+                try:
+                    value = conf.get(opt)
+                    self._validate(opt, value)
+                except cfg.NoSuchOptError:
+                    pass

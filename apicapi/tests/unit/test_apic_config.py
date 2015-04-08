@@ -32,46 +32,47 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
             config.apic_opts, self.apic_config._group.name)
         self.validator = config.ConfigValidator(mock.Mock())
 
+    def _validate(self, key, value):
+        for x in self.validator.validators[key]:
+            x(key, value)
+
     def test_validate_apic_model(self):
         # Valid path
-        self.validator.validate_apic_model('apicapi.db.apic_model')
+        self._validate('apic_model', 'apicapi.db.apic_model')
         # Invalid path
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_apic_model,
+            exc.InvalidConfig, self._validate, 'apic_model',
             'not.a.valid.path')
 
     def test_validate_mcast_ranges(self):
         # Valid range
         range = ['1.1.1.1:1.1.1.10']
-        self.validator.validate_mcast_ranges(range)
+        self._validate('mcast_ranges', range)
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_mcast_ranges,
-            None)
+            exc.InvalidConfig, self._validate, 'mcast_ranges', None)
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_mcast_ranges,
+            exc.InvalidConfig, self._validate, 'mcast_ranges',
             ['1.1.1.1:1.1.1.10', '1.1.2.1:1.1.2.10'])
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_mcast_ranges,
+            exc.InvalidConfig, self._validate, 'mcast_ranges',
             ['1.1.1.1:1.1.1.1000'])
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_mcast_ranges,
+            exc.InvalidConfig, self._validate, 'mcast_ranges',
             ['1.1.1.1:1.1.1.10:1.1.1.20'])
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_mcast_ranges,
+            exc.InvalidConfig, self._validate, 'mcast_ranges',
             ['1.1.1.1'])
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_mcast_ranges,
+            exc.InvalidConfig, self._validate, 'mcast_ranges',
             ['1.1.1.10:1.1.1.1'])
 
     def test_validate_apic_app_profile_name(self):
         valid_name = 'valid1_app2_name3_'
-        self.validator.validate_apic_app_profile_name(valid_name)
+        self._validate('apic_app_profile_name', valid_name)
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_apic_app_profile_name,
-            '$$')
+            exc.InvalidConfig, self._validate, 'apic_app_profile_name', '$$')
         self.assertRaises(
-            exc.InvalidConfig, self.validator.validate_apic_app_profile_name,
-            '1$$2')
+            exc.InvalidConfig, self._validate, 'apic_app_profile_name', '1$$2')
 
     def test_validate(self):
         self.override_config('apic_model', 'apicapi.db.apic_model',
@@ -90,3 +91,34 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
         self.assertRaises(
             exc.InvalidConfig, self.validator.validate,
             self.apic_config)
+
+    def test_validate_apic_names(self):
+        valid = 'valid'
+        not_valid = ''
+        self.override_config('apic_model', 'apicapi.db.apic_model',
+                             'ml2_cisco_apic')
+        configurations = [
+            'apic_vxlan_ns_name',
+            'apic_multicast_ns_name',
+            'apic_switch_pg_name',
+            'openstack_user',
+            'apic_domain_name',
+            'apic_app_profile_name',
+            'apic_vlan_ns_name',
+            'apic_node_profile',
+            'apic_entity_profile',
+            'apic_function_profile',
+            'apic_lacp_profile',
+        ]
+        # Validate valid
+        for cfg in configurations:
+            self.override_config(cfg, valid, 'ml2_cisco_apic')
+        self.validator.validate(self.apic_config)
+
+        # Raise on not valid
+        for cfg in configurations:
+            self.override_config(cfg, not_valid, 'ml2_cisco_apic')
+            self.assertRaises(exc.InvalidConfig, self.validator.validate,
+                              self.apic_config)
+            # Re-set to valid value
+            self.override_config(cfg, valid, 'ml2_cisco_apic')
