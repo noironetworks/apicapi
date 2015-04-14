@@ -569,8 +569,11 @@ class APICManager(object):
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.create(tenant_id, bd_id,
-                                  arpFlood=YES_NO[allow_broadcast],
-                                  unkMacUcastAct=FLOOD_PROXY[allow_broadcast],
+                                  arpFlood=YES_NO[self.arp_flooding_enabled or
+                                                  allow_broadcast],
+                                  unkMacUcastAct=FLOOD_PROXY[
+                                      self.arp_flooding_enabled or
+                                      allow_broadcast],
                                   unicastRoute=YES_NO[unicast_route],
                                   transaction=trs)
             # Add default context to the BD
