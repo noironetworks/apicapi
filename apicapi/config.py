@@ -44,7 +44,8 @@ apic_opts = [
                help=("Name for the multicast namespace to be used for "
                      "Openstack")),
     cfg.StrOpt('apic_switch_pg_name',
-               default='${apic_system_id}_sw_pg',
+               #default='${apic_system_id}_sw_pg',
+               default='openstack_sw_pg',
                help=("Name for the switch policy group to be used for "
                      "Openstack")),
     cfg.ListOpt('mcast_ranges', default=['225.1.1.1:225.1.1.128'],
