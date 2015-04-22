@@ -39,12 +39,14 @@ apic_opts = [
         default=True),
     cfg.StrOpt('apic_model',
         default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
+    cfg.StrOpt('shared_context_name', default='')
 ]
 
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
 YES_NO = {True: 'yes', False: 'no'}
-CONTEXT_SHARED = 'shared'
+CONTEXT_SHARED = apic_mapper.ApicName('shared', 'shared', None, None, None)
+
 DN_KEY = 'dn'
 PORT_DN_PATH = 'topology/pod-1/paths-%s/pathep-[eth%s/%s]'
 NODE_DN_PATH = 'topology/pod-1/node-%s'
@@ -133,6 +135,15 @@ class APICManager(object):
 
         self.function_profile = self.apic_config.apic_function_profile
         self.lacp_profile = self.apic_config.apic_lacp_profile
+        # Hack to modify the key value at runtime
+        global CONTEXT_SHARED
+        CONTEXT_SHARED.inst = self.apic_mapper
+        CONTEXT_SHARED.fname = self.apic_mapper.echo.__name__
+        if self.apic_config.shared_context_name:
+            CONTEXT_SHARED.fname = self.apic_mapper.pre_existing.__name__
+            CONTEXT_SHARED.uid = self.apic_config.shared_context_name
+            CONTEXT_SHARED.value = self.apic_config.shared_context_name
+            CONTEXT_SHARED.existing = True
 
     @property
     def apic_mapper(self):

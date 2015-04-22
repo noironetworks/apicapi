@@ -40,13 +40,13 @@ NAME_TYPE_EXTERNAL_POLICY = 'external_policy'
 NAME_TYPE_NAT_POOL = 'nat_pool'
 
 NAME_TYPES = set([
-              NAME_TYPE_TENANT, NAME_TYPE_NETWORK, NAME_TYPE_SUBNET,
-              NAME_TYPE_PORT, NAME_TYPE_ROUTER, NAME_TYPE_APP_PROFILE,
-              NAME_TYPE_POLICY_TARGET_GROUP, NAME_TYPE_L3_POLICY,
-              NAME_TYPE_L2_POLICY, NAME_TYPE_POLICY_RULE_SET,
-              NAME_TYPE_POLICY_RULE, NAME_TYPE_EXTERNAL_SEGMENT,
-              NAME_TYPE_EXTERNAL_POLICY, NAME_TYPE_NAT_POOL,
-              ])
+    NAME_TYPE_TENANT, NAME_TYPE_NETWORK, NAME_TYPE_SUBNET,
+    NAME_TYPE_PORT, NAME_TYPE_ROUTER, NAME_TYPE_APP_PROFILE,
+    NAME_TYPE_POLICY_TARGET_GROUP, NAME_TYPE_L3_POLICY,
+    NAME_TYPE_L2_POLICY, NAME_TYPE_POLICY_RULE_SET,
+    NAME_TYPE_POLICY_RULE, NAME_TYPE_EXTERNAL_SEGMENT,
+    NAME_TYPE_EXTERNAL_POLICY, NAME_TYPE_NAT_POOL,
+    ])
 
 MAX_APIC_NAME_LENGTH = 46
 
@@ -83,7 +83,10 @@ class APICNameMapper(object):
     def mapper(name_type):
         """Wrapper to land all the common operations between mappers."""
         def wrap(func):
-            def inner(inst, context, resource_id, remap=False):
+            def inner(inst, context, resource_id, remap=False, existing=False):
+                if existing:
+                    return ApicName(resource_id, resource_id, context, inst,
+                                    func.__name__, existing=True)
                 if remap:
                     inst.db.delete_apic_name(resource_id)
                 else:
@@ -216,6 +219,14 @@ class APICNameMapper(object):
                                                 nat_pool_id)
         return nat_pool['name']
 
+    def pre_existing(self, context, object_id):
+        return ApicName(object_id, object_id, context, self,
+                        self.pre_existing.__name__, existing=True)
+
+    def echo(self, context, object_id):
+        return ApicName(object_id, object_id, context, self,
+                        self.echo.__name__)
+
     def app_profile(self, context, app_profile, remap=False):
         if remap:
             self.db.delete_apic_name('app_profile')
@@ -237,12 +248,14 @@ class APICNameMapper(object):
 
 class ApicName(object):
 
-    def __init__(self, mapped, uid='', context=None, inst=None, fname=''):
+    def __init__(self, mapped, uid='', context=None, inst=None, fname='',
+                 existing=False):
         self.uid = uid
         self.context = context
         self.inst = inst
         self.fname = fname
         self.value = mapped
+        self.existing = existing
 
     def renew(self):
         if self.uid and self.inst and self.fname:
