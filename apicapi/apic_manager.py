@@ -1010,51 +1010,44 @@ class APICManager(object):
     def ensure_external_epg_consumed_contract(self, ext_out_id, contract_id,
                                               owner=TENANT_COMMON,
                                               external_epg=EXT_EPG,
-                                              transaction=None, scope=True):
+                                              transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.fvRsCons__Ext.create(owner, ext_out_id, external_epg,
-                                           contract_id, transaction=trs,
-                                           openstack_scope=scope)
+                                           contract_id, transaction=trs)
 
     def ensure_external_epg_provided_contract(self, ext_out_id, contract_id,
                                               owner=TENANT_COMMON,
                                               external_epg=EXT_EPG,
-                                              transaction=None, scope=True):
+                                              transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.fvRsProv__Ext.create(owner, ext_out_id, external_epg,
-                                           contract_id, transaction=trs,
-                                           openstack_scope=scope)
+                                           contract_id, transaction=trs)
 
     def delete_external_epg_contract(self, router_id, network_id,
-                                     transaction=None, external_epg=EXT_EPG,
-                                     scope=True):
+                                     transaction=None, external_epg=EXT_EPG):
         contract = self.db.get_contract_for_router(router_id.uid)
         with self.apic.transaction(transaction) as trs:
             if contract:
                 self.apic.fvRsCons__Ext.delete(contract.tenant_id, network_id,
                                                external_epg,
                                                'contract-%s' % router_id.uid,
-                                               transaction=trs,
-                                               openstack_scope=scope)
+                                               transaction=trs)
                 self.apic.fvRsProv__Ext.delete(contract.tenant_id, network_id,
                                                external_epg,
                                                'contract-%s' % router_id.uid,
-                                               transaction=trs,
-                                               openstack_scope=scope)
+                                               transaction=trs)
 
     def ensure_external_epg_provided_contract_deleted(
             self, ext_out_id, contract_id, owner=TENANT_COMMON,
-            external_epg=EXT_EPG, transaction=None, scope=True):
+            external_epg=EXT_EPG, transaction=None):
         self.apic.fvRsProv__Ext.delete(owner, ext_out_id, external_epg,
-                                       contract_id, transaction=transaction,
-                                       openstack_scope=scope)
+                                       contract_id, transaction=transaction)
 
     def ensure_external_epg_consumed_contract_deleted(
             self, ext_out_id, contract_id, owner=TENANT_COMMON,
-            external_epg=EXT_EPG, transaction=None, scope=True):
+            external_epg=EXT_EPG, transaction=None):
         self.apic.fvRsCons__Ext.delete(owner, ext_out_id, external_epg,
-                                       contract_id, transaction=transaction,
-                                       openstack_scope=scope)
+                                       contract_id, transaction=transaction)
 
     def set_contract_for_external_epg(self, ext_out_id, contract_id,
                                       external_epg=EXT_EPG, provided=True,

@@ -34,7 +34,7 @@ APIC_CODE_FORBIDDEN = str(requests.codes.forbidden)
 
 FALLBACK_EXCEPTIONS = (rexc.ConnectionError, rexc.Timeout,
                        rexc.TooManyRedirects, rexc.InvalidURL)
-SCOPE = 'openstack_scope'
+
 
 # Info about a Managed Object's relative name (RN) and container.
 class ManagedObjectName(collections.namedtuple('MoPath',
@@ -219,8 +219,8 @@ class ManagedObjectClass(object):
             return dn_fmt, params
         return 'uni/%s' % self.rn_fmt, param
 
-    def _scope(self, fmt, *params, **kwargs):
-        if ManagedObjectClass.scope_exceptions and kwargs.get(SCOPE, True):
+    def _scope(self, fmt, *params):
+        if ManagedObjectClass.scope_exceptions:
             exc = ManagedObjectClass.scope_exceptions.get(self.klass)
             res = fmt.replace(
                 '__', '' if exc and params in exc else
@@ -229,21 +229,21 @@ class ManagedObjectClass(object):
             res = fmt.replace('__', '')
         return res % params
 
-    def dn(self, *params, **kwargs):
+    def dn(self, *params):
         """Return the distinguished name for a managed object."""
         dn = ['uni']
         for part in self.params:
-            dn.append(part.rn(*params[:part.rn_param_count], **kwargs))
+            dn.append(part.rn(*params[:part.rn_param_count]))
             params = params[part.rn_param_count:]
         return '/'.join(dn)
 
-    def rn(self, *params, **kwargs):
+    def rn(self, *params):
         """Return the distinguished name for a managed object."""
-        return self._scope(self.rn_fmt, *params, **kwargs)
+        return self._scope(self.rn_fmt, *params)
 
-    def name(self, *params, **kwargs):
+    def name(self, *params):
         """Return the name for a managed object."""
-        return self._scope(self.name_fmt, *params, **kwargs)
+        return self._scope(self.name_fmt, *params)
 
 
 class ApicSession(object):
@@ -528,7 +528,7 @@ class ManagedObjectAccess(object):
         result = []
         transaction = data.pop('transaction', None)
         with self.session.transaction(transaction, result) as trs:
-            getattr(trs, self.mo.klass).remove(*params, **data)
+            getattr(trs, self.mo.klass).remove(*params)
         if result:
             return result[0]
 
@@ -548,14 +548,14 @@ class ManagedObjectAccess(object):
     def list_names(self, **data):
         return [obj['name'] for obj in self.list_all(**data)]
 
-    def dn(self, *data, **kwargs):
-        return self.mo.dn(*data, **kwargs)
+    def dn(self, *data):
+        return self.mo.dn(*data)
 
-    def rn(self, *data, **kwargs):
-        return self.mo.rn(*data, **kwargs)
+    def rn(self, *data):
+        return self.mo.rn(*data)
 
-    def name(self, *data, **kwargs):
-        return self.mo.name(*data, **kwargs)
+    def name(self, *data):
+        return self.mo.name(*data)
 
 
 class Transaction(object):
@@ -602,10 +602,10 @@ class Transaction(object):
         level.append(curr)
         return curr
 
-    def create_branch(self, mo, *params, **kwargs):
+    def create_branch(self, mo, *params):
         """Recursively create all container nodes."""
         offset = 0 - mo.rn_param_count
-        rn = mo.rn(*params[offset:], **kwargs) if offset else mo.rn_fmt
+        rn = mo.rn(*params[offset:]) if offset else mo.rn_fmt
         if not mo.container:
             # Tail of recursion
             if not self.root:
@@ -633,11 +633,11 @@ class TransactionBuilder(object):
         self.mo = ManagedObjectClass(mo_class)
 
     def add(self, *args, **kwargs):
-        node = self.trs.create_branch(self.mo, *args, **kwargs)
+        node = self.trs.create_branch(self.mo, *args)
         node.update_attributes(**kwargs)
 
-    def remove(self, *args, **kwargs):
-        node = self.trs.create_branch(self.mo, *args, **kwargs)
+    def remove(self, *args):
+        node = self.trs.create_branch(self.mo, *args)
         node.update_attributes(status='deleted')
 
 
@@ -654,10 +654,6 @@ class TransactionNode(dict):
                           "children": self.children}
 
     def update_attributes(self, **kwargs):
-        try:
-            kwargs.pop(SCOPE)
-        except KeyError:
-            pass
         for key in kwargs:
             self.attributes[str(key)] = str(kwargs[key])
         return self
