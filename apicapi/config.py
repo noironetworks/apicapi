@@ -69,8 +69,8 @@ apic_opts = [
     cfg.ListOpt('vni_ranges',
                 default=[],
                 help=("List of <vni_min>:<vni_max> used for vni pool "
-                      "configuration"))
-
+                      "configuration")),
+    cfg.StrOpt('shared_context_name', default='')
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"

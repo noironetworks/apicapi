@@ -312,6 +312,7 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_ensure_bd_created(self):
         self.mock_response_for_post(self.get_top_container(
             self.mgr.apic.fvBD.mo))
+        self.mock_response_for_get('fvCtx')
         self.mgr.ensure_bd_created_on_apic('t2', 'three')
         self.assert_responses_drained()
 

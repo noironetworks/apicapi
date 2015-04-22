@@ -258,7 +258,8 @@ class ManagedObjectClass(object):
         if ManagedObjectClass.scope_exceptions:
             exc = ManagedObjectClass.scope_exceptions.get(self.klass)
             res = fmt.replace(
-                '__', '' if exc and params in exc else
+                '__', '' if exc and (params in exc) or any(
+                    x for x in params if getattr(x, "existing", False)) else
                 ManagedObjectClass.scope)
         else:
             res = fmt.replace('__', '')
