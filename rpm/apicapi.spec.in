@@ -1,0 +1,90 @@
+%define host_agent neutron-driver-apic-agent.service
+%define service_agent neutron-driver-apic-svc.service
+
+Name:		apicapi
+Version:	@VERSION@
+Release:	@RELEASE@%{?dist}
+Summary:	Python interface to Cisco APIC APIs
+License:	ASL 2.0
+URL:		http://github.com/noironetworks/apicapi
+Source:		apicapi-%{version}.tar.gz
+BuildArch:	noarch
+BuildRequires:	python2-devel
+BuildRequires:	python-pbr
+BuildRequires:	python-setuptools
+Requires:	openstack-neutron >= 2014.2
+Requires:	openstack-neutron < 2014.3
+Requires:	lldpd
+Requires(post): systemd-units
+Requires(preun): systemd-units
+Requires(postun): systemd-units
+
+%description
+Library that provides an interface to the APIC REST APIs
+
+%prep
+%setup -qn apicapi-%{version}
+rm -f requirements.txt
+
+%build
+%{__python2} setup.py build
+
+%install
+%{__python2} setup.py install -O1 --install-data / --skip-build --root %{buildroot}
+# Remove unused files
+rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
+install -p -D -m 0644 rpm/%{host_agent} %{buildroot}/%{_unitdir}/%{host_agent}
+install -p -D -m 0644 rpm/%{service_agent} %{buildroot}/%{_unitdir}/%{service_agent}
+
+%post
+%if 0%{?systemd_post:1}
+    %systemd_post %{host_agent}
+    %systemd_post %{service_agent}
+%else
+    if [ $1 -eq 1 ]; then
+        # Package install, not upgrade
+        /bin/systemctl daemon-reload >dev/null || :
+    fi
+%endif
+
+%preun
+%if 0%{?systemd_preun:1}
+    %systemd_preun %{host_agent}
+    %systemd_preun %{service_agent}
+%else
+    if [ $1 -eq 0 ] ; then
+        # Package removal, not upgrade
+        /bin/systemctl --no-reload disable %{host_agent} >/dev/null 2>&1 || :
+        /bin/systemctl stop %{host_agent} >/dev/null 2>&1 || :
+        /bin/systemctl --no-reload disable %{service_agent} >/dev/null 2>&1 || :
+        /bin/systemctl stop %{service_agent} >/dev/null 2>&1 || :
+    fi
+%endif
+
+%postun
+%if 0%{?systemd_postun_with_restart:1}
+    %systemd_postun_with_restart %{host_agent}
+    %systemd_postun_with_restart %{service_agent}
+%else
+    /bin/systemctl daemon-reload >/dev/null 2>&1 || :
+    if [ "$1" -ge "1" ] ; then
+        # Package upgrade, not uninstall
+        /bin/systemctl try-restart %{host_agent} >/dev/null 2>&1 || :
+        /bin/systemctl try-restart %{service_agent} >/dev/null 2>&1 || :
+    fi
+%endif
+
+%files
+%doc README.rst
+%{python2_sitelib}/apicapi
+%{python2_sitelib}/apicapi-%%{version}*.egg-info
+%{_bindir}/apic-cleanup
+%{_bindir}/apic-route-reflector
+%{_bindir}/neutron-cisco-apic-host-agent
+%{_bindir}/neutron-cisco-apic-service-agent
+%{_unitdir}/%{host_agent}
+%{_unitdir}/%{service_agent}
+
+%changelog
+* Mon May 18 2015 Amit Bose <bose@noironetworks.com> - 1.0.4-1
+- Initial release 

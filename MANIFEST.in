@@ -1,0 +1,17 @@
+include AUTHORS
+include ChangeLog
+exclude .gitignore
+exclude .gitreview
+include debian/apicapi.install
+include debian/changelog
+include debian/compat
+include debian/control
+include debian/copyright
+include debian/neutron-driver-apic-agent.conf
+include debian/neutron-driver-apic-svc.conf
+include debian/rules
+include debian/source/format
+include rpm/neutron-driver-apic-agent.service
+include rpm/neutron-driver-apic-svc.service
+
+global-exclude *.pyc

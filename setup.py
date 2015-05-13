@@ -33,5 +33,8 @@ setuptools.setup(
         'console_scripts': [
             'apic-cleanup = apicapi.tools.cleanup:main',
             'apic-route-reflector = apicapi.tools.reflector:main']
-    }
+    },
+    scripts=[
+        'bin/neutron-cisco-apic-host-agent',
+        'bin/neutron-cisco-apic-service-agent']
 )
