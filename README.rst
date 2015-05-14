@@ -2,7 +2,7 @@
 Apicapi
 =======
 
-Provides an interface for the APIC rest API.
+Provides an interface for the APIC REST API.
 
 Install
 =======
@@ -13,7 +13,7 @@ Using pip::
 
 easy_install::
 
-    easty_install apicapi
+    easy_install apicapi
 
 manually::
 
