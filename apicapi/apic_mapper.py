@@ -136,15 +136,7 @@ class APICNameMapper(object):
             if self.keystone is None:
                 try:
                     keystone_conf = self.keystone_authtoken
-                    if keystone_conf.get('auth_uri'):
-                        auth_url = keystone_conf.auth_uri
-                        if not auth_url.endswith('/v2.0/'):
-                            auth_url += '/v2.0/'
-                    else:
-                        auth_url = ('%s://%s:%s/v2.0/' % (
-                            keystone_conf.auth_protocol,
-                            keystone_conf.auth_host,
-                            keystone_conf.auth_port))
+                    auth_url = self._get_keystone_url(keystone_conf)
                     user = (keystone_conf.get('admin_user') or
                             keystone_conf.username)
                     pw = (keystone_conf.get('admin_password') or
@@ -262,6 +254,18 @@ class APICNameMapper(object):
 
     def is_valid_name_type(self, name_type):
         return name_type in NAME_TYPES
+
+    def _get_keystone_url(self, keystone_conf):
+        if keystone_conf.get('auth_uri'):
+            auth_url = keystone_conf.auth_uri.rstrip('/')
+            if not auth_url.endswith('/v2.0'):
+                auth_url += '/v2.0'
+        else:
+            auth_url = ('%s://%s:%s/v2.0' % (
+                keystone_conf.auth_protocol,
+                keystone_conf.auth_host,
+                keystone_conf.auth_port))
+        return auth_url + '/'
 
 
 class ApicName(object):

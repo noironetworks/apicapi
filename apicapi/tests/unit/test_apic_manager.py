@@ -27,6 +27,11 @@ from apicapi.tests import base
 from apicapi.tests.unit.common import test_apic_common as mocked
 
 
+class FakeConf(dict):
+    def __getattr__(self, attr):
+        return self[attr]
+
+
 class TestCiscoApicManager(base.BaseTestCase,
                            mocked.ControllerMixin,
                            mocked.ConfigMixin,
@@ -513,3 +518,23 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assertEqual(self.mgr.vlan_ranges,
                          [':'.join(self.vlan_ranges[0].split(':')[-2:])])
         self.assertEqual(self.mgr.vni_ranges, self.vni_ranges)
+
+    def test_auth_url(self):
+        mapper = self.mgr._apic_mapper
+        conf = FakeConf()
+        correct_url = 'http://controller:5000/v2.0/'
+        test_inputs = ['http://controller:5000/v2.0/',
+                       'http://controller:5000/v2.0////',
+                       'http://controller:5000/v2.0',
+                       'http://controller:5000',
+                       'http://controller:5000/',
+                       None]
+        conf.auth_uri = 'http://controller:5000/v2.0'
+        conf.auth_protocol = 'http'
+        conf.auth_host = 'controller'
+        conf.auth_port = '5000'
+
+        for input in test_inputs:
+            conf.auth_uri = input
+            url = mapper._get_keystone_url(conf)
+            self.assertEqual(correct_url, url)
