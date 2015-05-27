@@ -286,7 +286,7 @@ class ApicSession(object):
 
     """Manages a session with the APIC."""
 
-    def __init__(self, hosts, usr, pwd, ssl):
+    def __init__(self, hosts, usr, pwd, ssl, verify=False):
         protocol = 'https' if ssl else 'http'
         self.api_base = collections.deque(['%s://%s/api' % (protocol, host)
                                            for host in hosts])
@@ -294,6 +294,7 @@ class ApicSession(object):
         self.session_deadline = 0
         self.session_timeout = 0
         self.cookie = {}
+        self.verify = verify
 
         # Log in
         self.authentication = None
@@ -310,7 +311,8 @@ class ApicSession(object):
         """Use this method to wrap all the http requests."""
         for x in range(len(self.api_base)):
             try:
-                return request(self.api_base[0] + url, verify=False, **kwargs)
+                return request(self.api_base[0] + url, verify=self.verify,
+                               **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
                 LOG.debug(('%s, falling back to a '
                           'new address'), ex.message)
@@ -720,13 +722,13 @@ class RestClient(ApicSession):
     """
 
     def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True,
-                 scope_names=True, renew_names=True):
+                 scope_names=True, renew_names=True, verify=False):
         """Establish a session with the APIC."""
         if not scope_names:
             ManagedObjectClass.scope_exceptions = None
         global LOG
         LOG = log.getLogger(__name__)
-        super(RestClient, self).__init__(hosts, usr, pwd, ssl)
+        super(RestClient, self).__init__(hosts, usr, pwd, ssl, verify)
         ManagedObjectClass.scope = '_' + system_id + '_'
         self.dn_manager = DNManager()
         self.renew_names = renew_names

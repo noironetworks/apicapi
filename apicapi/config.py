@@ -70,7 +70,8 @@ apic_opts = [
                 default=[],
                 help=("List of <vni_min>:<vni_max> used for vni pool "
                       "configuration")),
-    cfg.StrOpt('shared_context_name', default='')
+    cfg.StrOpt('shared_context_name', default=''),
+    cfg.BoolOpt('verify_ssl_certificate', default=False),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"

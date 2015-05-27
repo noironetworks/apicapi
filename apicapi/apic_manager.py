@@ -111,7 +111,8 @@ class APICManager(object):
             self.apic_config.apic_password,
             self.apic_config.apic_use_ssl,
             scope_names=self.apic_config.scope_names,
-            renew_names=self.apic_config.renew_names
+            renew_names=self.apic_config.renew_names,
+            verify=self.apic_config.verify_ssl_certificate,
         )
 
         self.phys_domain_dn = self.apic.physDomP.dn(
