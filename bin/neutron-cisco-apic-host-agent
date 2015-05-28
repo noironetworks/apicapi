@@ -1,7 +1,0 @@
-#! /usr/bin/python
-
-import sys
-from neutron.plugins.ml2.drivers.cisco.apic.apic_topology import agent_main
-
-if __name__ == "__main__":
-    sys.exit(service_main())

@@ -1,14 +1,15 @@
 Source: apicapi
 Section: python
 Priority: optional
-Maintainer: APIC API Developers <apicapi@noironetworks.com>
+Maintainer: Cisco Systems, Inc. <apicapi@noironetworks.com>
 Build-Depends: debhelper (>= 9), python-setuptools (>= 3.3), python-all (>= 2.7)
 Standards-Version: 3.9.5
 Homepage: http://github.com/noironetworks/apicapi/
+Vcs-Git: git://github.com/noironetworks/apicapi.git
 Vcs-Browser: http://github.com/noironetworks/apicapi/
 
-Package: apicapi
+Package: python-apicapi
 Architecture: all
-Depends: lldpd, ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}
 Description: Python interface to Cisco APIC APIs
  Library that provides an interface to the APIC REST APIs

@@ -14,6 +14,9 @@ DEB_FULL_VERSION:=$(DEB_FULL_VERSION)$(DEB_REVISION)
 override_dh_auto_clean:
 	dh_clean
 
+override_dh_auto_install:
+	dh_auto_install --  -O1 --install-data /
+
 override_dh_gencontrol:
 	dh_gencontrol -- -v$(DEB_FULL_VERSION)
 

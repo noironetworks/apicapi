@@ -20,7 +20,7 @@ import setuptools
 
 setuptools.setup(
     name="apicapi",
-    version="1.0.4",
+    version="1.0.4.dev",
     zip_safe=False,
     packages=setuptools.find_packages(exclude=["*.tests", "*.tests.*",
                                                "tests.*", "tests"]),
@@ -33,8 +33,5 @@ setuptools.setup(
         'console_scripts': [
             'apic-cleanup = apicapi.tools.cleanup:main',
             'apic-route-reflector = apicapi.tools.reflector:main']
-    },
-    scripts=[
-        'bin/neutron-cisco-apic-host-agent',
-        'bin/neutron-cisco-apic-service-agent']
+    }
 )
