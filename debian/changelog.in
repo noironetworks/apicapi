@@ -1,4 +1,4 @@
-apicapi (1.0.4.dev-1) trusty; urgency=low
+apicapi (@VERSION@-@REVISION@) trusty; urgency=low
 
   * [Placeholder]
 
