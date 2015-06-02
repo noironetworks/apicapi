@@ -88,8 +88,6 @@ class APICManager(object):
             self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
                                 network_config.get('vlan_ranges')]
 
-        self.vni_ranges = self.apic_config.vni_ranges or network_config.get(
-            'vni_ranges')
         self.mcast_ranges = self.apic_config.mcast_ranges
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
@@ -145,33 +143,24 @@ class APICManager(object):
         """
         # Create VLAN namespace
         vlan_ns_dn = None
-        vxlan_ns_dn = None
         if self.vlan_ranges:
             vlan_ns_name = self.apic_config.apic_vlan_ns_name
             vlan_range = self.vlan_ranges[0]
             (vlan_min, vlan_max) = vlan_range.split(':')
             vlan_ns_dn = self.ensure_vlan_ns_created_on_apic(
                 vlan_ns_name, vlan_min, vlan_max)
-        if self.vni_ranges:
-            vxlan_ns_name = self.apic_config.apic_vxlan_ns_name
-            vxlan_range = self.vni_ranges[0]
-            (vxlan_min, vxlan_max) = vxlan_range.split(':')
-            vxlan_ns_dn = self.ensure_vxlan_ns_created_on_apic(
-                vxlan_ns_name, vxlan_min, vxlan_max)
 
         # Create domain
         if not self.use_vmm:
             phys_name = self.apic_config.apic_domain_name
-            self.ensure_phys_domain_created_on_apic(phys_name, vlan_ns_dn,
-                                                    vxlan_ns_dn)
+            self.ensure_phys_domain_created_on_apic(phys_name, vlan_ns_dn)
         else:
             # Create VMM domain
             vmm_name = self.apic_config.apic_domain_name
             self.ensure_vmm_domain_created_on_apic(
                 vmm_name, self.apic_config.openstack_user,
                 self.apic_config.openstack_password,
-                self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn,
-                vxlan_ns_dn=vxlan_ns_dn)
+                self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
             # Create Multicast namespace for VMM
             mcast_name = self.apic_config.apic_multicast_ns_name
             mcast_range = self.mcast_ranges[0]
@@ -417,10 +406,10 @@ class APICManager(object):
         return ppname
 
     def ensure_phys_domain_created_on_apic(self, phys_name, vlan_ns_dn=None,
-                                           vxlan_ns_dn=None, transaction=None):
+                                           transaction=None):
         """Create physical domain.
 
-        Creates the physical domain on the APIC and adds a VLAN or VXLAN
+        Creates the physical domain on the APIC and adds a VLAN
         namespace to that physical domain.
         """
         if not self.provision_infra:
@@ -431,17 +420,13 @@ class APICManager(object):
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__phys.create(
                     phys_name, tDn=vlan_ns_dn, transaction=trs)
-            if vxlan_ns_dn:
-                self.apic.infraRsVxlanNs.create(
-                    phys_name, tDn=vxlan_ns_dn, transaction=trs)
 
     def ensure_vmm_domain_created_on_apic(self, vmm_name, usr, pwd,
                                           multicast_addr, vlan_ns_dn=None,
-                                          vxlan_ns_dn=None,
                                           transaction=None):
         """Create vmm domain.
 
-        Creates the physical domain on the APIC and adds a VLAN or VXLAN
+        Creates the physical domain on the APIC and adds a VLAN
         namespace to that vmm domain.
         """
         if not self.provision_infra:
@@ -461,9 +446,6 @@ class APICManager(object):
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_name, tDn=vlan_ns_dn, transaction=trs)
-            if vxlan_ns_dn:
-                self.apic.vmmRsVxlanNs.create(
-                    vmm_name, vmm_name, tDn=vxlan_ns_dn, transaction=trs)
 
     def ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
                                        transaction=None):
@@ -485,27 +467,6 @@ class APICManager(object):
                                                     transaction=trs,
                                                     **ns_kw_args)
         return self.apic.fvnsVlanInstP.dn(*ns_args)
-
-    def ensure_vxlan_ns_created_on_apic(self, name, vxlan_min, vxlan_max,
-                                        transaction=None):
-        """Creates a static VxLAN namespace with the given vni range."""
-
-        ns_args = (name,)
-        if self.provision_infra:
-            vxlan_min = 'vxlan-' + vxlan_min
-            vxlan_max = 'vxlan-' + vxlan_max
-            ns_blk_args = ns_args + (vxlan_min, vxlan_max)
-            ns_kw_args = {
-                'name': 'encap',
-                'from': vxlan_min,
-                'to': vxlan_max
-            }
-            with self.apic.transaction(transaction) as trs:
-                self.apic.fvnsVxlanInstP.create(*ns_args, transaction=trs)
-                self.apic.fvnsEncapBlk__vxlan.create(*ns_blk_args,
-                                                     transaction=trs,
-                                                     **ns_kw_args)
-        return self.apic.fvnsVxlanInstP.dn(*ns_args)
 
     def ensure_mcast_ns_created_on_apic(self, vmm_name,
                                         name, mcast_min, mcast_max,

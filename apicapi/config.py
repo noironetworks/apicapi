@@ -41,10 +41,6 @@ apic_opts = [
     cfg.StrOpt('apic_model',
         default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
     cfg.BoolOpt('use_vmm', default=False),
-    cfg.StrOpt('apic_vxlan_ns_name',
-               default='${apic_system_id}_vxlan_ns',
-               help=("Name for the vxlan namespace to be used for "
-                     "Openstack")),
     cfg.StrOpt('apic_multicast_ns_name',
                default='${apic_system_id}_mcast_ns',
                help=("Name for the multicast namespace to be used for "
@@ -71,10 +67,6 @@ apic_opts = [
                 default=[],
                 help=("List of <vlan_min>:<vlan_max> used for vlan pool "
                       "configuration")),
-    cfg.ListOpt('vni_ranges',
-                default=[],
-                help=("List of <vni_min>:<vni_max> used for vni pool "
-                      "configuration"))
 
 ]
 

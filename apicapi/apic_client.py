@@ -150,7 +150,6 @@ class ManagedObjectClass(object):
         'infraRsDomP': ManagedObjectName('infraAttEntityP', 'rsdomP-[%s]'),
         'infraRsVlanNs__phys': ManagedObjectName('physDomP', 'rsvlanNs'),
         'infraRsVlanNs__vmm': ManagedObjectName('vmmDomP', 'rsvlanNs'),
-        'infraRsVxlanNs': ManagedObjectName('physDomP', 'rsvxlanNs'),
         'infraAccBndlGrp': ManagedObjectName('infraFuncP', 'accbundle-%s'),
         'infraRsAttEntP2': ManagedObjectName('infraAccBndlGrp', 'rsattEntP'),
         'infraRsLacpPol': ManagedObjectName('infraAccBndlGrp', 'rslacpPol'),
@@ -159,9 +158,6 @@ class ManagedObjectClass(object):
         'fvnsVlanInstP': ManagedObjectName('infraInfra', 'vlanns-[%s]-%s'),
         'fvnsEncapBlk__vlan': ManagedObjectName('fvnsVlanInstP',
                                                 'from-%s-to-%s'),
-        'fvnsVxlanInstP': ManagedObjectName('infraInfra', 'vxlanns-%s'),
-        'fvnsEncapBlk__vxlan': ManagedObjectName('fvnsVxlanInstP',
-                                                 'from-%s-to-%s'),
 
         # Fabric
         'fabricInst': ManagedObjectName(None, 'fabric', False),
@@ -191,7 +187,6 @@ class ManagedObjectClass(object):
         'vmmDomP': ManagedObjectName('vmmProvP', 'dom-%s'),
         'vmmUsrAccP': ManagedObjectName('vmmDomP', 'usracc-%s'),
         'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrlr-%s'),
-        'vmmRsVxlanNs': ManagedObjectName('vmmCtrlrP', 'rsvxlanNs'),
         'vmmRsDomMcastAddrNs': ManagedObjectName('vmmDomP',
                                                  'rsdomMcastAddrNs'),
 
