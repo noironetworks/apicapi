@@ -33,8 +33,8 @@ def clean(args):
                'infraAccPortGrp', 'infraRsAttEntP', 'infraAttEntityP',
                'infraRsDomP', 'infraRsVlanNs', 'infraAccBndlGrp',
                'infraRsAttEntP', 'infraRsLacpPol', 'lacpLagPol',
-               'fvnsVlanInstP', 'fvnsEncapBlk', 'fvnsVxlanInstP',
-               'bgpRRP', 'bgpRRNodePEp', 'bgpAsP', 'fabricFuncP']
+               'fvnsVlanInstP', 'bgpRRP', 'bgpRRNodePEp',
+               'bgpAsP', 'fabricFuncP']
     [apic_session.delete_class(x) for x in classes]
 
 

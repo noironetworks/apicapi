@@ -57,7 +57,6 @@ class TestCiscoApicManager(base.BaseTestCase,
             apic_config=self.apic_config,
             network_config= {
                 'vlan_ranges': self.vlan_ranges,
-                'vni_ranges': self.vni_ranges,
                 'switch_dict': self.switch_dict,
                 'vpc_dict': self.vpc_dict,
                 'external_network_dict': self.external_network_dict,
@@ -134,16 +133,6 @@ class TestCiscoApicManager(base.BaseTestCase,
         self._mock_phys_dom_responses()
         ns = 'test_vlan_ns'
         self.mgr.ensure_phys_domain_created_on_apic(dom, vlan_ns_dn=ns)
-        self.assert_responses_drained()
-        new_dom = self.mgr.phys_domain_dn
-        self.assertEqual(new_dom, self.mgr.apic.physDomP.mo.dn(dom))
-
-    def test_ensure_phys_domain_created_new_with_vxlan_ns(self):
-        dom = mocked.APIC_DOMAIN
-        # TODO(Henry): mock seg_type vxlan when vxlan is ready
-        self._mock_phys_dom_responses()
-        ns = 'test_vxlan_ns'
-        self.mgr.ensure_phys_domain_created_on_apic(dom, vxlan_ns_dn=ns)
         self.assert_responses_drained()
         new_dom = self.mgr.phys_domain_dn
         self.assertEqual(new_dom, self.mgr.apic.physDomP.mo.dn(dom))
@@ -506,18 +495,13 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def test_segment_config(self):
         vlan_ranges = ['200:299']
-        vni_ranges = ['160000:190000']
         self.override_config('vlan_ranges', vlan_ranges, 'ml2_cisco_apic')
-        self.override_config('vni_ranges', vni_ranges, 'ml2_cisco_apic')
         self._initialize_manager()
         self.assertEqual(self.mgr.vlan_ranges, vlan_ranges)
-        self.assertEqual(self.mgr.vni_ranges, vni_ranges)
         self.override_config('vlan_ranges', [], 'ml2_cisco_apic')
-        self.override_config('vni_ranges', [], 'ml2_cisco_apic')
         self._initialize_manager()
         self.assertEqual(self.mgr.vlan_ranges,
                          [':'.join(self.vlan_ranges[0].split(':')[-2:])])
-        self.assertEqual(self.mgr.vni_ranges, self.vni_ranges)
 
     def test_auth_url(self):
         mapper = self.mgr._apic_mapper

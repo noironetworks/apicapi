@@ -35,10 +35,6 @@ apic_opts = [
     cfg.StrOpt('apic_model',
                default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
     cfg.BoolOpt('use_vmm', default=False),
-    cfg.StrOpt('apic_vxlan_ns_name',
-               default='${apic_system_id}_vxlan_ns',
-               help=("Name for the vxlan namespace to be used for "
-                     "Openstack")),
     cfg.StrOpt('apic_multicast_ns_name',
                default='${apic_system_id}_mcast_ns',
                help=("Name for the multicast namespace to be used for "
@@ -65,10 +61,6 @@ apic_opts = [
     cfg.ListOpt('vlan_ranges',
                 default=[],
                 help=("List of <vlan_min>:<vlan_max> used for vlan pool "
-                      "configuration")),
-    cfg.ListOpt('vni_ranges',
-                default=[],
-                help=("List of <vni_min>:<vni_max> used for vni pool "
                       "configuration")),
     cfg.StrOpt('shared_context_name', default=''),
     cfg.BoolOpt('verify_ssl_certificate', default=False),
@@ -165,13 +157,11 @@ class ConfigValidator(object):
 
     validators = {
         'apic_model': [valid_path],
-        'apic_vxlan_ns_name': [valid_apic_name],
         'apic_multicast_ns_name': [valid_apic_name],
         'apic_switch_pg_name': [valid_apic_name],
         'openstack_user': [not_null],
         'multicast_address': [valid_ip],
         'vlan_ranges': [valid_range],
-        'vni_ranges': [valid_range],
         'mcast_ranges': [valid_ip_range],
         'apic_name_mapping': [valid_name_strategy],
         'apic_domain_name': [valid_apic_name],

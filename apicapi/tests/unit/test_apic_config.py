@@ -98,7 +98,6 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
         self.override_config('apic_model', 'apicapi.db.apic_model',
                              'ml2_cisco_apic')
         configurations = [
-            'apic_vxlan_ns_name',
             'apic_multicast_ns_name',
             'apic_switch_pg_name',
             'openstack_user',
