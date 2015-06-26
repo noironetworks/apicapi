@@ -64,7 +64,7 @@ apic_opts = [
                       "configuration")),
     cfg.StrOpt('shared_context_name', default=''),
     cfg.BoolOpt('verify_ssl_certificate', default=False),
-    cfg.IntOpt('apic_request_timeout', default=5,
+    cfg.IntOpt('apic_request_timeout', default=10,
                help=("Number of seconds after which the requests to APIC "
                      "timeout in case of no response received. This is value "
                      "affects both read and connect timeout.")),

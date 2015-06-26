@@ -311,10 +311,10 @@ class ApicSession(object):
                 return request(self.api_base[0] + url, verify=self.verify,
                                timeout=self.request_timeout,  **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
-                LOG.debug(('%s, falling back to a '
+                LOG.info(('%s, falling back to a '
                           'new address'), ex.message)
                 self.api_base.rotate(-1)
-                LOG.debug(('New controller address: %s '), self.api_base[0])
+                LOG.info(('New controller address: %s '), self.api_base[0])
         return request(self.api_base[0] + url, **kwargs)
 
     @staticmethod

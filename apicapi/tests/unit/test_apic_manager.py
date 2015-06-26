@@ -525,4 +525,4 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def test_timeout_set(self):
         client = self.mgr.apic
-        self.assertEqual(client.request_timeout, 5)
+        self.assertEqual(client.request_timeout, 10)
