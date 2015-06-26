@@ -450,7 +450,7 @@ class APICManager(object):
             return
 
         with self.apic.transaction(transaction) as trs:
-            # TODO (amit): Starting with APIC 1.2 we need to also send
+            # TODO(amit): Starting with APIC 1.2 we need to also send
             # 'encapMode' in create() like this:
             # (..., encapMode=("vlan" if vlan_ns_dn else "vxlan"), ...)
             self.apic.vmmDomP.create(
@@ -1201,6 +1201,48 @@ class APICManager(object):
             self.ensure_external_epg_consumed_contract_deleted(
                 ext_out_id, contract_id, external_epg=external_epg,
                 owner=owner, transaction=transaction)
+
+    def associate_external_epg_to_nat_epg(
+            self, owner, ext_out_id, external_epg, target_epg,
+            target_owner=TENANT_COMMON, transaction=None):
+        nat_epg_dn = self.apic.fvAEPg.dn(target_owner, self.app_profile_name,
+                                         target_epg)
+        self.apic.l3extRsInstPToNatMappingEPg.create(owner, ext_out_id,
+            external_epg, tDn=nat_epg_dn, transaction=transaction)
+
+    def ensure_nat_epg_contract_created(self, owner, nat_epg, nat_bd, nat_vrf,
+                                        contract, transaction=None):
+        with self.apic.transaction(transaction) as trs:
+            # create NAT ctx, bd and EPG
+            self.ensure_context_enforced(owner, nat_vrf, transaction=trs)
+            self.ensure_bd_created_on_apic(owner, nat_bd, ctx_owner=owner,
+                                           ctx_name=nat_vrf, transaction=trs)
+            self.apic.fvAEPg.create(owner, self.app_profile_name, nat_epg,
+                                    transaction=trs)
+            self.apic.fvRsBd.create(owner, self.app_profile_name, nat_epg,
+                                    tnFvBDName=nat_bd, transaction=trs)
+            self.apic.fvRsDomAtt.create(owner, self.app_profile_name, nat_epg,
+                                        self.domain_dn, transaction=trs)
+            # create allow-everything contract
+            filter_name = '%s-allow-all' % str(self.app_profile_name)
+            self.create_tenant_filter(filter_name, owner, entry="allow-all",
+                                      transaction=trs)
+            self.manage_contract_subject_bi_filter(
+                contract, contract, filter_name, owner, transaction=trs)
+
+            # NAT epg provides/consumes the specified contract
+            self.set_contract_for_epg(owner, nat_epg, contract,
+                                      transaction=trs)
+            self.set_contract_for_epg(owner, nat_epg, contract, provider=True,
+                                      transaction=trs)
+
+    def ensure_nat_epg_deleted(self, owner, nat_epg, nat_bd, nat_vrf,
+                               transaction=None):
+        with self.apic.transaction(transaction) as trs:
+            # delete NAT ctx, bd and EPG
+            self.delete_epg_for_network(owner, nat_epg, transaction=trs)
+            self.delete_bd_on_apic(owner, nat_bd, transaction=trs)
+            self.ensure_context_deleted(owner, nat_vrf, transaction=trs)
 
     #
     # crteating these DB access functions here to avoid patching apic_model

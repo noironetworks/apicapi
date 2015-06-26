@@ -112,6 +112,8 @@ class ManagedObjectClass(object):
         'fvRsProv__Ext': ManagedObjectName('l3extInstP', 'rsprov-%s'),
         'fvCollectionCont': ManagedObjectName('fvRsCons', 'collectionDn-[%s]'),
         'l3extSubnet': ManagedObjectName('l3extInstP', 'extsubnet-[%s]'),
+        'l3extRsInstPToNatMappingEPg':
+            ManagedObjectName('l3extInstP', 'l3extRsInstPToNatMappingEPg'),
 
         'physDomP': ManagedObjectName(None, 'phys-%s'),
 
