@@ -64,6 +64,10 @@ apic_opts = [
                       "configuration")),
     cfg.StrOpt('shared_context_name', default=''),
     cfg.BoolOpt('verify_ssl_certificate', default=False),
+    cfg.IntOpt('apic_request_timeout', default=5,
+               help=("Number of seconds after which the requests to APIC "
+                     "timeout in case of no response received. This is value "
+                     "affects both read and connect timeout.")),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"

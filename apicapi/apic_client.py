@@ -281,13 +281,15 @@ class ApicSession(object):
 
     """Manages a session with the APIC."""
 
-    def __init__(self, hosts, usr, pwd, ssl, verify=False):
+    def __init__(self, hosts, usr, pwd, ssl, verify=False,
+                 request_timeout=None):
         protocol = 'https' if ssl else 'http'
         self.api_base = collections.deque(['%s://%s/api' % (protocol, host)
                                            for host in hosts])
         self.session = requests.Session()
         self.session_deadline = 0
         self.session_timeout = 0
+        self.request_timeout = request_timeout
         self.cookie = {}
         self.verify = verify
 
@@ -307,7 +309,7 @@ class ApicSession(object):
         for x in range(len(self.api_base)):
             try:
                 return request(self.api_base[0] + url, verify=self.verify,
-                               **kwargs)
+                               timeout=self.request_timeout,  **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
                 LOG.debug(('%s, falling back to a '
                           'new address'), ex.message)
@@ -497,8 +499,7 @@ class ApicSession(object):
         self.cookie = {}
 
         try:
-            response = self._do_request(self.session.post, url, data=name_pwd,
-                                        timeout=10.0)
+            response = self._do_request(self.session.post, url, data=name_pwd)
         except rexc.Timeout:
             raise cexc.ApicHostNoResponse(url=url)
         attributes = self._save_cookie('aaaLogin', response)
@@ -717,13 +718,15 @@ class RestClient(ApicSession):
     """
 
     def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True,
-                 scope_names=True, renew_names=True, verify=False):
+                 scope_names=True, renew_names=True, verify=False,
+                 request_timeout=None):
         """Establish a session with the APIC."""
         if not scope_names:
             ManagedObjectClass.scope_exceptions = None
         global LOG
         LOG = log.getLogger(__name__)
-        super(RestClient, self).__init__(hosts, usr, pwd, ssl, verify)
+        super(RestClient, self).__init__(hosts, usr, pwd, ssl, verify,
+                                         request_timeout)
         ManagedObjectClass.scope = '_' + system_id + '_'
         self.dn_manager = DNManager()
         self.renew_names = renew_names

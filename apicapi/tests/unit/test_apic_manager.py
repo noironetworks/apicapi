@@ -522,3 +522,7 @@ class TestCiscoApicManager(base.BaseTestCase,
             conf.auth_uri = input
             url = mapper._get_keystone_url(conf)
             self.assertEqual(correct_url, url)
+
+    def test_timeout_set(self):
+        client = self.mgr.apic
+        self.assertEqual(client.request_timeout, 5)

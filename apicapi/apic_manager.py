@@ -111,6 +111,7 @@ class APICManager(object):
             scope_names=self.apic_config.scope_names,
             renew_names=self.apic_config.renew_names,
             verify=self.apic_config.verify_ssl_certificate,
+            request_timeout=self.apic_config.apic_request_timeout
         )
 
         self.phys_domain_dn = self.apic.physDomP.dn(
