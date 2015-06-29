@@ -454,8 +454,9 @@ class APICManager(object):
             self.apic.vmmCtrlrP.create(
                 vmm_name, vmm_name, scope="openstack",
                 rootContName="openstack", hostOrIp="192.168.65.154",
-                mode="ovs")
-            self.apic.vmmRsAcc.create(vmm_name, vmm_name, tDn=usracc_dn)
+                mode="ovs", transaction=trs)
+            self.apic.vmmRsAcc.create(vmm_name, vmm_name, tDn=usracc_dn,
+                                      transaction=trs)
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_name, tDn=vlan_ns_dn, transaction=trs)

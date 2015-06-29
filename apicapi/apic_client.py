@@ -309,7 +309,7 @@ class ApicSession(object):
         for x in range(len(self.api_base)):
             try:
                 return request(self.api_base[0] + url, verify=self.verify,
-                               timeout=self.request_timeout,  **kwargs)
+                               timeout=self.request_timeout, **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
                 LOG.info(('%s, falling back to a '
                           'new address'), ex.message)
