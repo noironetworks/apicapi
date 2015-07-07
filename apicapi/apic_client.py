@@ -15,10 +15,13 @@
 #
 # @author: Henry Gessau, Cisco Systems
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
+# @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
+import base64
 import collections
 import contextlib
 import json
+from OpenSSL import crypto
 import re
 import time
 
@@ -281,8 +284,9 @@ class ApicSession(object):
 
     """Manages a session with the APIC."""
 
-    def __init__(self, hosts, usr, pwd, ssl, verify=False,
-                 request_timeout=None):
+    def __init__(self, hosts, usr, pwd, ssl, verify=False, request_timeout=None,
+                 cert_name=None, private_key_file=None,
+                 sign_algo=None, sign_hash=None):
         protocol = 'https' if ssl else 'http'
         self.api_base = collections.deque(['%s://%s/api' % (protocol, host)
                                            for host in hosts])
@@ -297,8 +301,15 @@ class ApicSession(object):
         self.authentication = None
         self.username = None
         self.password = None
+        self.cert_name = None
+        self.private_key = None
+        self.sign_algo = None
+        self.sign_hash = None
         if usr and pwd:
             self.login(usr, pwd)
+        elif usr and cert_name and private_key_file:
+            self.set_private_key(usr, cert_name, private_key_file,
+                                 sign_algo, sign_hash)
         # Init last call to current time
         self.last_call = time.time()
         # 30 ms sleep time
@@ -306,6 +317,8 @@ class ApicSession(object):
 
     def _do_request(self, request, url, **kwargs):
         """Use this method to wrap all the http requests."""
+        if self._is_cert_auth():
+            self._calculate_signature(request, url, kwargs)
         for x in range(len(self.api_base)):
             try:
                 return request(self.api_base[0] + url, verify=self.verify,
@@ -315,7 +328,7 @@ class ApicSession(object):
                           'new address'), ex.message)
                 self.api_base.rotate(-1)
                 LOG.info(('New controller address: %s '), self.api_base[0])
-        return request(self.api_base[0] + url, **kwargs)
+        return request(self.api_base[0] + url, verify=self.verify, **kwargs)
 
     @staticmethod
     def _make_data(key, **attrs):
@@ -349,6 +362,8 @@ class ApicSession(object):
 
     def _check_session(self):
         """Check that we are logged in and ensure the session is active."""
+        if self._is_cert_auth():
+            return      # Certificate based authentication is session-less
         if not self.authentication:
             raise cexc.ApicSessionNotLoggedIn
         if time.time() > self.session_deadline:
@@ -390,7 +405,8 @@ class ApicSession(object):
                 err_code = '[code for APIC error not found]'
                 err_text = '[text for APIC error not found]'
             # If invalid token then re-login and retry once
-            if not refreshed and (err_code in REFRESH_CODES):
+            if (not refreshed and (err_code in REFRESH_CODES) and
+                not self._is_cert_auth()):
                 self.login()
                 return self._send(request, url, data=data, refreshed=True)
             if not accepted and response.status_code == 202:
@@ -490,6 +506,37 @@ class ApicSession(object):
             attributes = imdata[0]['error']['attributes']
         return attributes
 
+    def _calculate_signature(self, request, url, kwargs):
+        """Sign the request using private key and put the result in cookies"""
+        req = ''
+        if request == self.session.get:
+            req = 'GET'
+        elif request == self.session.post:
+            req = 'POST'
+        elif request == self.session.delete:
+            req = 'DELETE'
+        elif request == self.session.put:
+            req = 'PUT'
+
+        if url.endswith('?'):
+            url = url[:-1]
+        url = url.replace('//', '/')
+        payLoad = req + '/api' + url + kwargs.get('data', '')
+        signedDigest = crypto.sign(self.private_key, payLoad, self.sign_hash)
+        signature = base64.b64encode(signedDigest)
+        kwargs['cookies'] = {
+            'APIC-Request-Signature' :  signature,
+            'APIC-Certificate-Algorithm' : self.sign_algo,
+            'APIC-Certificate-Fingerprint' : 'fingerprint',
+            'APIC-Certificate-DN' : self._get_cert_dn(self.username,
+                                                      self.cert_name)}
+
+    def _is_cert_auth(self):
+        return not self.password and self.cert_name and self.private_key
+
+    def _get_cert_dn(self, usr, cert_name):
+        return ("uni/userext/user-%s/usercert-%s") % (usr, cert_name)
+
     def login(self, usr=None, pwd=None):
         """Log in to controller. Save user name and authentication."""
         usr = usr or self.username
@@ -515,8 +562,43 @@ class ApicSession(object):
                                          err_text=attributes['text'],
                                          err_code=attributes['code'])
 
+    def set_private_key(self, usr, cert_name, private_key_file,
+                        sign_algo=None, sign_hash=None):
+        """Set the X.509 private key used for session-less REST calls"""
+        url = self._api_url('mo/%s' % self._get_cert_dn(usr, cert_name))
+
+        try:
+            with open(private_key_file) as key_file:
+                private_key = crypto.load_privatekey(crypto.FILETYPE_PEM,
+                                                     key_file.read())
+        except Exception, e:
+            LOG.error("Failed to load private key from file %s: %s" %
+                      (private_key_file, e))
+            raise
+
+        self.username = usr
+        self.cert_name = cert_name
+        self.private_key = private_key
+        self.sign_algo = sign_algo and sign_algo or 'v1.0'
+        self.sign_hash = sign_hash and sign_hash or 'sha256'
+        # Verify that the cert-name and key are ok
+        try:
+            response = self._do_request(self.session.get, url)
+        except rexc.Timeout:
+            raise cexc.ApicHostNoResponse(url=url)
+
+        if response.status_code != requests.codes.ok:
+            attributes = response.json().get('imdata')[0]['error']['attributes']
+            raise cexc.ApicResponseNotOk(request=url,
+                                         status=response.status_code,
+                                         reason=response.reason,
+                                         err_text=attributes['text'],
+                                         err_code=attributes['code'])
+
     def refresh(self):
         """Called when a session has timed out or almost timed out."""
+        if self._is_cert_auth():
+            return          # Certificate-based calls are session-less
         url = self._api_url('aaaRefresh')
         response = self._do_request(self.session.get, url,
                                     cookies=self.cookie)
@@ -719,14 +801,16 @@ class RestClient(ApicSession):
 
     def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True,
                  scope_names=True, renew_names=True, verify=False,
-                 request_timeout=None):
+                 request_timeout=None, cert_name=None, private_key_file=None,
+                 sign_algo=None, sign_hash=None):
         """Establish a session with the APIC."""
         if not scope_names:
             ManagedObjectClass.scope_exceptions = None
         global LOG
         LOG = log.getLogger(__name__)
         super(RestClient, self).__init__(hosts, usr, pwd, ssl, verify,
-                                         request_timeout)
+                                         request_timeout, cert_name,
+                                         private_key_file, sign_algo, sign_hash)
         ManagedObjectClass.scope = '_' + system_id + '_'
         self.dn_manager = DNManager()
         self.renew_names = renew_names

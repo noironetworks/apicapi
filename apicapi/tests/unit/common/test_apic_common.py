@@ -15,10 +15,14 @@
 #
 # @author: Henry Gessau, Cisco Systems
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
+# @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
+import base64
 import contextlib
 import mock
+from OpenSSL import crypto
 import requests
+import tempfile
 
 from oslo.config import cfg
 
@@ -33,6 +37,7 @@ APIC_HOSTS = ['fake.controller.local']
 APIC_PORT = 7580
 APIC_USR = 'notadmin'
 APIC_PWD = 'topsecret'
+APIC_USR_CERT_NAME = 'notadmin-cert'
 
 APIC_TENANT = 'citizen14'
 APIC_NETWORK = 'network99'
@@ -80,6 +85,24 @@ class ControllerMixin(object):
         self.reset_reponses()
         self.log = mock.Mock()
 
+    def create_pvt_key_file(self):
+        self.clean_up_pvt_key_file()
+        self.pvt_key_file = tempfile.NamedTemporaryFile()
+        pk = crypto.PKey()
+        pk.generate_key(crypto.TYPE_RSA, 1024)
+        self.pvt_key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk))
+        self.pvt_key_file.flush()
+        self.certificate = crypto.X509()
+        self.certificate.set_pubkey(pk)
+        self.certificate.sign(pk, 'sha256')
+        return self.pvt_key_file.name
+
+    def clean_up_pvt_key_file(self):
+        try:
+            self.pvt_key_file.close()
+        except AttributeError:
+            pass
+
     def reset_reponses(self, req=None):
         # Clear all staged responses.
         reqs = req and [req] or ['post', 'get']  # Both if none specified.
@@ -93,6 +116,40 @@ class ControllerMixin(object):
             requests.Session.post = responses
         elif req == 'get':
             requests.Session.get = responses
+
+    def enable_signature_check(self):
+        self.saved_get_responder = requests.Session.get
+        self.saved_post_responder = requests.Session.post
+        requests.Session.get = (
+            mock.MagicMock(side_effect=self._verify_and_respond_for_get))
+        requests.Session.post = (
+            mock.MagicMock(side_effect=self._verify_and_respond_for_post))
+
+    def _verify_and_respond_for_get(self, *args, **kwargs):
+        self._verify_signature('GET', *args, **kwargs)
+        return self.saved_get_responder(*args, **kwargs)
+
+    def _verify_and_respond_for_post(self, *args, **kwargs):
+        self._verify_signature('POST', *args, **kwargs)
+        return self.saved_post_responder(*args, **kwargs)
+
+    def _verify_signature(self, req, *args, **kwargs):
+        """ Throws exception if verification fails """
+        cookies = kwargs.get('cookies', {})
+        if 'APIC-Request-Signature' not in cookies:
+            return
+        url = args[0]
+        payload = req + url[url.find('/api'):] + kwargs.get('data', '')
+        cert_dn = ('uni/userext/user-%s/usercert-%s' %
+            (APIC_USR, APIC_USR_CERT_NAME))
+        if cookies.get('APIC-Certificate-DN') != cert_dn:
+            raise Exception("Certificate DN mismatch")
+        if (cookies.get('APIC-Certificate-Algorithm') != 'v1.0' or
+            cookies.get('APIC-Certificate-Fingerprint') != 'fingerprint'):
+            raise Exception("Signature verification algorithm mismatch")
+        crypto.verify(self.certificate,
+                      base64.b64decode(cookies.get('APIC-Request-Signature')),
+                      payload, 'sha256')
 
     def mock_response_for_post(self, mo, **attrs):
         attrs['debug_mo'] = mo  # useful for debugging
@@ -143,6 +200,9 @@ class ControllerMixin(object):
         # APIC Manager tests are based on authenticated session
         self.mock_response_for_post('aaaLogin', userName=APIC_USR,
                                     token='ok', refreshTimeoutSeconds=timeout)
+
+    def mock_response_for_certificate_fetch(self, cert_name):
+        self.mock_response_for_get('aaaUserCert', name=cert_name)
 
     def assert_responses_drained(self, req=None):
         """Fail if all the expected responses have not been consumed."""

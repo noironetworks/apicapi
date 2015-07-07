@@ -16,6 +16,7 @@
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
 # @author: Mandeep Dhami (madhami@cisco.com), Cisco Systems Inc.
 # @author: Arvind Somya (asomya@cisco.com), Cisco Systems Inc.
+# @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
 from apicapi import apic_client
 from apicapi import apic_mapper
@@ -111,7 +112,11 @@ class APICManager(object):
             scope_names=self.apic_config.scope_names,
             renew_names=self.apic_config.renew_names,
             verify=self.apic_config.verify_ssl_certificate,
-            request_timeout=self.apic_config.apic_request_timeout
+            request_timeout=self.apic_config.apic_request_timeout,
+            cert_name=self.apic_config.certificate_name,
+            private_key_file=self.apic_config.private_key_file,
+            sign_algo=self.apic_config.signature_verification_algorithm,
+            sign_hash=self.apic_config.signature_hash_type
         )
 
         self.phys_domain_dn = self.apic.physDomP.dn(
