@@ -14,6 +14,7 @@
 #    under the License.
 #
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
+# @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
 import re
 import sys
@@ -68,6 +69,11 @@ apic_opts = [
                help=("Number of seconds after which the requests to APIC "
                      "timeout in case of no response received. This is value "
                      "affects both read and connect timeout.")),
+    cfg.StrOpt('private_key_file', default=None,
+               help=("Filename of user's private key file to be used for "
+                     "authenticating requests")),
+    cfg.StrOpt('certificate_name', default=None,
+               help=("Name given to user's X.509 certificate in APIC")),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
@@ -150,6 +156,15 @@ def valid_name_strategy(key, value):
     if value not in valid:
         util.re("Allowed values: %s" % str(valid))
 
+def valid_file(key, value):
+    if value is None:
+        return
+    try:
+        with open(value) as f:
+            pass
+    except Exception, e:
+        util = ConfigValidator.RaiseUtils(value, key)
+        util.re("Bad file-name: %s: %s" % (value, e))
 
 class ConfigValidator(object):
     """Configuration validator for APICAPI.
@@ -176,6 +191,7 @@ class ConfigValidator(object):
         'apic_function_profile': [valid_apic_name],
         'apic_lacp_profile': [valid_apic_name],
         'apic_vlan_range': [valid_range],
+        'private_key_file': [valid_file],
     }
 
     class RaiseUtils(object):

@@ -15,6 +15,7 @@
 #
 # @author: Henry Gessau, Cisco Systems
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
+# @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
 import mock
 import requests
@@ -36,6 +37,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                                     mocked.APIC_HOSTS)
         self.transaction = apic.Transaction(self.apic)
         self.addCleanup(mock.patch.stopall)
+        self.addCleanup(self.clean_up_pvt_key_file)
 
     def _mock_authenticate(self, timeout=None):
         if timeout is None:
@@ -43,6 +45,14 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self.reset_reponses()
         self.mock_apic_manager_login_responses(timeout=timeout)
         self.apic.login(mocked.APIC_USR, mocked.APIC_PWD)
+
+    def _mock_authenticate_certificate(self):
+        self.reset_reponses()
+        self.enable_signature_check()
+        pk = self.create_pvt_key_file()
+        self.mock_response_for_certificate_fetch(mocked.APIC_USR_CERT_NAME)
+        self.apic.set_private_key(mocked.APIC_USR, mocked.APIC_USR_CERT_NAME,
+                                  pk)
 
     def test_login_by_instantiation(self):
         self.reset_reponses()
@@ -94,6 +104,17 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                                       code='123', text='failed')
         self.assertRaises(cexc.ApicResponseNotOk, self.apic.logout)
 
+    def test_client_certificate_login(self):
+        self.reset_reponses()
+        self.enable_signature_check()
+        pk = self.create_pvt_key_file()
+        self.mock_response_for_certificate_fetch(mocked.APIC_USR)
+        apic2 = apic.RestClient(self.log, mocked.APIC_SYSTEM_ID,
+                                mocked.APIC_HOSTS,
+                                usr=mocked.APIC_USR,
+                                cert_name=mocked.APIC_USR_CERT_NAME,
+                                private_key_file=pk)
+
     def test_query_not_logged_in(self):
         self.apic.authentication = None
         self.assertRaises(cexc.ApicSessionNotLoggedIn,
@@ -113,6 +134,13 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
 
     def test_generic_get_data(self):
         self._mock_authenticate()
+        self._do_generic_get_data()
+
+    def test_generic_get_data_certificate(self):
+        self._mock_authenticate_certificate()
+        self._do_generic_get_data()
+
+    def _do_generic_get_data(self):
         self.mock_response_for_get('topSystem', name='ifc1')
         top_system = self.apic.get_data('class/topSystem')
         self.assertIsNotNone(top_system)
@@ -210,6 +238,13 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
 
     def test_create_mo_ok(self):
         self._mock_authenticate()
+        self._do_create_mo_ok()
+
+    def test_create_mo_ok_certificate(self):
+        self._mock_authenticate_certificate()
+        self._do_create_mo_ok()
+
+    def _do_create_mo_ok(self):
         self.mock_response_for_post('fvTenant', name=mocked.APIC_TENANT)
         self.mock_response_for_get('fvTenant', name=mocked.APIC_TENANT)
         self.apic.fvTenant.create(mocked.APIC_TENANT)
