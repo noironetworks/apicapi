@@ -17,12 +17,12 @@
 # @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
 # @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
+import base64
 import contextlib
 import mock
+from OpenSSL import crypto
 import requests
 import tempfile
-from OpenSSL import crypto
-import base64
 
 from oslo.config import cfg
 
@@ -98,8 +98,10 @@ class ControllerMixin(object):
         return self.pvt_key_file.name
 
     def clean_up_pvt_key_file(self):
-        if hasattr(self, 'pvt_key_file'):
+        try:
             self.pvt_key_file.close()
+        except AttributeError:
+            pass
 
     def reset_reponses(self, req=None):
         # Clear all staged responses.
@@ -118,10 +120,10 @@ class ControllerMixin(object):
     def enable_signature_check(self):
         self.saved_get_responder = requests.Session.get
         self.saved_post_responder = requests.Session.post
-        requests.Session.get = \
-            mock.MagicMock(side_effect=self._verify_and_respond_for_get)
-        requests.Session.post = \
-            mock.MagicMock(side_effect=self._verify_and_respond_for_post)
+        requests.Session.get = (
+            mock.MagicMock(side_effect=self._verify_and_respond_for_get))
+        requests.Session.post = (
+            mock.MagicMock(side_effect=self._verify_and_respond_for_post))
 
     def _verify_and_respond_for_get(self, *args, **kwargs):
         self._verify_signature('GET', *args, **kwargs)
@@ -138,12 +140,12 @@ class ControllerMixin(object):
             return
         url = args[0]
         payload = req + url[url.find('/api'):] + kwargs.get('data', '')
-        cert_dn = 'uni/userext/user-%s/usercert-%s' % \
-            (APIC_USR, APIC_USR_CERT_NAME)
+        cert_dn = ('uni/userext/user-%s/usercert-%s' %
+            (APIC_USR, APIC_USR_CERT_NAME))
         if cookies.get('APIC-Certificate-DN') != cert_dn:
             raise Exception("Certificate DN mismatch")
-        if cookies.get('APIC-Certificate-Algorithm') != 'v1.0' or \
-           cookies.get('APIC-Certificate-Fingerprint') != 'fingerprint':
+        if (cookies.get('APIC-Certificate-Algorithm') != 'v1.0' or
+            cookies.get('APIC-Certificate-Fingerprint') != 'fingerprint'):
             raise Exception("Signature verification algorithm mismatch")
         crypto.verify(self.certificate,
                       base64.b64decode(cookies.get('APIC-Request-Signature')),

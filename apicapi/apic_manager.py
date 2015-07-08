@@ -114,7 +114,9 @@ class APICManager(object):
             verify=self.apic_config.verify_ssl_certificate,
             request_timeout=self.apic_config.apic_request_timeout,
             cert_name=self.apic_config.certificate_name,
-            private_key_file=self.apic_config.private_key_file
+            private_key_file=self.apic_config.private_key_file,
+            sign_algo=self.apic_config.signature_verification_algorithm,
+            sign_hash=self.apic_config.signature_hash_type
         )
 
         self.phys_domain_dn = self.apic.physDomP.dn(

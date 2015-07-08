@@ -69,11 +69,15 @@ apic_opts = [
                help=("Number of seconds after which the requests to APIC "
                      "timeout in case of no response received. This is value "
                      "affects both read and connect timeout.")),
-    cfg.StrOpt('private_key_file', default=None,
+    cfg.StrOpt('private_key_file',
                help=("Filename of user's private key file to be used for "
                      "authenticating requests")),
-    cfg.StrOpt('certificate_name', default=None,
+    cfg.StrOpt('certificate_name',
                help=("Name given to user's X.509 certificate in APIC")),
+    cfg.StrOpt('signature_verification_algorithm',
+               help=("Algorithm used by APIC for signature verification")),
+    cfg.StrOpt('signature_hash_type',
+               help=("Hashing algorithm to use for calculating signature")),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
