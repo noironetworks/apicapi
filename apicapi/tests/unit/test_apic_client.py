@@ -318,15 +318,15 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         with self.apic.transaction() as trs:
             trs.commit = mock.Mock()
             self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd', 'subnet',
-                                      transaction=self.transaction)
+                                      transaction=trs)
             self.assertFalse(trs.commit.called)
             self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd1', 'subnet',
-                                      transaction=self.transaction)
+                                      transaction=trs)
             self.assertFalse(trs.commit.called)
             self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd1', 'subnet1',
-                                      transaction=self.transaction)
+                                      transaction=trs)
             self.assertFalse(trs.commit.called)
-        trs.commit.assert_called_once()
+        self.assertEqual(1, trs.commit.call_count)
 
     def test_renew_called(self):
         s_name = mapper.ApicName('name', 'id')
@@ -334,7 +334,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self._mock_authenticate()
         self.mock_response_for_get('fvSubnet')
         self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd', s_name)
-        s_name.renew.assert_called_once()
+        self.assertEqual(1, s_name.renew.call_count)
 
     def test_renew_not_called(self):
         s_name = mapper.ApicName('name', 'id')
