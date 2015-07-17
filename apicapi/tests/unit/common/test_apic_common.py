@@ -24,7 +24,7 @@ from OpenSSL import crypto
 import requests
 import tempfile
 
-from oslo_config import cfg
+from oslo.config import cfg
 
 from apicapi import apic_client as apic
 from apicapi import apic_mapper as apic_mapper

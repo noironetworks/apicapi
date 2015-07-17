@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from oslo_db.sqlalchemy import models
+from oslo.db.sqlalchemy import models
 from sqlalchemy.ext import declarative
 
 BASE = declarative.declarative_base(cls=models.ModelBase)

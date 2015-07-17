@@ -20,7 +20,7 @@ import re
 import sys
 
 import netaddr
-from oslo_config import cfg
+from oslo.config import cfg
 
 from apicapi import apic_mapper
 from apicapi import exceptions as exc
