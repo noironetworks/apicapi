@@ -278,10 +278,14 @@ class APICManager(object):
         # Create a node and profile for this switch
         if not self.provision_infra:
             return
+        try:
+            self.ensure_node_profile_created_for_switch(switch)
+        except cexc.ApicResponseNotOk as ex:
+            # Ignore for conflicting profiles
+            # TODO(ivar): check err_code in the exception
+            LOG.warn(ex.message)
 
         with self.apic.transaction(transaction) as trs:
-            self.ensure_node_profile_created_for_switch(switch,
-                                                        transaction=trs)
             ppname = self.ensure_port_profile_created_for_switch(
                 switch, transaction=trs)
 
@@ -830,9 +834,10 @@ class APICManager(object):
                 instrImedcy="immediate", transaction=trs)
 
     def ensure_path_deleted_for_port(self, tenant_id, network_id, host_id,
-                                     transaction=None):
+                                     host_config=None, transaction=None):
         with self.apic.transaction(transaction) as trs:
-            host_config = self.db.get_switch_and_port_for_host(host_id)
+            host_config = host_config or self.db.get_switch_and_port_for_host(
+                host_id)
             if not host_config or not host_config.count():
                 LOG.warn("The switch and port for host '%s' "
                          "are not configured" % host_id)
@@ -959,7 +964,9 @@ class APICManager(object):
             return None
 
     def remove_hostlink(self, host, ifname, ifmac, switch, module, port):
+        info = self.db.get_switch_and_port_for_host(host)
         self.db.delete_hostlink(host, ifname)
+        return info
         # TODO(mandeep): delete the right elements
 
     def create_router(self, router_id, owner=TENANT_COMMON,

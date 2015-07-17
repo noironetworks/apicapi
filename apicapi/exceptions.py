@@ -25,6 +25,7 @@ class ApicException(Exception):
         try:
             super(ApicException, self).__init__(self.message % kwargs)
             self.msg = self.message % kwargs
+            self.err_code = kwargs.get('err_code')
         except Exception:
             super(ApicException, self).__init__(self.message)
 

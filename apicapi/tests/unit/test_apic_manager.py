@@ -351,6 +351,31 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.mock_db_query_filterby_distinct_return(
             mocked.FakeQuery(('swid', 'mod', 'port')))
 
+    def test_ensure_path_deleted_for_port_not_called(self):
+        self.mgr.apic.fvRsPathAtt.delete = mock.Mock()
+        self.mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=None)
+        self.mgr.ensure_path_deleted_for_port('tenant', 'network', 'ubuntu2')
+        self.assertEqual(0, self.mgr.apic.fvRsPathAtt.delete.call_count)
+
+    def test_ensure_path_deleted_for_port(self):
+        self.mgr.apic.fvRsPathAtt.delete = mock.Mock()
+        self._mock_get_switch_and_port_for_host()
+        self.mgr.ensure_path_deleted_for_port('tenant', 'network', 'ubuntu2')
+        self.mgr.apic.fvRsPathAtt.delete.assert_called_once_with(
+            'tenant', self.mgr.app_profile_name, 'network',
+            apic_manager.PORT_DN_PATH % ('swid', 'mod', 'port'),
+            transaction=mock.ANY)
+
+    def test_ensure_path_deleted_for_port_host_config(self):
+        self.mgr.apic.fvRsPathAtt.delete = mock.Mock()
+        self.mgr.ensure_path_deleted_for_port(
+            'tenant', 'network', 'ubuntu2',
+            host_config=mocked.FakeQuery(('switch', 'module', 'port')))
+        self.mgr.apic.fvRsPathAtt.delete.assert_called_once_with(
+            'tenant', self.mgr.app_profile_name, 'network',
+            apic_manager.PORT_DN_PATH % ('switch', 'module', 'port'),
+            transaction=mock.ANY)
+
     def test_ensure_path_created_for_port(self):
         epg = 'epg2'
         eepg = mock.Mock(return_value=epg)
