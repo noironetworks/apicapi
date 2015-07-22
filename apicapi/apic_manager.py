@@ -843,9 +843,14 @@ class APICManager(object):
                          "are not configured" % host_id)
                 return
             for switch, module, port in host_config:
-                pdn = self.get_static_binding_pdn(switch, module, port)
-                self.apic.fvRsPathAtt.delete(tenant_id, self.app_profile_name,
-                                             network_id, pdn, transaction=trs)
+                self.delete_path(tenant_id, network_id, switch,
+                                 module, port, transaction=trs)
+
+    def delete_path(self, tenant_id, network_id, switch, module, port,
+                    transaction=None):
+        pdn = self.get_static_binding_pdn(switch, module, port)
+        self.apic.fvRsPathAtt.delete(tenant_id, self.app_profile_name,
+                                     network_id, pdn, transaction=transaction)
 
     def ensure_static_endpoint_created(self, tenant_id, epg_id, host_id,
                                        mac_address, ip_address, encap,
@@ -964,7 +969,7 @@ class APICManager(object):
             return None
 
     def remove_hostlink(self, host, ifname, ifmac, switch, module, port):
-        info = self.db.get_switch_and_port_for_host(host)
+        info = self.db.get_hostlink(host, ifname)
         self.db.delete_hostlink(host, ifname)
         return info
         # TODO(mandeep): delete the right elements
