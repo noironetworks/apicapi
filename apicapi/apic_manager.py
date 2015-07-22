@@ -455,14 +455,17 @@ class APICManager(object):
             return
 
         with self.apic.transaction(transaction) as trs:
-            self.apic.vmmDomP.create(vmm_name, enfPref="sw", mode="ovs",
-                                     mcastAddr=multicast_addr, transaction=trs)
+            self.apic.vmmDomP.create(
+                vmm_name, enfPref="sw", mode="ovs",
+                mcastAddr=multicast_addr,
+                encapMode=("vlan" if vlan_ns_dn else "vxlan"),
+                transaction=trs)
             self.apic.vmmUsrAccP.create(vmm_name, vmm_name, usr=usr, pwd=pwd,
                                         transaction=trs)
             usracc_dn = self.apic.vmmUsrAccP.dn(vmm_name, vmm_name)
             self.apic.vmmCtrlrP.create(
                 vmm_name, vmm_name, scope="openstack",
-                rootContName="openstack", hostOrIp="192.168.65.154",
+                rootContName=vmm_name, hostOrIp="192.168.65.154",
                 mode="ovs", transaction=trs)
             self.apic.vmmRsAcc.create(vmm_name, vmm_name, tDn=usracc_dn,
                                       transaction=trs)
