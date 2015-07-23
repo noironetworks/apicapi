@@ -90,7 +90,8 @@ class ControllerMixin(object):
         self.pvt_key_file = tempfile.NamedTemporaryFile()
         pk = crypto.PKey()
         pk.generate_key(crypto.TYPE_RSA, 1024)
-        self.pvt_key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, pk))
+        self.pvt_key_file.write(
+            crypto.dump_privatekey(crypto.FILETYPE_PEM, pk))
         self.pvt_key_file.flush()
         self.certificate = crypto.X509()
         self.certificate.set_pubkey(pk)

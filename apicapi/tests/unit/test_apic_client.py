@@ -109,11 +109,11 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self.enable_signature_check()
         pk = self.create_pvt_key_file()
         self.mock_response_for_certificate_fetch(mocked.APIC_USR)
-        apic2 = apic.RestClient(self.log, mocked.APIC_SYSTEM_ID,
-                                mocked.APIC_HOSTS,
-                                usr=mocked.APIC_USR,
-                                cert_name=mocked.APIC_USR_CERT_NAME,
-                                private_key_file=pk)
+        apic.RestClient(self.log, mocked.APIC_SYSTEM_ID,
+                        mocked.APIC_HOSTS,
+                        usr=mocked.APIC_USR,
+                        cert_name=mocked.APIC_USR_CERT_NAME,
+                        private_key_file=pk)
 
     def test_query_not_logged_in(self):
         self.apic.authentication = None

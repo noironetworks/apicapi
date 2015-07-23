@@ -284,7 +284,8 @@ class ApicSession(object):
 
     """Manages a session with the APIC."""
 
-    def __init__(self, hosts, usr, pwd, ssl, verify=False, request_timeout=None,
+    def __init__(self, hosts, usr, pwd, ssl, verify=False,
+                 request_timeout=None,
                  cert_name=None, private_key_file=None,
                  sign_algo=None, sign_hash=None):
         protocol = 'https' if ssl else 'http'
@@ -525,11 +526,11 @@ class ApicSession(object):
         signedDigest = crypto.sign(self.private_key, payLoad, self.sign_hash)
         signature = base64.b64encode(signedDigest)
         kwargs['cookies'] = {
-            'APIC-Request-Signature' :  signature,
-            'APIC-Certificate-Algorithm' : self.sign_algo,
-            'APIC-Certificate-Fingerprint' : 'fingerprint',
-            'APIC-Certificate-DN' : self._get_cert_dn(self.username,
-                                                      self.cert_name)}
+            'APIC-Request-Signature': signature,
+            'APIC-Certificate-Algorithm': self.sign_algo,
+            'APIC-Certificate-Fingerprint': 'fingerprint',
+            'APIC-Certificate-DN': self._get_cert_dn(self.username,
+                                                     self.cert_name)}
 
     def _is_cert_auth(self):
         return not self.password and self.cert_name and self.private_key
@@ -571,7 +572,7 @@ class ApicSession(object):
             with open(private_key_file) as key_file:
                 private_key = crypto.load_privatekey(crypto.FILETYPE_PEM,
                                                      key_file.read())
-        except Exception, e:
+        except Exception as e:
             LOG.error("Failed to load private key from file %s: %s" %
                       (private_key_file, e))
             raise
@@ -588,12 +589,12 @@ class ApicSession(object):
             raise cexc.ApicHostNoResponse(url=url)
 
         if response.status_code != requests.codes.ok:
-            attributes = response.json().get('imdata')[0]['error']['attributes']
+            attr = response.json().get('imdata')[0]['error']['attributes']
             raise cexc.ApicResponseNotOk(request=url,
                                          status=response.status_code,
                                          reason=response.reason,
-                                         err_text=attributes['text'],
-                                         err_code=attributes['code'])
+                                         err_text=attr['text'],
+                                         err_code=attr['code'])
 
     def refresh(self):
         """Called when a session has timed out or almost timed out."""
@@ -810,7 +811,8 @@ class RestClient(ApicSession):
         LOG = log.getLogger(__name__)
         super(RestClient, self).__init__(hosts, usr, pwd, ssl, verify,
                                          request_timeout, cert_name,
-                                         private_key_file, sign_algo, sign_hash)
+                                         private_key_file, sign_algo,
+                                         sign_hash)
         ManagedObjectClass.scope = '_' + system_id + '_'
         self.dn_manager = DNManager()
         self.renew_names = renew_names

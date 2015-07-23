@@ -160,15 +160,17 @@ def valid_name_strategy(key, value):
     if value not in valid:
         util.re("Allowed values: %s" % str(valid))
 
+
 def valid_file(key, value):
     if value is None:
         return
     try:
-        with open(value) as f:
+        with open(value):
             pass
-    except Exception, e:
+    except Exception as e:
         util = ConfigValidator.RaiseUtils(value, key)
         util.re("Bad file-name: %s: %s" % (value, e))
+
 
 class ConfigValidator(object):
     """Configuration validator for APICAPI.
