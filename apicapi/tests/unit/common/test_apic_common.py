@@ -24,7 +24,10 @@ from OpenSSL import crypto
 import requests
 import tempfile
 
-from oslo.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 
 from apicapi import apic_client as apic
 from apicapi import apic_mapper as apic_mapper
@@ -304,7 +307,7 @@ class DbModelMixin(object):
 
     def set_up_mocks(self):
         self.mocked_session = mock.Mock()
-        get_session = mock.patch('apicapi.db.api.get_session').start()
+        get_session = mock.patch('apicapi.tests.db.api.get_session').start()
         get_session.return_value = self.mocked_session
 
     def mock_db_query_all_return(self, value):

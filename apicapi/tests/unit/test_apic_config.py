@@ -38,7 +38,7 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
 
     def test_validate_apic_model(self):
         # Valid path
-        self._validate('apic_model', 'apicapi.db.apic_model')
+        self._validate('apic_model', 'apicapi.tests.db.apic_model')
         # Invalid path
         self.assertRaises(
             exc.InvalidConfig, self._validate, 'apic_model',
@@ -75,7 +75,7 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
             exc.InvalidConfig, self._validate, 'apic_app_profile_name', '1$$2')
 
     def test_validate(self):
-        self.override_config('apic_model', 'apicapi.db.apic_model',
+        self.override_config('apic_model', 'apicapi.tests.db.apic_model',
                              'ml2_cisco_apic')
         supported = ['apic_model', 'mcast_ranges', 'apic_app_profile_name']
         self.validator.validate(self.apic_config, *supported)
@@ -95,7 +95,7 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
     def test_validate_apic_names(self):
         valid = 'valid'
         not_valid = ''
-        self.override_config('apic_model', 'apicapi.db.apic_model',
+        self.override_config('apic_model', 'apicapi.tests.db.apic_model',
                              'ml2_cisco_apic')
         configurations = [
             'apic_multicast_ns_name',

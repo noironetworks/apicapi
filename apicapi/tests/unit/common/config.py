@@ -13,8 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
-
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 
 DEFAULT_ROOT_HELPER = ('sudo /usr/local/bin/neutron-rootwrap '
                        '/etc/neutron/rootwrap.conf')

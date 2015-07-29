@@ -21,7 +21,7 @@ from webob import exc as wexc
 
 from apicapi import apic_manager
 from apicapi import config
-from apicapi.db import apic_model
+from apicapi.tests.db import apic_model
 from apicapi import exceptions as cexc
 from apicapi.tests import base
 from apicapi.tests.unit.common import test_apic_common as mocked
@@ -51,7 +51,7 @@ class TestCiscoApicManager(base.BaseTestCase,
                    'APICNameMapper.app_profile').start()
         self.apic_config._conf.register_opts(
             config.apic_opts, self.apic_config._group.name)
-        self.override_config('apic_model', 'apicapi.db.apic_model',
+        self.override_config('apic_model', 'apicapi.tests.db.apic_model',
                              'ml2_cisco_apic')
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
