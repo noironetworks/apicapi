@@ -91,7 +91,7 @@ class ApicDbModel(object):
         return self.session.query().filter_by(swid=swid).distinct()
 
     def get_ports_for_switch_module(self, swid, module):
-        return self.session.query().filter_by(swid=swid, 
+        return self.session.query().filter_by(swid=swid,
                                               module=module).distinct()
 
     def get_switch_and_port_for_host(self, host):

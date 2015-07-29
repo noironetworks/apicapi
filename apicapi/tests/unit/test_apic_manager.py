@@ -12,18 +12,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-#
-# @author: Henry Gessau, Cisco Systems
-# @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
 
 import mock
 from webob import exc as wexc
 
 from apicapi import apic_manager
 from apicapi import config
-from apicapi.tests.db import apic_model
 from apicapi import exceptions as cexc
 from apicapi.tests import base
+from apicapi.tests.db import apic_model
 from apicapi.tests.unit.common import test_apic_common as mocked
 
 

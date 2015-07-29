@@ -12,10 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-#
-# @author: Henry Gessau, Cisco Systems
-# @author: Ivar Lazzaro (ivar-lazzaro), Cisco Systems Inc.
-# @author: Amit Bose (amibose@cisco.com), Cisco Systems Inc.
 
 import mock
 import requests
