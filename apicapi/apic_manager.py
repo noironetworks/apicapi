@@ -450,10 +450,12 @@ class APICManager(object):
             return
 
         with self.apic.transaction(transaction) as trs:
+            # TODO (amit): Starting with APIC 1.2 we need to also send
+            # 'encapMode' in create() like this:
+            # (..., encapMode=("vlan" if vlan_ns_dn else "vxlan"), ...)
             self.apic.vmmDomP.create(
                 vmm_name, enfPref="sw", mode="ovs",
                 mcastAddr=multicast_addr,
-                encapMode=("vlan" if vlan_ns_dn else "vxlan"),
                 transaction=trs)
             self.apic.vmmUsrAccP.create(vmm_name, vmm_name, usr=usr, pwd=pwd,
                                         transaction=trs)
