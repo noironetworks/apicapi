@@ -116,6 +116,8 @@ class APICNameMapper(object):
                         max_name_length = MAX_APIC_NAME_LENGTH - len(id_suffix)
                         result = truncate(name, max_name_length) + id_suffix
                 result = truncate(result, MAX_APIC_NAME_LENGTH)
+                # Remove forbidden whitespaces
+                result = result.replace(' ', '')
                 inst.db.update_apic_name(resource_id, name_type, result)
                 if prefix:
                     result = prefix + result
