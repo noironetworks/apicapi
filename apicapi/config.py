@@ -27,7 +27,13 @@ from apicapi import exceptions as exc
 
 apic_opts = [
     cfg.BoolOpt('enable_aci_routing', default=True),
-    cfg.BoolOpt('enable_arp_flooding', default=False),
+    cfg.BoolOpt('enable_optimized_dhcp', default=True),
+    cfg.BoolOpt('enable_optimized_metadata', default=True),
+    cfg.StrOpt('default_l2_unknown_unicast', default='proxy'),
+    cfg.BoolOpt('default_arp_flooding', default=False),
+    cfg.StrOpt('default_ep_move_detect', default='garp'),
+    cfg.BoolOpt('default_enforce_subnet_check', default=True),
+    cfg.StrOpt('default_subnet_scope', default='public'),
     cfg.BoolOpt('apic_provision_infra', default=True),
     cfg.BoolOpt('apic_provision_hostlinks', default=True),
     cfg.BoolOpt('apic_multiple_hostlinks', default=False),

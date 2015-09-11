@@ -73,7 +73,13 @@ class APICManager(object):
         config.ConfigValidator(log).validate(self.apic_config)
 
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
-        self.arp_flooding_enabled = self.apic_config.enable_arp_flooding
+        self.enable_optimized_dhcp = self.apic_config.enable_optimized_dhcp
+        self.enable_optimized_metadata = self.apic_config.enable_optimized_metadata
+        self.default_l2_unknown_unicast = self.apic_config.default_l2_unknown_unicast
+        self.default_arp_flooding = self.apic_config.default_arp_flooding
+        self.default_ep_move_detect = self.apic_config.default_ep_move_detect
+        self.default_enforce_subnet_check = self.apic_config.default_enforce_subnet_check
+        self.default_subnet_scope = self.apic_config.default_subnet_scope
         self.use_vmm = self.apic_config.use_vmm
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
@@ -553,12 +559,14 @@ class APICManager(object):
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.create(tenant_id, bd_id,
-                                  arpFlood=YES_NO[self.arp_flooding_enabled or
+                                  arpFlood=YES_NO[self.default_arp_flooding or
                                                   allow_broadcast],
                                   unkMacUcastAct=FLOOD_PROXY[
-                                      self.arp_flooding_enabled or
+                                      self.default_l2_unknown_unicast == 'flood' or
                                       allow_broadcast],
                                   unicastRoute=YES_NO[unicast_route],
+                                  epMoveDetectMode=self.default_ep_move_detect,
+                                  limitIpLearnToSubnets=self.default_enforce_subnet_check,
                                   transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
@@ -582,6 +590,7 @@ class APICManager(object):
         if self.aci_routing_enabled and gw_ip:
             with self.apic.transaction(transaction) as trs:
                 self.apic.fvSubnet.create(tenant_id, bd_id, gw_ip,
+                                          scope=self.default_subnet_scope,
                                           transaction=trs)
 
     def ensure_subnet_deleted_on_apic(self, tenant_id, bd_id, gw_ip,
