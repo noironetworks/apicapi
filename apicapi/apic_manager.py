@@ -566,7 +566,7 @@ class APICManager(object):
                                       allow_broadcast],
                                   unicastRoute=YES_NO[unicast_route],
                                   epMoveDetectMode=self.default_ep_move_detect,
-                                  limitIpLearnToSubnets=self.default_enforce_subnet_check,
+                                  limitIpLearnToSubnets=YES_NO[self.default_enforce_subnet_check],
                                   transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
