@@ -94,3 +94,14 @@ class ApicMultipleVlanRanges(ApicException):
 class ApicInvalidTransactionMultipleRoot(ApicException):
     """The switch and port for the specified host are not configured."""
     message = "An apic transaction cannot start from multiple root nodes"
+
+
+class ApicVmwareVmmDomainNotConfigured(ApicException):
+    """The VMware VMM domain doesn't exist in APIC."""
+    message = "VMware VMM Domain '%(name)s' does not exist in APIC"
+
+
+class ApicVmmTypeNotSupported(ApicException):
+    """The APIC VMM type is not supported at this moment."""
+    message = ("VMM type '%(type)s' is not supported. Currently we only "
+               "support either OpenStack or VMware.")

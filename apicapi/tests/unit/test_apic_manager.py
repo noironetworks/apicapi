@@ -207,6 +207,23 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assertRaises(cexc.ApicResponseNotOk,
                           self.mgr.ensure_infra_created_on_apic)
 
+    def test_good_vmware_vmm_domain_inside_ensure_infra_created_on_apic(self):
+        self.override_config('apic_vmm_type', 'VMware', 'ml2_cisco_apic')
+        self.override_config('apic_domain_name', 'good_name', 'ml2_cisco_apic')
+        self.mock_response_for_get('vmmDomP', dn="good_dn")
+
+    def test_nonexist_vmware_vmm_domain_inside_ensure_infra_created_on_apic(self):
+        self.override_config('apic_vmm_type', 'VMware', 'ml2_cisco_apic')
+        self.override_config('apic_domain_name', 'bad_name', 'ml2_cisco_apic')
+        self.mock_response_for_get('vmmDomP')
+        self.assertRaises(cexc.ApicVmwareVmmDomainNotConfigured,
+                          self.mgr.ensure_infra_created_on_apic)
+
+    def test_wrong_vmm_type_inside_ensure_infra_created_on_apic(self):
+        self.override_config('apic_vmm_type', 'wrong_type', 'ml2_cisco_apic')
+        self.assertRaises(cexc.ApicVmmTypeNotSupported,
+                          self.mgr.ensure_infra_created_on_apic)
+
     def test_ensure_context_enforced_new_ctx(self):
         self.mock_response_for_post(self.get_top_container(
             self.mgr.apic.fvCtx.mo))
