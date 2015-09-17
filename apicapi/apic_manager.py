@@ -57,6 +57,8 @@ LOG = None
 # VMM type supported
 APIC_VMM_TYPE_OPENSTACK = 'OpenStack'
 APIC_VMM_TYPE_VMWARE = 'VMware'
+APIC_VMM_TYPE_SUPPORTED = [APIC_VMM_TYPE_OPENSTACK, APIC_VMM_TYPE_VMWARE]
+
 
 class APICManager(object):
     """Class to manage APIC translations and workflow.
@@ -84,6 +86,14 @@ class APICManager(object):
         self.default_enforce_subnet_check = self.apic_config.default_enforce_subnet_check
         self.default_subnet_scope = self.apic_config.default_subnet_scope
         self.use_vmm = self.apic_config.use_vmm
+
+        if APIC_VMM_TYPE_OPENSTACK.lower() == self.apic_config.apic_vmm_type.lower():
+            self.apic_vmm_type = APIC_VMM_TYPE_OPENSTACK
+        elif APIC_VMM_TYPE_VMWARE.lower() == self.apic_config.apic_vmm_type.lower():
+            self.apic_vmm_type = APIC_VMM_TYPE_VMWARE
+        else:
+            self.apic_vmm_type = self.apic_config.apic_vmm_type
+
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
         self.multiple_hostlinks = self.apic_config.apic_multiple_hostlinks
@@ -125,7 +135,7 @@ class APICManager(object):
 
         self.phys_domain_dn = self.apic.physDomP.dn(
             self.apic_config.apic_domain_name)
-        self.vmm_domain_dn = self.apic.vmmDomP.dn(self.apic_config.apic_vmm_type,
+        self.vmm_domain_dn = self.apic.vmmDomP.dn(self.apic_vmm_type,
                                                   self.apic_config.apic_domain_name)
         self.domain_dn = (self.vmm_domain_dn if self.use_vmm else
                           self.phys_domain_dn)
@@ -179,24 +189,23 @@ class APICManager(object):
         else:
             # Create VMM domain
             vmm_name = self.apic_config.apic_domain_name
-            vmm_type = self.apic_config.apic_vmm_type
-            if APIC_VMM_TYPE_OPENSTACK == vmm_type:
+            if APIC_VMM_TYPE_OPENSTACK == self.apic_vmm_type:
                 self.ensure_vmm_domain_created_on_apic(
-                    vmm_type, vmm_name, self.apic_config.openstack_user,
+                    APIC_VMM_TYPE_OPENSTACK, vmm_name, self.apic_config.openstack_user,
                     self.apic_config.openstack_password,
                     self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
                 # Create Multicast namespace for VMM
                 mcast_name = self.apic_config.apic_multicast_ns_name
                 mcast_range = self.mcast_ranges[0]
                 (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-                self.ensure_mcast_ns_created_on_apic(vmm_type, vmm_name, mcast_name,
+                self.ensure_mcast_ns_created_on_apic(APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
                                                      mcast_min, mcast_max)
-            elif APIC_VMM_TYPE_VMWARE == vmm_type:
-                vmm_dom = self.apic.vmmDomP.get(vmm_type, vmm_name)
+            elif APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
+                vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
                 if vmm_dom is None:
                     raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
             else:
-                raise cexc.ApicVmmTypeNotSupported(type=vmm_type)
+                raise cexc.ApicVmmTypeNotSupported(type=self.apic_vmm_type, list=APIC_VMM_TYPE_SUPPORTED)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile

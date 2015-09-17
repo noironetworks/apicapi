@@ -104,4 +104,4 @@ class ApicVmwareVmmDomainNotConfigured(ApicException):
 class ApicVmmTypeNotSupported(ApicException):
     """The APIC VMM type is not supported at this moment."""
     message = ("VMM type '%(type)s' is not supported. Currently we only "
-               "support either OpenStack or VMware.")
+               "support '%(list)s'.")
