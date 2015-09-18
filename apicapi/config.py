@@ -51,7 +51,7 @@ apic_opts = [
                default='openstack_sw_pg',
                help=("Name for the switch policy group to be used for "
                      "Openstack")),
-    cfg.ListOpt('mcast_ranges', default=['225.1.1.1:225.1.1.128'],
+    cfg.ListOpt('mcast_ranges', default=['225.1.1.1:225.1.255.255'],
                 help=("Comma-separated list of "
                       "<mcast_addr_min>:<mcast_addr_max> tuples enumerating "
                       "ranges of Multicast addresses.")),
