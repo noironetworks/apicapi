@@ -54,6 +54,11 @@ MAX_APIC_SYSID_LEN = 16
 
 LOG = None
 
+# VMM type supported
+APIC_VMM_TYPE_OPENSTACK = 'OpenStack'
+APIC_VMM_TYPE_VMWARE = 'VMware'
+APIC_VMM_TYPES_SUPPORTED = [APIC_VMM_TYPE_OPENSTACK, APIC_VMM_TYPE_VMWARE]
+
 
 class APICManager(object):
     """Class to manage APIC translations and workflow.
@@ -81,6 +86,14 @@ class APICManager(object):
         self.default_enforce_subnet_check = self.apic_config.default_enforce_subnet_check
         self.default_subnet_scope = self.apic_config.default_subnet_scope
         self.use_vmm = self.apic_config.use_vmm
+
+        if APIC_VMM_TYPE_OPENSTACK.lower() == self.apic_config.apic_vmm_type.lower():
+            self.apic_vmm_type = APIC_VMM_TYPE_OPENSTACK
+        elif APIC_VMM_TYPE_VMWARE.lower() == self.apic_config.apic_vmm_type.lower():
+            self.apic_vmm_type = APIC_VMM_TYPE_VMWARE
+        else:
+            self.apic_vmm_type = self.apic_config.apic_vmm_type
+
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
         self.multiple_hostlinks = self.apic_config.apic_multiple_hostlinks
@@ -122,8 +135,8 @@ class APICManager(object):
 
         self.phys_domain_dn = self.apic.physDomP.dn(
             self.apic_config.apic_domain_name)
-        self.vmm_domain_dn = self.apic.vmmDomP.dn(
-            self.apic_config.apic_domain_name)
+        self.vmm_domain_dn = self.apic.vmmDomP.dn(self.apic_vmm_type,
+                                                  self.apic_config.apic_domain_name)
         self.domain_dn = (self.vmm_domain_dn if self.use_vmm else
                           self.phys_domain_dn)
         self.entity_profile_dn = None
@@ -176,16 +189,23 @@ class APICManager(object):
         else:
             # Create VMM domain
             vmm_name = self.apic_config.apic_domain_name
-            self.ensure_vmm_domain_created_on_apic(
-                vmm_name, self.apic_config.openstack_user,
-                self.apic_config.openstack_password,
-                self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
-            # Create Multicast namespace for VMM
-            mcast_name = self.apic_config.apic_multicast_ns_name
-            mcast_range = self.mcast_ranges[0]
-            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-            self.ensure_mcast_ns_created_on_apic(vmm_name, mcast_name,
-                                                 mcast_min, mcast_max)
+            if APIC_VMM_TYPE_OPENSTACK == self.apic_vmm_type:
+                self.ensure_vmm_domain_created_on_apic(
+                    APIC_VMM_TYPE_OPENSTACK, vmm_name, self.apic_config.openstack_user,
+                    self.apic_config.openstack_password,
+                    self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
+                # Create Multicast namespace for VMM
+                mcast_name = self.apic_config.apic_multicast_ns_name
+                mcast_range = self.mcast_ranges[0]
+                (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
+                self.ensure_mcast_ns_created_on_apic(APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
+                                                     mcast_min, mcast_max)
+            elif APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
+                vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
+                if vmm_dom is None:
+                    raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
+            else:
+                raise cexc.ApicVmmTypeNotSupported(type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
@@ -444,7 +464,7 @@ class APICManager(object):
                 self.apic.infraRsVlanNs__phys.create(
                     phys_name, tDn=vlan_ns_dn, transaction=trs)
 
-    def ensure_vmm_domain_created_on_apic(self, vmm_name, usr, pwd,
+    def ensure_vmm_domain_created_on_apic(self, vmm_type, vmm_name, usr, pwd,
                                           multicast_addr, vlan_ns_dn=None,
                                           transaction=None):
         """Create vmm domain.
@@ -460,21 +480,21 @@ class APICManager(object):
             # 'encapMode' in create() like this:
             # (..., encapMode=("vlan" if vlan_ns_dn else "vxlan"), ...)
             self.apic.vmmDomP.create(
-                vmm_name, enfPref="sw", mode="ovs",
+                vmm_type, vmm_name, enfPref="sw", mode="ovs",
                 mcastAddr=multicast_addr,
                 transaction=trs)
-            self.apic.vmmUsrAccP.create(vmm_name, vmm_name, usr=usr, pwd=pwd,
+            self.apic.vmmUsrAccP.create(vmm_type, vmm_name, vmm_name, usr=usr, pwd=pwd,
                                         transaction=trs)
-            usracc_dn = self.apic.vmmUsrAccP.dn(vmm_name, vmm_name)
+            usracc_dn = self.apic.vmmUsrAccP.dn(vmm_type, vmm_name, vmm_name)
             self.apic.vmmCtrlrP.create(
-                vmm_name, vmm_name, scope="openstack",
+                vmm_type, vmm_name, vmm_name, scope="openstack",
                 rootContName=vmm_name, hostOrIp="192.168.65.154",
                 mode="ovs", transaction=trs)
-            self.apic.vmmRsAcc.create(vmm_name, vmm_name, tDn=usracc_dn,
+            self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name, tDn=usracc_dn,
                                       transaction=trs)
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
-                    vmm_name, tDn=vlan_ns_dn, transaction=trs)
+                    vmm_type, vmm_name, tDn=vlan_ns_dn, transaction=trs)
 
     def ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
                                        transaction=None):
@@ -497,7 +517,7 @@ class APICManager(object):
                                                     **ns_kw_args)
         return self.apic.fvnsVlanInstP.dn(*ns_args)
 
-    def ensure_mcast_ns_created_on_apic(self, vmm_name,
+    def ensure_mcast_ns_created_on_apic(self, vmm_type, vmm_name,
                                         name, mcast_min, mcast_max,
                                         transaction=None):
         """Creates a Multicast namespace with the given vni range."""
@@ -515,7 +535,7 @@ class APICManager(object):
                 self.apic.fvnsMcastAddrBlk.create(*ns_blk_args,
                                                   transaction=trs,
                                                   **ns_kw_args)
-            self.apic.vmmRsDomMcastAddrNs.create(vmm_name, tDn=dn)
+            self.apic.vmmRsDomMcastAddrNs.create(vmm_type, vmm_name, tDn=dn)
         return dn
 
     def ensure_bgp_pod_policy_created_on_apic(self, bgp_pol_name='default',

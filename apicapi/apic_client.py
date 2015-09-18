@@ -185,7 +185,7 @@ class ManagedObjectClass(object):
         'fabricPathEp': ManagedObjectName('fabricPathEpCont', 'pathep-%s',
                                           False),
         'fabricNode': ManagedObjectName('fabricPod', 'node-%s', False),
-        'vmmProvP': ManagedObjectName(None, 'vmmp-OpenStack', False),
+        'vmmProvP': ManagedObjectName(None, 'vmmp-%s', False),
         'vmmDomP': ManagedObjectName('vmmProvP', 'dom-%s'),
         'vmmUsrAccP': ManagedObjectName('vmmDomP', 'usracc-%s'),
         'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrlr-%s'),

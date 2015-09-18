@@ -42,6 +42,10 @@ apic_opts = [
     cfg.StrOpt('apic_model',
                default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
     cfg.BoolOpt('use_vmm', default=False),
+    cfg.StrOpt('apic_vmm_type',
+               default='OpenStack',
+               help=("The vmm type of choice. Currently we only support "
+                     "either OpenStack or VMware")),
     cfg.StrOpt('apic_multicast_ns_name',
                default='${apic_system_id}_mcast_ns',
                help=("Name for the multicast namespace to be used for "
@@ -204,6 +208,7 @@ class ConfigValidator(object):
         'apic_lacp_profile': [valid_apic_name],
         'apic_vlan_range': [valid_range],
         'private_key_file': [valid_file],
+        'apic_vmm_type': [valid_apic_name],
     }
 
     class RaiseUtils(object):
