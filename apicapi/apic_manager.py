@@ -57,7 +57,7 @@ LOG = None
 # VMM type supported
 APIC_VMM_TYPE_OPENSTACK = 'OpenStack'
 APIC_VMM_TYPE_VMWARE = 'VMware'
-APIC_VMM_TYPE_SUPPORTED = [APIC_VMM_TYPE_OPENSTACK, APIC_VMM_TYPE_VMWARE]
+APIC_VMM_TYPES_SUPPORTED = [APIC_VMM_TYPE_OPENSTACK, APIC_VMM_TYPE_VMWARE]
 
 
 class APICManager(object):
@@ -205,7 +205,7 @@ class APICManager(object):
                 if vmm_dom is None:
                     raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
             else:
-                raise cexc.ApicVmmTypeNotSupported(type=self.apic_vmm_type, list=APIC_VMM_TYPE_SUPPORTED)
+                raise cexc.ApicVmmTypeNotSupported(type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
