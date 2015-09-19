@@ -1004,12 +1004,13 @@ class APICManager(object):
         # TODO(mandeep): delete the right elements
 
     def create_router(self, router_id, owner=TENANT_COMMON,
-                      context=CONTEXT_SHARED, transaction=None):
-
+                      context=CONTEXT_SHARED, transaction=None,
+                      ctx_owner=None):
+        ctx_owner = ctx_owner or owner
         with self.apic.transaction(transaction) as trs:
             self.get_router_contract(router_id, owner=owner,
                                      transaction=trs)
-            self.ensure_context_enforced(owner, context, transaction=trs)
+            self.ensure_context_enforced(ctx_owner, context, transaction=trs)
 
     def enable_router(self, router_id, owner=TENANT_COMMON, suuid=CP_SUBJ,
                       fuuid=CP_FILTER, transaction=None):
