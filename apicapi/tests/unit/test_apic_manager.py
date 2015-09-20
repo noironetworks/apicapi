@@ -215,7 +215,8 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.mock_response_for_get('vmmDomP', dn="good_dn")
         self.mgr.ensure_infra_created_on_apic()
 
-    def test_nonexist_vmware_vmm_domain_inside_ensure_infra_created_on_apic(self):
+    def test_nonexist_vmware_vmm_domain_inside_ensure_infra_created_on_apic(
+            self):
         self.mgr.apic_vmm_type = 'VMware'
         self.override_config('apic_domain_name', 'bad_name', 'ml2_cisco_apic')
         self.mock_response_for_get('vmmDomP')

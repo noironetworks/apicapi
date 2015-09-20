@@ -79,17 +79,22 @@ class APICManager(object):
 
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.enable_optimized_dhcp = self.apic_config.enable_optimized_dhcp
-        self.enable_optimized_metadata = self.apic_config.enable_optimized_metadata
-        self.default_l2_unknown_unicast = self.apic_config.default_l2_unknown_unicast
+        self.enable_optimized_metadata = (
+            self.apic_config.enable_optimized_metadata)
+        self.default_l2_unknown_unicast = (
+            self.apic_config.default_l2_unknown_unicast)
         self.default_arp_flooding = self.apic_config.default_arp_flooding
         self.default_ep_move_detect = self.apic_config.default_ep_move_detect
-        self.default_enforce_subnet_check = self.apic_config.default_enforce_subnet_check
+        self.default_enforce_subnet_check = (
+            self.apic_config.default_enforce_subnet_check)
         self.default_subnet_scope = self.apic_config.default_subnet_scope
         self.use_vmm = self.apic_config.use_vmm
 
-        if APIC_VMM_TYPE_OPENSTACK.lower() == self.apic_config.apic_vmm_type.lower():
+        if (APIC_VMM_TYPE_OPENSTACK.lower() ==
+                self.apic_config.apic_vmm_type.lower()):
             self.apic_vmm_type = APIC_VMM_TYPE_OPENSTACK
-        elif APIC_VMM_TYPE_VMWARE.lower() == self.apic_config.apic_vmm_type.lower():
+        elif (APIC_VMM_TYPE_VMWARE.lower() ==
+              self.apic_config.apic_vmm_type.lower()):
             self.apic_vmm_type = APIC_VMM_TYPE_VMWARE
         else:
             self.apic_vmm_type = self.apic_config.apic_vmm_type
@@ -135,8 +140,8 @@ class APICManager(object):
 
         self.phys_domain_dn = self.apic.physDomP.dn(
             self.apic_config.apic_domain_name)
-        self.vmm_domain_dn = self.apic.vmmDomP.dn(self.apic_vmm_type,
-                                                  self.apic_config.apic_domain_name)
+        self.vmm_domain_dn = self.apic.vmmDomP.dn(
+            self.apic_vmm_type, self.apic_config.apic_domain_name)
         self.domain_dn = (self.vmm_domain_dn if self.use_vmm else
                           self.phys_domain_dn)
         self.entity_profile_dn = None
@@ -191,21 +196,24 @@ class APICManager(object):
             vmm_name = self.apic_config.apic_domain_name
             if APIC_VMM_TYPE_OPENSTACK == self.apic_vmm_type:
                 self.ensure_vmm_domain_created_on_apic(
-                    APIC_VMM_TYPE_OPENSTACK, vmm_name, self.apic_config.openstack_user,
+                    APIC_VMM_TYPE_OPENSTACK, vmm_name,
+                    self.apic_config.openstack_user,
                     self.apic_config.openstack_password,
                     self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
                 # Create Multicast namespace for VMM
                 mcast_name = self.apic_config.apic_multicast_ns_name
                 mcast_range = self.mcast_ranges[0]
                 (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-                self.ensure_mcast_ns_created_on_apic(APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
-                                                     mcast_min, mcast_max)
+                self.ensure_mcast_ns_created_on_apic(
+                    APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
+                    mcast_min, mcast_max)
             elif APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
                 vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
                 if vmm_dom is None:
                     raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
             else:
-                raise cexc.ApicVmmTypeNotSupported(type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
+                raise cexc.ApicVmmTypeNotSupported(
+                    type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
@@ -483,15 +491,15 @@ class APICManager(object):
                 vmm_type, vmm_name, enfPref="sw", mode="ovs",
                 mcastAddr=multicast_addr,
                 transaction=trs)
-            self.apic.vmmUsrAccP.create(vmm_type, vmm_name, vmm_name, usr=usr, pwd=pwd,
-                                        transaction=trs)
+            self.apic.vmmUsrAccP.create(vmm_type, vmm_name, vmm_name, usr=usr,
+                                        pwd=pwd, transaction=trs)
             usracc_dn = self.apic.vmmUsrAccP.dn(vmm_type, vmm_name, vmm_name)
             self.apic.vmmCtrlrP.create(
                 vmm_type, vmm_name, vmm_name, scope="openstack",
                 rootContName=vmm_name, hostOrIp="192.168.65.154",
                 mode="ovs", transaction=trs)
-            self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name, tDn=usracc_dn,
-                                      transaction=trs)
+            self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
+                                      tDn=usracc_dn, transaction=trs)
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_type, vmm_name, tDn=vlan_ns_dn, transaction=trs)
@@ -578,16 +586,18 @@ class APICManager(object):
         """Creates a Bridge Domain on the APIC."""
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
-            self.apic.fvBD.create(tenant_id, bd_id,
-                                  arpFlood=YES_NO[self.default_arp_flooding or
-                                                  allow_broadcast],
-                                  unkMacUcastAct=FLOOD_PROXY[
-                                      self.default_l2_unknown_unicast == 'flood' or
-                                      allow_broadcast],
-                                  unicastRoute=YES_NO[unicast_route],
-                                  epMoveDetectMode=self.default_ep_move_detect,
-                                  limitIpLearnToSubnets=YES_NO[self.default_enforce_subnet_check],
-                                  transaction=trs)
+            self.apic.fvBD.create(
+                tenant_id, bd_id,
+                arpFlood=YES_NO[self.default_arp_flooding or
+                                allow_broadcast],
+                unkMacUcastAct=FLOOD_PROXY[
+                    self.default_l2_unknown_unicast == 'flood' or
+                    allow_broadcast],
+                unicastRoute=YES_NO[unicast_route],
+                epMoveDetectMode=self.default_ep_move_detect,
+                limitIpLearnToSubnets=YES_NO[
+                    self.default_enforce_subnet_check],
+                transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
                 self.apic.fvRsCtx.create(
@@ -621,7 +631,8 @@ class APICManager(object):
                                           transaction=trs)
 
     def ensure_epg_created(self, tenant_id, network_id,
-                           bd_name=None, bd_owner=None, transaction=None):
+                           bd_name=None, bd_owner=None, transaction=None,
+                           app_profile_name=None):
         """Creates an End Point Group on the APIC.
 
         Create a new EPG on the APIC for the network spcified. This information
@@ -630,10 +641,11 @@ class APICManager(object):
         """
         # Check if an EPG is already present for this network
         # Create a new EPG on the APIC
+        app_profile_name = app_profile_name or self.app_profile_name
         epg_uid = network_id
         bd_owner = bd_owner or tenant_id
         with self.apic.transaction(transaction) as trs:
-            self.apic.fvAEPg.create(tenant_id, self.app_profile_name, epg_uid,
+            self.apic.fvAEPg.create(tenant_id, app_profile_name, epg_uid,
                                     transaction=trs)
 
             # Add bd to EPG
@@ -644,21 +656,23 @@ class APICManager(object):
                 bd_name = bd_name or network_id
                 self.apic.fvBD.create(bd_owner, bd_name, transaction=trs)
             # create fvRsBd
-            self.apic.fvRsBd.create(tenant_id, self.app_profile_name, epg_uid,
+            self.apic.fvRsBd.create(tenant_id, app_profile_name, epg_uid,
                                     tnFvBDName=self.apic.fvBD.name(bd_name),
                                     transaction=trs)
 
             # Add EPG to domain
             self.apic.fvRsDomAtt.create(
-                tenant_id, self.app_profile_name, epg_uid, self.domain_dn,
+                tenant_id, app_profile_name, epg_uid, self.domain_dn,
                 transaction=trs)
         return epg_uid
 
-    def delete_epg_for_network(self, tenant_id, network_id, transaction=None):
+    def delete_epg_for_network(self, tenant_id, network_id, transaction=None,
+                               app_profile_name=None):
         """Deletes the EPG from the APIC and removes it from the DB."""
         # Delete this epg
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
-            self.apic.fvAEPg.delete(tenant_id, self.app_profile_name,
+            self.apic.fvAEPg.delete(tenant_id, app_profile_name,
                                     network_id, transaction=trs)
 
     def create_contract(self, contract_id, owner=TENANT_COMMON,
@@ -736,7 +750,7 @@ class APICManager(object):
 
     def set_contract_for_epg(self, tenant_id, epg_id,
                              contract_id, provider=False, contract_owner=None,
-                             transaction=None,):
+                             transaction=None, app_profile_name=None):
         """Set the contract for an EPG.
 
         By default EPGs are consumers of a contract.
@@ -745,42 +759,45 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             if provider:
                 self.apic.fvRsProv.create(
-                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    tenant_id, app_profile_name, epg_id, contract_id,
                     transaction=trs)
             else:
                 self.apic.fvRsCons.create(
-                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    tenant_id, app_profile_name, epg_id, contract_id,
                     transaction=trs)
 
     def unset_contract_for_epg(self, tenant_id, epg_id,
                                contract_id, provider=False,
-                               contract_owner=None, transaction=None):
-
+                               contract_owner=None, transaction=None,
+                               app_profile_name=None):
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
             if provider:
                 self.apic.fvRsProv.delete(
-                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    tenant_id, app_profile_name, epg_id, contract_id,
                     transaction=trs)
             else:
                 self.apic.fvRsCons.delete(
-                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    tenant_id, app_profile_name, epg_id, contract_id,
                     transaction=trs)
 
     def delete_contract_for_epg(self, tenant_id, epg_id,
-                                contract_id, provider=False, transaction=None):
+                                contract_id, provider=False, transaction=None,
+                                app_profile_name=None):
         """Delete the contract for an End Point Group.
 
         Check if the EPG was a provider and attempt to grab another contract
         consumer from the DB and set that as the new contract provider.
         """
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
             if provider:
                 self.apic.fvRsProv.delete(
-                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    tenant_id, app_profile_name, epg_id, contract_id,
                     transaction=trs)
             else:
                 self.apic.fvRsCons.delete(
-                    tenant_id, self.app_profile_name, epg_id, contract_id,
+                    tenant_id, app_profile_name, epg_id, contract_id,
                     transaction=trs)
 
     def get_router_contract(self, router_id, owner=TENANT_COMMON,
@@ -852,13 +869,15 @@ class APICManager(object):
         return encap
 
     def ensure_path_binding_for_port(self, tenant_id, epg_id, encap,
-                                     switch, module, port, transaction=None):
+                                     switch, module, port, transaction=None,
+                                     app_profile_name=None):
         # Verify that it exists, or create it if required
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
             encap = self.get_static_binding_encap(encap)
             pdn = self.get_static_binding_pdn(switch, module, port)
             self.apic.fvRsPathAtt.create(
-                tenant_id, self.app_profile_name, epg_id, pdn,
+                tenant_id, app_profile_name, epg_id, pdn,
                 encap=encap, mode="regular",
                 instrImedcy="immediate", transaction=trs)
 
@@ -876,14 +895,17 @@ class APICManager(object):
                                  module, port, transaction=trs)
 
     def delete_path(self, tenant_id, network_id, switch, module, port,
-                    transaction=None):
+                    transaction=None, app_profile_name=None):
+        app_profile_name = app_profile_name or self.app_profile_name
         pdn = self.get_static_binding_pdn(switch, module, port)
-        self.apic.fvRsPathAtt.delete(tenant_id, self.app_profile_name,
+        self.apic.fvRsPathAtt.delete(tenant_id, app_profile_name,
                                      network_id, pdn, transaction=transaction)
 
     def ensure_static_endpoint_created(self, tenant_id, epg_id, host_id,
                                        mac_address, ip_address, encap,
-                                       transaction=None):
+                                       transaction=None,
+                                       app_profile_name=None):
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
             # Get attached switch and port for this host
             host_config = self.db.get_switch_and_port_for_host(host_id)
@@ -892,19 +914,21 @@ class APICManager(object):
 
             encap = self.get_static_binding_encap(encap)
             self.apic.fvStCEp.create(
-                tenant_id, self.app_profile_name, epg_id,
+                tenant_id, app_profile_name, epg_id,
                 mac_address, 'tep', encap=encap, ip=ip_address,
                 transaction=trs)
             for switch, module, port in host_config:
                 pdn = self.get_static_binding_pdn(switch, module, port)
                 self.apic.fvRsStCEpToPathEp.create(
-                    tenant_id, self.app_profile_name, epg_id,
+                    tenant_id, app_profile_name, epg_id,
                     mac_address, 'tep', pdn, transaction=trs)
 
     def ensure_static_endpoint_deleted(self, tenant_id, epg_id, mac_address,
-                                       transaction=None):
+                                       transaction=None,
+                                       app_profile_name=None):
+        app_profile_name = app_profile_name or self.app_profile_name
         self.apic.fvStCEp.delete(
-            tenant_id, self.app_profile_name, epg_id,
+            tenant_id, app_profile_name, epg_id,
             mac_address, 'tep', transaction=transaction)
 
     def add_hostlink(self, host, ifname, ifmac, switch, module, port,
@@ -1234,27 +1258,31 @@ class APICManager(object):
 
     def associate_external_epg_to_nat_epg(
             self, owner, ext_out_id, external_epg, target_epg,
-            target_owner=TENANT_COMMON, transaction=None):
-        nat_epg_dn = self.apic.fvAEPg.dn(target_owner, self.app_profile_name,
+            target_owner=TENANT_COMMON, transaction=None,
+            app_profile_name=None):
+        app_profile_name = app_profile_name or self.app_profile_name
+        nat_epg_dn = self.apic.fvAEPg.dn(target_owner, app_profile_name,
                                          target_epg)
         self.apic.l3extRsInstPToNatMappingEPg.create(owner, ext_out_id,
             external_epg, tDn=nat_epg_dn, transaction=transaction)
 
     def ensure_nat_epg_contract_created(self, owner, nat_epg, nat_bd, nat_vrf,
-                                        contract, transaction=None):
+                                        contract, transaction=None,
+                                        app_profile_name=None):
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
             # create NAT ctx, bd and EPG
             self.ensure_context_enforced(owner, nat_vrf, transaction=trs)
             self.ensure_bd_created_on_apic(owner, nat_bd, ctx_owner=owner,
                                            ctx_name=nat_vrf, transaction=trs)
-            self.apic.fvAEPg.create(owner, self.app_profile_name, nat_epg,
+            self.apic.fvAEPg.create(owner, app_profile_name, nat_epg,
                                     transaction=trs)
-            self.apic.fvRsBd.create(owner, self.app_profile_name, nat_epg,
+            self.apic.fvRsBd.create(owner, app_profile_name, nat_epg,
                                     tnFvBDName=nat_bd, transaction=trs)
-            self.apic.fvRsDomAtt.create(owner, self.app_profile_name, nat_epg,
+            self.apic.fvRsDomAtt.create(owner, app_profile_name, nat_epg,
                                         self.domain_dn, transaction=trs)
             # create allow-everything contract
-            filter_name = '%s-allow-all' % str(self.app_profile_name)
+            filter_name = '%s-allow-all' % str(app_profile_name)
             self.create_tenant_filter(filter_name, owner, entry="allow-all",
                                       transaction=trs)
             self.manage_contract_subject_bi_filter(
