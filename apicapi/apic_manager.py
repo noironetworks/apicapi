@@ -839,11 +839,12 @@ class APICManager(object):
 
     def ensure_path_created_for_port(self, tenant_id, network_id,
                                      host_id, encap, bd_name=None,
-                                     transaction=None):
+                                     transaction=None, app_profile_name=None):
         """Create path attribute for an End Point Group."""
         with self.apic.transaction(transaction) as trs:
             eid = self.ensure_epg_created(tenant_id, network_id,
                                           bd_name=bd_name,
+                                          app_profile_name=app_profile_name,
                                           transaction=trs)
 
             # Get attached switch and port for this host
@@ -854,7 +855,7 @@ class APICManager(object):
             for switch, module, port in host_config:
                 self.ensure_path_binding_for_port(
                     tenant_id, eid, encap, switch, module, port,
-                    transaction=trs)
+                    transaction=trs, app_profile_name=app_profile_name)
 
     def get_static_binding_pdn(self, switch, module, port):
         pdn = PORT_DN_PATH % (switch, module, port)
@@ -882,7 +883,8 @@ class APICManager(object):
                 instrImedcy="immediate", transaction=trs)
 
     def ensure_path_deleted_for_port(self, tenant_id, network_id, host_id,
-                                     host_config=None, transaction=None):
+                                     host_config=None, transaction=None,
+                                     app_profile_name=None):
         with self.apic.transaction(transaction) as trs:
             host_config = host_config or self.db.get_switch_and_port_for_host(
                 host_id)
@@ -892,7 +894,8 @@ class APICManager(object):
                 return
             for switch, module, port in host_config:
                 self.delete_path(tenant_id, network_id, switch,
-                                 module, port, transaction=trs)
+                                 module, port, transaction=trs,
+                                 app_profile_name=app_profile_name)
 
     def delete_path(self, tenant_id, network_id, switch, module, port,
                     transaction=None, app_profile_name=None):
@@ -1050,11 +1053,12 @@ class APICManager(object):
 
     def add_router_interface(self, tenant_id, router_id,
                              network_id, context=CONTEXT_SHARED,
-                             transaction=None):
+                             transaction=None, app_profile_name=None):
         # Get contract and epg
         with self.apic.transaction(transaction) as trs:
             cid = 'contract-%s' % router_id.uid
             eid = self.ensure_epg_created(tenant_id, network_id,
+                                          app_profile_name=app_profile_name,
                                           transaction=trs)
 
             # Ensure that the router ctx exists
@@ -1066,26 +1070,32 @@ class APICManager(object):
                 transaction=trs)
             # set the EPG to provide this contract
             self.set_contract_for_epg(tenant_id, eid, cid, provider=True,
-                                      transaction=trs)
+                                      transaction=trs,
+                                      app_profile_name=app_profile_name)
 
             # set the EPG to consume this contract
             self.set_contract_for_epg(tenant_id, eid, cid, provider=False,
-                                      transaction=trs)
+                                      transaction=trs,
+                                      app_profile_name=app_profile_name)
 
     def remove_router_interface(self, tenant_id, router_id,
                                 network_id, context=CONTEXT_SHARED,
-                                transaction=None):
+                                transaction=None,
+                                app_profile_name=None):
         # Get contract and epg
         with self.apic.transaction(transaction) as trs:
             cid = 'contract-%s' % router_id.uid
             eid = self.ensure_epg_created(tenant_id, network_id,
-                                          transaction=trs)
+                                          transaction=trs,
+                                          app_profile_name=app_profile_name)
 
             # Delete contract for this epg
             self.delete_contract_for_epg(tenant_id, eid, cid, True,
-                                         transaction=trs)
+                                         transaction=trs,
+                                         app_profile_name=app_profile_name)
             self.delete_contract_for_epg(tenant_id, eid, cid, False,
-                                         transaction=trs)
+                                         transaction=trs,
+                                         app_profile_name=app_profile_name)
 
             # set the BDs' ctx to default
             bd_id = network_id
@@ -1290,15 +1300,18 @@ class APICManager(object):
 
             # NAT epg provides/consumes the specified contract
             self.set_contract_for_epg(owner, nat_epg, contract,
-                                      transaction=trs)
+                                      transaction=trs,
+                                      app_profile_name=app_profile_name)
             self.set_contract_for_epg(owner, nat_epg, contract, provider=True,
-                                      transaction=trs)
+                                      transaction=trs,
+                                      app_profile_name=app_profile_name)
 
     def ensure_nat_epg_deleted(self, owner, nat_epg, nat_bd, nat_vrf,
-                               transaction=None):
+                               transaction=None, app_profile_name=None):
         with self.apic.transaction(transaction) as trs:
             # delete NAT ctx, bd and EPG
-            self.delete_epg_for_network(owner, nat_epg, transaction=trs)
+            self.delete_epg_for_network(owner, nat_epg, transaction=trs,
+                                        app_profile_name=app_profile_name)
             self.delete_bd_on_apic(owner, nat_bd, transaction=trs)
             self.ensure_context_deleted(owner, nat_vrf, transaction=trs)
 
