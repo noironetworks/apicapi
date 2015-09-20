@@ -33,7 +33,6 @@ apic_opts = [
     cfg.BoolOpt('default_arp_flooding', default=False),
     cfg.StrOpt('default_ep_move_detect', default='garp'),
     cfg.BoolOpt('default_enforce_subnet_check', default=False),
-    cfg.BoolOpt('per_tenant_context', default=False),
     cfg.StrOpt('default_subnet_scope', default='public'),
     cfg.BoolOpt('apic_provision_infra', default=True),
     cfg.BoolOpt('apic_provision_hostlinks', default=True),
