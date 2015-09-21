@@ -1278,11 +1278,12 @@ class APICManager(object):
 
     def ensure_nat_epg_contract_created(self, owner, nat_epg, nat_bd, nat_vrf,
                                         contract, transaction=None,
-                                        app_profile_name=None):
+                                        app_profile_name=None, ctx_owner=None):
         app_profile_name = app_profile_name or self.app_profile_name
+        ctx_owner = ctx_owner or owner
         with self.apic.transaction(transaction) as trs:
             # create NAT ctx, bd and EPG
-            self.ensure_context_enforced(owner, nat_vrf, transaction=trs)
+            self.ensure_context_enforced(ctx_owner, nat_vrf, transaction=trs)
             self.ensure_bd_created_on_apic(owner, nat_bd, ctx_owner=owner,
                                            ctx_name=nat_vrf, transaction=trs)
             self.apic.fvAEPg.create(owner, app_profile_name, nat_epg,
