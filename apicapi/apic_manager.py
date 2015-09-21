@@ -756,6 +756,7 @@ class APICManager(object):
         By default EPGs are consumers of a contract.
         Set provider flag to True for the EPG to act as a provider.
         """
+        app_profile_name = app_profile_name or self.app_profile_name
         with self.apic.transaction(transaction) as trs:
             if provider:
                 self.apic.fvRsProv.create(
