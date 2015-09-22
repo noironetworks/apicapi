@@ -1034,11 +1034,9 @@ class APICManager(object):
     def create_router(self, router_id, owner=TENANT_COMMON,
                       context=CONTEXT_SHARED, transaction=None,
                       ctx_owner=None):
-        ctx_owner = ctx_owner or owner
         with self.apic.transaction(transaction) as trs:
             self.get_router_contract(router_id, owner=owner,
                                      transaction=trs)
-            self.ensure_context_enforced(ctx_owner, context, transaction=trs)
 
     def enable_router(self, router_id, owner=TENANT_COMMON, suuid=CP_SUBJ,
                       fuuid=CP_FILTER, transaction=None):
@@ -1058,25 +1056,15 @@ class APICManager(object):
         # Get contract and epg
         with self.apic.transaction(transaction) as trs:
             cid = 'contract-%s' % router_id.uid
-            eid = self.ensure_epg_created(tenant_id, network_id,
-                                          app_profile_name=app_profile_name,
-                                          transaction=trs)
 
-            # Ensure that the router ctx exists
-
-            # update corresponding BD's ctx to this router ctx
-            bd_id = network_id
-            self.apic.fvRsCtx.create(
-                tenant_id, bd_id, tnFvCtxName=self.apic.fvCtx.name(context),
-                transaction=trs)
             # set the EPG to provide this contract
-            self.set_contract_for_epg(tenant_id, eid, cid, provider=True,
-                                      transaction=trs,
+            self.set_contract_for_epg(tenant_id, network_id, cid,
+                                      provider=True, transaction=trs,
                                       app_profile_name=app_profile_name)
 
             # set the EPG to consume this contract
-            self.set_contract_for_epg(tenant_id, eid, cid, provider=False,
-                                      transaction=trs,
+            self.set_contract_for_epg(tenant_id, network_id, cid,
+                                      provider=False, transaction=trs,
                                       app_profile_name=app_profile_name)
 
     def remove_router_interface(self, tenant_id, router_id,
@@ -1086,23 +1074,14 @@ class APICManager(object):
         # Get contract and epg
         with self.apic.transaction(transaction) as trs:
             cid = 'contract-%s' % router_id.uid
-            eid = self.ensure_epg_created(tenant_id, network_id,
-                                          transaction=trs,
-                                          app_profile_name=app_profile_name)
 
             # Delete contract for this epg
-            self.delete_contract_for_epg(tenant_id, eid, cid, True,
+            self.delete_contract_for_epg(tenant_id, network_id, cid, True,
                                          transaction=trs,
                                          app_profile_name=app_profile_name)
-            self.delete_contract_for_epg(tenant_id, eid, cid, False,
+            self.delete_contract_for_epg(tenant_id, network_id, cid, False,
                                          transaction=trs,
                                          app_profile_name=app_profile_name)
-
-            # set the BDs' ctx to default
-            bd_id = network_id
-            self.apic.fvRsCtx.create(
-                tenant_id, bd_id, tnFvCtxName=self.apic.fvCtx.name(context),
-                transaction=trs)
 
     def delete_router(self, router_id, transaction=None):
         with self.apic.transaction(transaction) as trs:
