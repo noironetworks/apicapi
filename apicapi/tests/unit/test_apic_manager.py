@@ -569,3 +569,39 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_timeout_set(self):
         client = self.mgr.apic
         self.assertEqual(client.request_timeout, 10)
+
+    def test_grow_if_needed(self):
+        mapper = self.mgr._apic_mapper
+        test_values = set([('network', 'onename'),
+                           ('network', 'onename12345'),
+                           ('router', 'onename12345678'),
+                           ('router', 'onename123456789'),
+                           ('router', 'onename1234567890'),
+                           ])
+
+        def get_filtered_apic_names(neutron_type=None, apic_name=None):
+            return (neutron_type, apic_name) in test_values
+        mapper.db = mock.Mock()
+        mapper.db.get_filtered_apic_names = get_filtered_apic_names
+
+        test_id = '1234567890'
+        test_result = 'differentname'
+        # Unexisting name gets returned as is
+        self.assertEqual(
+            'differentname', mapper._grow_id_if_needed(test_id, 'network',
+                                                       test_result, start=5))
+
+        test_result = 'onename12345'
+        # One character is added to clashing name
+        self.assertEqual(
+            'onename123456', mapper._grow_id_if_needed(test_id, 'network',
+                                                       test_result, start=5))
+        # Clashing name of different type is returned as is
+        self.assertEqual(
+            'onename12345', mapper._grow_id_if_needed(test_id, 'router',
+                                                      test_result, start=5))
+        # Give up when the whole id is consumed
+        test_result = 'onename12345678'
+        self.assertEqual(
+            'onename1234567890', mapper._grow_id_if_needed(
+                test_id, 'router', test_result, start=8))

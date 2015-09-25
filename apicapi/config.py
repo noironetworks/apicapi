@@ -88,6 +88,9 @@ apic_opts = [
                help=("Algorithm used by APIC for signature verification")),
     cfg.StrOpt('signature_hash_type',
                help=("Hashing algorithm to use for calculating signature")),
+    cfg.IntOpt('min_id_suffix_size',
+               default=4,
+               help="Minimum number of ID characters used for suffix"),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"

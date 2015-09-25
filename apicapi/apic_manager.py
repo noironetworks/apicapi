@@ -146,9 +146,10 @@ class APICManager(object):
                           self.phys_domain_dn)
         self.entity_profile_dn = None
         name_mapping = self.apic_config.apic_name_mapping
+        min_suffix = self.apic_config.min_id_suffix_size
         self._apic_mapper = apic_mapper.APICNameMapper(
             self.db, log, keyclient, keystone_authtoken,
-            name_mapping)
+            name_mapping, min_suffix=min_suffix)
         self.apic_system_id = apic_system_id
         self.app_profile_name = self.apic_mapper.app_profile(
             None, self.apic_config.apic_app_profile_name)

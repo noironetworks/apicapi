@@ -68,13 +68,14 @@ def truncate(string, max_length):
 
 class APICNameMapper(object):
     def __init__(self, db, log, keyclient, keystone_authtoken,
-                 strategy=NAMING_STRATEGY_UUID):
+                 strategy=NAMING_STRATEGY_UUID, min_suffix=None):
         self.db = db
         self.strategy = strategy
         self.keystone = None
         self.keyclient = keyclient
         self.keystone_authtoken = keystone_authtoken
         self.tenants = {}
+        self.min_suffix = min_suffix if min_suffix is not None else 5
         global LOG
         LOG = log.getLogger(__name__)
 
@@ -105,7 +106,8 @@ class APICNameMapper(object):
                     LOG.warn(("Exception in looking up name %s"), name_type)
                     LOG.error(e.message)
 
-                result = re.sub(r"-+", "-", resource_id)
+                purged_id = re.sub(r"-+", "-", resource_id)
+                result = purged_id[:inst.min_suffix]
                 if name:
                     name = re.sub(r"-+", "-", name)
                     if inst.strategy == NAMING_STRATEGY_NAMES:
@@ -115,9 +117,15 @@ class APICNameMapper(object):
                         id_suffix = "_" + result
                         max_name_length = MAX_APIC_NAME_LENGTH - len(id_suffix)
                         result = truncate(name, max_name_length) + id_suffix
+
                 result = truncate(result, MAX_APIC_NAME_LENGTH)
                 # Remove forbidden whitespaces
                 result = result.replace(' ', '')
+                if inst.strategy == NAMING_STRATEGY_UUID:
+                    result = inst._grow_id_if_needed(
+                        purged_id, name_type, result, start=inst.min_suffix)
+                    if result.endswith('_'):
+                        result = result[:-1]
                 inst.db.update_apic_name(resource_id, name_type, result)
                 if prefix:
                     result = prefix + result
@@ -126,6 +134,26 @@ class APICNameMapper(object):
                                 func.__name__, prefix=prefix)
             return inner
         return wrap
+
+    def _grow_id_if_needed(self, resource_id, name_type, current_result,
+                           start=0):
+        result = current_result
+        try:
+            x = 0
+            while True:
+                if self.db.get_filtered_apic_names(neutron_type=name_type,
+                                                   apic_name=result):
+                    # This name overlaps, add more ID characters
+                    result += resource_id[start + x]
+                    x += 1
+                else:
+                    break
+        except AttributeError:
+            LOG.info("Current DB API doesn't support "
+                     "get_filtered_apic_names.")
+        except IndexError:
+            LOG.debug("Ran out of ID characters.")
+        return result
 
     @mapper(NAME_TYPE_TENANT)
     def tenant(self, context, tenant_id):
