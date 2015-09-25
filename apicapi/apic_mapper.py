@@ -118,18 +118,19 @@ class APICNameMapper(object):
                         max_name_length = MAX_APIC_NAME_LENGTH - len(id_suffix)
                         result = truncate(name, max_name_length) + id_suffix
 
-                result = truncate(result, MAX_APIC_NAME_LENGTH)
-                # Remove forbidden whitespaces
-                result = result.replace(' ', '')
-                if inst.strategy == NAMING_STRATEGY_UUID:
-                    result = inst._grow_id_if_needed(
-                        purged_id, name_type, result, start=inst.min_suffix)
-                    if result.endswith('_'):
-                        result = result[:-1]
-                inst.db.update_apic_name(resource_id, name_type, result)
-                if prefix:
-                    result = prefix + result
                     result = truncate(result, MAX_APIC_NAME_LENGTH)
+                    # Remove forbidden whitespaces
+                    result = result.replace(' ', '')
+                    if inst.strategy == NAMING_STRATEGY_UUID:
+                        result = inst._grow_id_if_needed(
+                            purged_id, name_type, result,
+                            start=inst.min_suffix)
+                    inst.db.update_apic_name(resource_id, name_type, result)
+                    if prefix:
+                        result = prefix + result
+                        result = truncate(result, MAX_APIC_NAME_LENGTH)
+                else:
+                    result = purged_id
                 return ApicName(result, resource_id, context, inst,
                                 func.__name__, prefix=prefix)
             return inner
@@ -138,11 +139,15 @@ class APICNameMapper(object):
     def _grow_id_if_needed(self, resource_id, name_type, current_result,
                            start=0):
         result = current_result
+        if result.endswith('_'):
+            result = result[:-1]
         try:
             x = 0
             while True:
                 if self.db.get_filtered_apic_names(neutron_type=name_type,
                                                    apic_name=result):
+                    if x == 0:
+                        result += '_'
                     # This name overlaps, add more ID characters
                     result += resource_id[start + x]
                     x += 1
