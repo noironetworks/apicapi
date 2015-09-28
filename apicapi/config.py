@@ -28,9 +28,9 @@ from apicapi import exceptions as exc
 apic_opts = [
     cfg.BoolOpt('enable_aci_routing', default=True),
     cfg.BoolOpt('enable_optimized_dhcp', default=False),
-    cfg.BoolOpt('enable_optimized_metadata', default=True),
+    cfg.BoolOpt('enable_optimized_metadata', default=False),
     cfg.StrOpt('default_l2_unknown_unicast', default='proxy'),
-    cfg.BoolOpt('default_arp_flooding', default=False),
+    cfg.BoolOpt('default_arp_flooding', default=True),
     cfg.StrOpt('default_ep_move_detect', default='garp'),
     cfg.BoolOpt('default_enforce_subnet_check', default=False),
     cfg.StrOpt('default_subnet_scope', default='public'),
@@ -38,10 +38,10 @@ apic_opts = [
     cfg.BoolOpt('apic_provision_hostlinks', default=True),
     cfg.BoolOpt('apic_multiple_hostlinks', default=False),
     cfg.BoolOpt('scope_names', default=True),
-    cfg.BoolOpt('renew_names', default=True),
+    cfg.BoolOpt('renew_names', default=False),
     cfg.StrOpt('apic_model',
                default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
-    cfg.BoolOpt('use_vmm', default=False),
+    cfg.BoolOpt('use_vmm', default=True),
     cfg.StrOpt('apic_vmm_type',
                default='OpenStack',
                help=("The vmm type of choice. Currently we only support "
@@ -55,7 +55,7 @@ apic_opts = [
                default='openstack_sw_pg',
                help=("Name for the switch policy group to be used for "
                      "Openstack")),
-    cfg.ListOpt('mcast_ranges', default=['225.1.1.1:225.1.255.255'],
+    cfg.ListOpt('mcast_ranges', default=['225.2.1.1:225.2.255.255'],
                 help=("Comma-separated list of "
                       "<mcast_addr_min>:<mcast_addr_max> tuples enumerating "
                       "ranges of Multicast addresses.")),
