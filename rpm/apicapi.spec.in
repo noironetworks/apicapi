@@ -9,8 +9,7 @@ BuildArch:	noarch
 BuildRequires:	python2-devel
 BuildRequires:	python-pbr
 BuildRequires:	python-setuptools
-Requires:	openstack-neutron >= 2014.2
-Requires:	openstack-neutron < 2014.3
+Requires:	python-oslo-config >= 1.4.0
 
 %description
 Library that provides an interface to the APIC REST APIs
