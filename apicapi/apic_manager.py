@@ -1297,6 +1297,14 @@ class APICManager(object):
             self.delete_bd_on_apic(owner, nat_bd, transaction=trs)
             self.ensure_context_deleted(owner, nat_vrf, transaction=trs)
 
+    def set_l3out_for_bd(self, owner, bd, l3out, transaction=None):
+        self.apic.fvRsBDToOut.create(owner, bd, l3out,
+            transaction=transaction)
+
+    def unset_l3out_for_bd(self, owner, bd, l3out, transaction=None):
+        self.apic.fvRsBDToOut.delete(owner, bd, l3out,
+            transaction=transaction)
+
     #
     # crteating these DB access functions here to avoid patching apic_model
     #

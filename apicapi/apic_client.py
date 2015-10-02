@@ -66,6 +66,8 @@ class ManagedObjectClass(object):
     supported_mos = {
         'fvTenant': ManagedObjectName(None, 'tn-%(name)s', name_fmt='__%s'),
         'fvBD': ManagedObjectName('fvTenant', 'BD-%(name)s', name_fmt='%s'),
+        'fvRsBDToOut': ManagedObjectName('fvBD', 'rsBDToOut-%(name)s',
+                                         name_fmt='__%s'),
         'fvRsBd': ManagedObjectName('fvAEPg', 'rsbd'),
         'fvSubnet': ManagedObjectName('fvBD', 'subnet-[%s]'),
         'fvCtx': ManagedObjectName('fvTenant', 'ctx-%(name)s',
