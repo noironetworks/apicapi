@@ -91,10 +91,6 @@ apic_opts = [
     cfg.IntOpt('min_id_suffix_size',
                default=4,
                help="Minimum number of ID characters used for suffix"),
-    cfg.StrOpt('vmm_shared_secret', secret=True,
-               help=("Secret shared with the APIC VMM. Can be used by third "
-                     "party software for signing supported items (eg. EP "
-                     "ownership for the opflex agent."))
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
