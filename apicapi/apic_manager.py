@@ -167,6 +167,7 @@ class APICManager(object):
             CONTEXT_SHARED.uid = self.apic_config.shared_context_name
             CONTEXT_SHARED.value = self.apic_config.shared_context_name
             CONTEXT_SHARED.existing = True
+        self.vmm_shared_secret = self.apic_config.vmm_shared_secret
 
     @property
     def apic_mapper(self):
