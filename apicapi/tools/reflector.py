@@ -24,7 +24,8 @@ POD_POLICY_GROUP_DN_PATH = 'uni/fabric/funcprof/podpgrp-%s'
 def ensure_bgp_pod_policy_created_on_apic(args):
     apic = apic_client.RestClient(log, "", [args.apic_ip],
                                   args.apic_username,
-                                  args.apic_password, args.ssl)
+                                  args.apic_password, args.ssl,
+                                  verify=args.insecure)
     bgp_pol_name = 'default'
     asn = args.asn
     pp_group_name = 'default'
@@ -59,6 +60,8 @@ parser.add_argument('apic_ip', help='APIC ip address')
 parser.add_argument('apic_username', help='APIC username')
 parser.add_argument('apic_password', help='APIC password')
 parser.add_argument('--ssl', help='Whether to use SSL or not', default=False)
+parser.add_argument('--insecure', help='Verify server certificate',
+                    action='store_false')
 parser.add_argument('--asn', help='AS number for bgp policy', default='1')
 
 
