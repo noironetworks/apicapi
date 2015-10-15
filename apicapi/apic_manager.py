@@ -194,27 +194,32 @@ class APICManager(object):
             self.ensure_phys_domain_created_on_apic(phys_name, vlan_ns_dn)
         else:
             # Create VMM domain
-            vmm_name = self.apic_config.apic_domain_name
             if APIC_VMM_TYPE_OPENSTACK == self.apic_vmm_type:
-                self.ensure_vmm_domain_created_on_apic(
+                vmm_name = self.apic_config.apic_domain_name
+            elif APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
+                vmm_name = self.apic_config.apic_domain_name
+                vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
+                if vmm_dom is None:
+                    raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
+
+                # use the default domain name to create the openStack vmm domain
+                vmm_name = self.apic_system_id
+            else:
+                raise cexc.ApicVmmTypeNotSupported(
+                    type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
+
+            self.ensure_vmm_domain_created_on_apic(
                     APIC_VMM_TYPE_OPENSTACK, vmm_name,
                     self.apic_config.openstack_user,
                     self.apic_config.openstack_password,
                     self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
-                # Create Multicast namespace for VMM
-                mcast_name = self.apic_config.apic_multicast_ns_name
-                mcast_range = self.mcast_ranges[0]
-                (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-                self.ensure_mcast_ns_created_on_apic(
-                    APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
-                    mcast_min, mcast_max)
-            elif APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
-                vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
-                if vmm_dom is None:
-                    raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
-            else:
-                raise cexc.ApicVmmTypeNotSupported(
-                    type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
+            # Create Multicast namespace for VMM
+            mcast_name = self.apic_config.apic_multicast_ns_name
+            mcast_range = self.mcast_ranges[0]
+            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
+            self.ensure_mcast_ns_created_on_apic(
+                APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
+                mcast_min, mcast_max)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
@@ -665,6 +670,15 @@ class APICManager(object):
             self.apic.fvRsDomAtt.create(
                 tenant_id, app_profile_name, epg_uid, self.domain_dn,
                 transaction=trs)
+
+            if APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
+                # get the default openstack vmm domain dn
+                openstack_vmm_domain_dn = self.apic.vmmDomP.dn(
+                       APIC_VMM_TYPE_OPENSTACK, self.apic_system_id)
+                # also associate with openStack vmm domain
+                self.apic.fvRsDomAtt.create(
+                    tenant_id, app_profile_name, epg_uid,
+                    openstack_vmm_domain_dn, transaction=trs)
         return epg_uid
 
     def delete_epg_for_network(self, tenant_id, network_id, transaction=None,
