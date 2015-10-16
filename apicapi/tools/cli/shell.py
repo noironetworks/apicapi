@@ -26,7 +26,15 @@ def apicapi():
 @common.os_options
 @common.pass_neutron_client
 def neutron_sync(neutron, *args, **kwargs):
-    neutron.create_network(name='apic-sync-network')
+    message = ('The name used for this network is reserved for on '
+               'demand synchronization.')
+    try:
+        neutron.create_network({'network': {'name': 'apic-sync-network'}})
+    except Exception as e:
+        if message in e.message:
+            click.echo("Synchronization complete.")
+        else:
+            raise
 
 
 @apicapi.command(name='bgp-pod-policy-create')
@@ -69,5 +77,9 @@ def bgp_pod_policy_create(apic, asn, **kwargs):
             transaction=trs)
 
 
-if __name__ == '__main__':
+def run():
     apicapi(auto_envvar_prefix='APICAPI')
+
+
+if __name__ == '__main__':
+    run()

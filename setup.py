@@ -30,6 +30,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'apic-cleanup = apicapi.tools.cleanup:main',
-            'apic-route-reflector = apicapi.tools.reflector:main']
+            'apic-route-reflector = apicapi.tools.reflector:main',
+            'apicli = apicapi.tools.cli.shell:run']
     }
 )

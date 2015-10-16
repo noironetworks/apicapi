@@ -42,10 +42,10 @@ def pass_apic_client(f):
     commands.
     """
     def inner(*args, **kwargs):
-        apic = apic_client.RestClient(log, "", kwargs['apic_ip'],
+        apic = apic_client.RestClient(log, "", [kwargs['apic_ip']],
                                       kwargs['apic_username'],
                                       kwargs['apic_password'], kwargs['ssl'],
-                                      verify=kwargs['verify'])
+                                      verify=kwargs['secure'])
         return f(apic, *args, **kwargs)
     return inner
 
