@@ -14,6 +14,7 @@
 #    under the License.
 
 from click import testing
+import mock
 
 from apicapi.tests import base
 from apicapi.tools.cli import shell
@@ -28,11 +29,24 @@ class TestShell(base.BaseTestCase):
         self.neutron_command_options = [
             '--os-project-id', 'id',
             '--os-password', 'pwd',
-            '--os-auth-url', 'url',
+            '--os-auth-url', 'http://127.0.0.1/v2',
             '--os-username', 'user']
+        self.neutron = mock.patch(
+            'neutronclient.common.clientmanager.ClientManager.neutron').start()
 
     def test_neutron_sync(self):
         result = self.invoke(shell.apicapi, [
             'neutron-sync'] + self.neutron_command_options)
         self.assertFalse(result.exception)
-        self.assertEqual(result.output, 'user\n')
+        self.neutron.create_network.assert_called_once_with(
+            name='apic-sync-network')
+
+    def test_neutron_require_token(self):
+        result = self.invoke(shell.apicapi, [
+            'neutron-sync'] + self.neutron_command_options +
+            ['--os-url', 'someurl'])
+        self.assertIsNotNone(result.exception)
+        self.assertTrue(
+            'Error: Invalid value: You must provide a token via either '
+            '--os-token or env[OS_TOKEN] when providing a service URL' in
+            result.output)

@@ -23,9 +23,10 @@ def apicapi():
     pass
 
 @apicapi.command(name='neutron-sync')
-@common.neutron_options
-def neutron_sync(*args, **kwargs):
-    click.echo('%s' % kwargs['os_username'])
+@common.os_options
+@common.pass_neutron_client
+def neutron_sync(neutron, *args, **kwargs):
+    neutron.create_network(name='apic-sync-network')
 
 
 @apicapi.command(name='bgp-pod-policy-create')
@@ -33,6 +34,10 @@ def neutron_sync(*args, **kwargs):
 @common.apic_options
 @common.pass_apic_client
 def bgp_pod_policy_create(apic, asn, **kwargs):
+    """APIC command for route reflector.
+
+    Creates a default route reflector on the APIC backend if needed.
+    """
     bgp_pol_name = 'default'
     asn = asn
     pp_group_name = 'default'
