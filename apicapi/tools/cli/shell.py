@@ -37,11 +37,11 @@ def neutron_sync(neutron, *args, **kwargs):
             raise
 
 
-@apicapi.command(name='bgp-pod-policy-create')
+@apicapi.command(name='apic-route-reflector-create')
 @click.option('--asn', help='Autonomous system number', default='1')
 @common.apic_options
 @common.pass_apic_client
-def bgp_pod_policy_create(apic, asn, **kwargs):
+def apic_route_reflector_create(apic, asn, **kwargs):
     """APIC command for route reflector.
 
     Creates a default route reflector on the APIC backend if needed.

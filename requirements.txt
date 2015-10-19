@@ -7,4 +7,3 @@ sqlalchemy
 pyOpenSSL>=0.13.0,<=0.15.1
 Click>=5.1
 requests
-python-neutronclient<2.5.0,>=2.4.0
