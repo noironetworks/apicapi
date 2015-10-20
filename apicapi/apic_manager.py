@@ -277,6 +277,14 @@ class APICManager(object):
             self.apic.infraRsDomP.create(
                 name, self.domain_dn, transaction=trs)
 
+            if APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
+                # get the default openstack vmm domain dn
+                openstack_vmm_domain_dn = self.apic.vmmDomP.dn(
+                       APIC_VMM_TYPE_OPENSTACK, self.apic_system_id)
+                # also attach the entity profile to openStack vmm domain
+                self.apic.infraRsDomP.create(
+                     name, openstack_vmm_domain_dn, transaction=trs)
+
         self.entity_profile_dn = self.apic.infraAttEntityP.dn(name)
 
     def ensure_function_profile_created_on_apic(self, name, transaction=None):
