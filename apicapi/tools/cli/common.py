@@ -19,6 +19,7 @@ import logging as log
 from apicapi import apic_client
 from apicapi.tools.cli.neutron import client as n_client
 
+
 def pass_neutron_client(f):
     """Utility decorator for Neutron client.
 
@@ -42,10 +43,16 @@ def pass_apic_client(f):
     commands.
     """
     def inner(*args, **kwargs):
-        apic = apic_client.RestClient(log, "", [kwargs['apic_ip']],
-                                      kwargs['apic_username'],
-                                      kwargs['apic_password'], kwargs['ssl'],
-                                      verify=kwargs['secure'])
+        try:
+            apic = apic_client.RestClient(log, "", [kwargs['apic_ip']],
+                                          kwargs['apic_username'],
+                                          kwargs['apic_password'],
+                                          kwargs['ssl'],
+                                          verify=kwargs['secure'])
+        except apic_client.rexc.SSLError as e:
+            raise click.UsageError(
+                "Command failed with error: %s \nTry using option "
+                "'--no-secure' to skip certificate validation" % e.message)
         return f(apic, *args, **kwargs)
     return inner
 
