@@ -156,7 +156,8 @@ class APICManager(object):
 
         self.function_profile = self.apic_config.apic_function_profile
         self.lacp_profile = self.apic_config.apic_lacp_profile
-        self.switch_pg_dn = None
+        self.sw_pg_name = self.apic_config.apic_switch_pg_name
+        self.switch_pg_dn = self.apic.infraAccNodePGrp.dn(self.sw_pg_name)
 
         # Hack to modify the key value at runtime
         global CONTEXT_SHARED
@@ -232,9 +233,7 @@ class APICManager(object):
         # Create function profile
         func_name = self.function_profile
         self.ensure_function_profile_created_on_apic(func_name)
-
-        sw_pg_name = self.apic_config.apic_switch_pg_name
-        self.ensure_switch_pg_on_apic(sw_pg_name)
+        self.ensure_switch_pg_on_apic(self.sw_pg_name)
 
         # clear local hostlinks in DB (as it is discovered state)
         self.clear_all_hostlinks()
