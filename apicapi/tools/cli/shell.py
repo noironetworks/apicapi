@@ -16,6 +16,7 @@
 import click
 
 from apicapi.tools.cli import common
+from apicapi.tools import host_report
 
 
 @click.group()
@@ -75,6 +76,12 @@ def apic_route_reflector_create(apic, asn, **kwargs):
         apic.fabricRsPodPGrp.create(
             p_selector_name, tDn=pod_policy_group_dn_path % pp_group_name,
             transaction=trs)
+
+
+@apicapi.command(name='host-report')
+def host_report_cmd(*args, **kwargs):
+    """Generate a host report for tech support"""
+    host_report.main()
 
 
 def run():
