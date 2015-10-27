@@ -10,6 +10,7 @@ BuildRequires:	python2-devel
 BuildRequires:	python-pbr
 BuildRequires:	python-setuptools
 Requires:	python-oslo-config >= 1.4.0
+Requires:	python-click >= 3.3
 
 %description
 Library that provides an interface to the APIC REST APIs
