@@ -31,6 +31,7 @@ rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
 %doc README.rst
 %{python2_sitelib}/apicapi
 %{python2_sitelib}/apicapi-%%{version}*.egg-info
+%{_bindir}/apic
 %{_bindir}/apic-cleanup
 %{_bindir}/apic-route-reflector
 
