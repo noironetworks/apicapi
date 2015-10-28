@@ -24,6 +24,11 @@ rm -f requirements.txt
 
 %install
 %{__python2} setup.py install -O1 --install-data / --skip-build --root %{buildroot}
+
+# Install other supporting files (like bash_completions)
+install -p -D -m 644 etc/apic.bash_completion \
+    %{buildroot}%{_sysconfdir}/bash_completion.d/apic.bash_completion
+
 # Remove unused files
 rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
 
@@ -33,7 +38,7 @@ rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
 %{python2_sitelib}/apicapi-%%{version}*.egg-info
 %{_bindir}/apic
 %{_bindir}/apic-cleanup
-%{_bindir}/apic-route-reflector
+%{_sysconfdir}/bash_completion.d
 
 %changelog
 * Mon May 18 2015 Amit Bose <bose@noironetworks.com> - 1.0.4-1
