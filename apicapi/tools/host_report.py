@@ -37,7 +37,7 @@ then
 fi
 
 host=`hostname -s`
-time_stamp=`date +'%y%M%d-%H%M%S'`
+time_stamp=`date +'%y%m%d-%H%M%S'`
 report_name="report-${host}-${time_stamp}"
 report_dir="/tmp/${report_name}"
 report_file="${report_dir}.tar.gz"
