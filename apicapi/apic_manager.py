@@ -231,7 +231,7 @@ class APICManager(object):
                     self.apic_vmm_type, vmm_name, dn=vmm_dn, encapMode=encap_mode)
             except cexc.ApicResponseNotOk as ex:
                 # Ignore as older APIC versions will not support vmmDomP.encapMode
-                LOG.info(ex.message)
+                LOG.info("Expected failure for APIC 1.1 %s", ex)
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
