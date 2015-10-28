@@ -21,7 +21,9 @@ from apicapi.tools import host_report
 
 @click.group()
 def apicapi():
+    """Commands for APIC plugin"""
     pass
+
 
 @apicapi.command(name='neutron-sync')
 @common.os_options
@@ -38,7 +40,7 @@ def neutron_sync(neutron, *args, **kwargs):
             raise
 
 
-@apicapi.command(name='apic-route-reflector-create')
+@apicapi.command(name='route-reflector-create')
 @click.option('--asn', help='Autonomous system number', default='1')
 @common.apic_options
 @common.pass_apic_client
