@@ -222,6 +222,17 @@ class APICManager(object):
                 APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
                 mcast_min, mcast_max)
 
+            # Attempt to set encapMode on DomP...catch and ignore exceptions as older
+            # APIC versions do not support the field
+            encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
+            vmm_dn = self.apic.vmmDomP.dn(self.apic_vmm_type, vmm_name)
+            try:
+                self.apic.vmmDomP.update(
+                    self.apic_vmm_type, vmm_name, dn=vmm_dn, encapMode=encap_mode)
+            except cexc.ApicResponseNotOk as ex:
+                # Ignore as older APIC versions will not support vmmDomP.encapMode
+                LOG.info(ex.message)
+
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
         self.ensure_entity_profile_created_on_apic(ent_name)
@@ -497,9 +508,6 @@ class APICManager(object):
             return
 
         with self.apic.transaction(transaction) as trs:
-            # TODO(amit): Starting with APIC 1.2 we need to also send
-            # 'encapMode' in create() like this:
-            # (..., encapMode=("vlan" if vlan_ns_dn else "vxlan"), ...)
             self.apic.vmmDomP.create(
                 vmm_type, vmm_name, enfPref="sw", mode="ovs",
                 mcastAddr=multicast_addr,
