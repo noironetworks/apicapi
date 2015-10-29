@@ -7,6 +7,7 @@ pcat() {
 
 opflex-eps() {
   for i in /var/lib/opflex-agent-ovs/endpoints/*.ep ; do
+    [ -f "$i" ] || continue
     echo '#----------------------------------------'
     echo '# EP: ' `basename $i .ep`
     pcat $i;
