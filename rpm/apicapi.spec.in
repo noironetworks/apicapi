@@ -28,6 +28,8 @@ rm -f requirements.txt
 # Install other supporting files (like bash_completions)
 install -p -D -m 644 etc/apic.bash_completion \
     %{buildroot}%{_sysconfdir}/bash_completion.d/apic.bash_completion
+install -p -D -m 644 etc/apic.sh \
+    %{buildroot}%{_sysconfdir}/profile.d/apic.sh
 
 # Remove unused files
 rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
@@ -39,6 +41,7 @@ rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
 %{_bindir}/apic
 %{_bindir}/apic-cleanup
 %{_sysconfdir}/bash_completion.d
+%{_sysconfdir}/profile.d
 
 %changelog
 * Mon May 18 2015 Amit Bose <bose@noironetworks.com> - 1.0.4-1

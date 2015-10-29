@@ -1,1 +1,2 @@
 etc/apic.bash_completion etc/bash_completion.d/
+etc/apic.sh etc/profile.d/
