@@ -32,7 +32,7 @@ host_report_script = r"""
 ID=`id -u`
 if [ "$ID" -ne 0 ]
 then
-  echo "Must be root to run create this report"
+  echo "You must be root to run this command"
   exit 1
 fi
 
@@ -41,12 +41,16 @@ time_stamp=`date +'%y%m%d-%H%M%S'`
 report_name="report-${host}-${time_stamp}"
 report_dir="/tmp/${report_name}"
 report_file="${report_dir}.tar.gz"
-echo "Creating host report: $report_file"
 
-echo "  Collecting host info ..."
+exec 3>&1
+prn() { echo "$@" 1>&3 ; }
+
+prn "Creating host report: $report_file"
+prn "  Collecting host info ..."
 mkdir $report_dir
 cd $report_dir
-  exec 2>stderr
+  exec 1>stdout 2>stderr
+
   date > date-start
   hostname --fqdn > hostname
   uname -a > uname
@@ -73,7 +77,7 @@ cd $report_dir
 
 cd $report_dir
 mkdir etc
-  echo "  Collecting config files"
+  prn "  Collecting config files"
   cd etc
   cp /etc/*release .
   cp /etc/sysctl.conf .
@@ -84,11 +88,11 @@ mkdir etc
     cp -r /etc/$i $i
   done
 
-  echo "  Collecting package info (this can take some time) ..."
+  prn "  Collecting package info (this can take some time) ..."
   rpm -qa > rpm-qa
   rpm -Va > rpm-Va || true
 
-echo "  Collecting network info ..."
+prn "  Collecting network info ..."
 cd $report_dir
 mkdir network
   cd network
@@ -103,7 +107,7 @@ mkdir network
   lldpctl > lldpctl
   lldpctl -f keyvalue > lldpctl-kv
 
-echo "  Collecting opflex info ..."
+prn "  Collecting opflex info ..."
 cd $report_dir
 mkdir opflex
   cd opflex
@@ -118,7 +122,7 @@ mkdir opflex
   ovs-dpctl show > ovs-ports-dp
   ovs-appctl dpif/tnl/igmp-dump br-int 8472 > ovs-igmp
 
-echo "  Collecting log data (this can take some time) ..."
+prn "  Collecting log data (this can take some time) ..."
 cd $report_dir
 mkdir -p var/log
   date > date-reports
@@ -133,7 +137,7 @@ mkdir -p var/log
     done
   )
 
-echo "  Creating tar file ..."
+prn "  Creating tar file ..."
 cd $report_dir
   date > date-end
   cd ..
@@ -142,7 +146,7 @@ cd $report_dir
 cd /tmp
 exec 2>&1
 rm -rf "$report_dir"
-echo "Created report: $report_file"
+prn "Created report: $report_file"
 """
 
 
