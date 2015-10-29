@@ -27,7 +27,7 @@ from apicapi import exceptions as exc
 
 apic_opts = [
     cfg.BoolOpt('enable_aci_routing', default=True),
-    cfg.BoolOpt('enable_optimized_dhcp', default=False),
+    cfg.BoolOpt('enable_optimized_dhcp', default=True),
     cfg.BoolOpt('enable_optimized_metadata', default=False),
     cfg.StrOpt('default_l2_unknown_unicast', default='proxy'),
     cfg.BoolOpt('default_arp_flooding', default=True),
