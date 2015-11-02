@@ -136,11 +136,12 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
         self.override_config('use_vmm', False, 'ml2_cisco_apic')
         self.validator.validate(self.apic_config)
 
-        # Test OK if not set and VMM with different vmm_type
+        # Test NOT OK if not set and VMM with different vmm_type
         self.override_config('use_vmm', True, 'ml2_cisco_apic')
         self.override_config('apic_vmm_type', 'VMWare', 'ml2_cisco_apic')
         self.override_config(configuration, None, 'ml2_cisco_apic')
-        self.validator.validate(self.apic_config)
+        self.assertRaises(
+            exc.InvalidConfig, self.validator.validate, self.apic_config)
 
         # Test NOT ok if not set with vmm of Openstack type
         self.override_config('apic_vmm_type', 'OpenStack', 'ml2_cisco_apic')

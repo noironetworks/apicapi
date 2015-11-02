@@ -193,16 +193,11 @@ def valid_controller_host(key, value, **kwargs):
     try:
         # Depends on use_vmm
         use_vmm = kwargs['conf'].get('use_vmm')
-        vmm_type = kwargs['conf'].get('apic_vmm_type')
         if not use_vmm or value:
-            return
-        # Use VMM is True and value is not set
-        if not vmm_type or vmm_type.lower() != 'openstack':
             return
     except (KeyError, cfg.NoSuchOptError):
         pass
-    util.re("%s needs to be set when use_vmm=True and "
-            "vmm_type=OpenStack" % key)
+    util.re("%s needs to be set when use_vmm=True" % key)
 
 
 class ConfigValidator(object):
