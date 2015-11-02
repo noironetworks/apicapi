@@ -106,6 +106,8 @@ apic_opts = [
                default='${apic_system_id}_l3ext_function_profile',
                help=("Name of the function profile to be created for "
                      "external routed domain")),
+    cfg.StrOpt('vmm_shared_secred', default='',
+               help='Shared secret with the APIC VMM for EP validation.'),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
