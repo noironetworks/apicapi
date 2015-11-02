@@ -50,6 +50,8 @@ class TestCiscoApicManager(base.BaseTestCase,
             config.apic_opts, self.apic_config._group.name)
         self.override_config('apic_model', 'apicapi.tests.db.apic_model',
                              'ml2_cisco_apic')
+        self.override_config('vmm_controller_host', 'somename',
+                             'ml2_cisco_apic')
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
             network_config= {

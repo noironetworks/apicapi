@@ -91,13 +91,16 @@ apic_opts = [
     cfg.IntOpt('min_id_suffix_size',
                default=4,
                help="Minimum number of ID characters used for suffix"),
+    cfg.StrOpt('vmm_controller_host', default='openstack',
+               help='VMM controller IP address or DNS name, used '
+                    'for OpenStack VMM'),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
 NOT_SET = object()
 
 
-def valid_path(key, value):
+def valid_path(key, value, **kwargs):
     # Verify value is in path and supports certain objects
     try:
         __import__(value)
@@ -106,13 +109,13 @@ def valid_path(key, value):
         ConfigValidator.RaiseUtils(value, key).re(reason=e.message)
 
 
-def not_null(key, value):
+def not_null(key, value, **kwargs):
     util = ConfigValidator.RaiseUtils(value, key)
     if not value:
         util.re(reason='%s cannot be None or Empty' % key)
 
 
-def valid_apic_name(key, value):
+def valid_apic_name(key, value, **kwargs):
     util = ConfigValidator.RaiseUtils(value, key)
     not_null(key, value)
     if len(value) > apic_mapper.MAX_APIC_NAME_LENGTH:
@@ -120,7 +123,7 @@ def valid_apic_name(key, value):
                 str(apic_mapper.MAX_APIC_NAME_LENGTH))
 
 
-def valid_range(key, value):
+def valid_range(key, value, **kwargs):
     # Not None
     util = ConfigValidator.RaiseUtils(value, key)
     if value is None:
@@ -139,7 +142,7 @@ def valid_range(key, value):
                 raise util.re("Range should be in the form <min>:<max>")
 
 
-def valid_ip(key, value):
+def valid_ip(key, value, **kwargs):
     util = ConfigValidator.RaiseUtils(value, key)
     try:
         netaddr.IPAddress(value, version=4)
@@ -147,7 +150,7 @@ def valid_ip(key, value):
         util.re(reason=e.message)
 
 
-def valid_ip_range(key, value):
+def valid_ip_range(key, value, **kwargs):
     util = ConfigValidator.RaiseUtils(value, key)
     valid_range(key, value)
     # Valid IPv4 address
@@ -158,7 +161,7 @@ def valid_ip_range(key, value):
         util.re("min address has to be smaller than max address")
 
 
-def valid_app_profile(key, value):
+def valid_app_profile(key, value, **kwargs):
     valid_apic_name(key, value)
     util = ConfigValidator.RaiseUtils(value, key)
     match = re.match(APP_PROFILE_REGEX, value)
@@ -166,7 +169,7 @@ def valid_app_profile(key, value):
         util.re("Valid regex: %s" % APP_PROFILE_REGEX)
 
 
-def valid_name_strategy(key, value):
+def valid_name_strategy(key, value, **kwargs):
     # This is needed until the choice option is fixed upstream
     util = ConfigValidator.RaiseUtils(value, key)
     valid = ['use_name', 'use_uuid']
@@ -174,7 +177,7 @@ def valid_name_strategy(key, value):
         util.re("Allowed values: %s" % str(valid))
 
 
-def valid_file(key, value):
+def valid_file(key, value, **kwargs):
     if value is None:
         return
     try:
@@ -183,6 +186,23 @@ def valid_file(key, value):
     except Exception as e:
         util = ConfigValidator.RaiseUtils(value, key)
         util.re("Bad file-name: %s: %s" % (value, e))
+
+
+def valid_controller_host(key, value, **kwargs):
+    util = ConfigValidator.RaiseUtils(value, key)
+    try:
+        # Depends on use_vmm
+        use_vmm = kwargs['conf'].get('use_vmm')
+        vmm_type = kwargs['conf'].get('apic_vmm_type')
+        if not use_vmm or value:
+            return
+        # Use VMM is True and value is not set
+        if not vmm_type or vmm_type.lower() != 'openstack':
+            return
+    except (KeyError, cfg.NoSuchOptError):
+        pass
+    util.re("%s needs to be set when use_vmm=True and "
+            "vmm_type=OpenStack" % key)
 
 
 class ConfigValidator(object):
@@ -212,6 +232,7 @@ class ConfigValidator(object):
         'apic_vlan_range': [valid_range],
         'private_key_file': [valid_file],
         'apic_vmm_type': [valid_apic_name],
+        'vmm_controller_host': [valid_controller_host],
     }
 
     class RaiseUtils(object):
@@ -227,15 +248,15 @@ class ConfigValidator(object):
     def __init__(self, log):
         self.log = log
 
-    def _validate(self, key, value):
+    def _validate(self, key, value, conf):
         for x in self.validators[key]:
-            x(key, value)
+            x(key, value, conf=conf)
 
     def validate(self, conf, *args):
         if args:
             for opt in args:
                 try:
-                    self._validate(opt, conf.get(opt))
+                    self._validate(opt, conf.get(opt), conf)
                 except KeyError:
                     self.log.warn("There's no validation for option "
                                   "%s" % opt)
@@ -246,6 +267,6 @@ class ConfigValidator(object):
             for opt in self.validators:
                 try:
                     value = conf.get(opt)
-                    self._validate(opt, value)
+                    self._validate(opt, value, conf)
                 except cfg.NoSuchOptError:
                     pass

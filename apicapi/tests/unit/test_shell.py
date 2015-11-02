@@ -61,7 +61,7 @@ class TestShell(base.BaseTestCase):
     def test_apic_client_ssl_error(self):
         apic_client.RestClient = mock.Mock(side_effect=r_exc.SSLError)
         result = self.invoke(shell.apicapi, [
-            'apic-route-reflector-create'] + self.apic_command_options)
+            'route-reflector-create'] + self.apic_command_options)
         self.assertIsNotNone(result.exception)
         self.assertTrue("'--no-secure' to skip certificate validation" in
                         result.output)

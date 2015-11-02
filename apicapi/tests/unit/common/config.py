@@ -90,9 +90,6 @@ apic_opts = [
     cfg.FloatOpt('apic_agent_poll_interval',
                  default=2,
                  help='Interval between agent poll for topology (in sec)'),
-    cfg.IntOpt('min_id_suffix_size',
-               default=0,
-               help="Minimum number of ID characters used for suffix"),
 ]
 
 

@@ -168,6 +168,7 @@ class APICManager(object):
             CONTEXT_SHARED.uid = self.apic_config.shared_context_name
             CONTEXT_SHARED.value = self.apic_config.shared_context_name
             CONTEXT_SHARED.existing = True
+        self.vmm_controller_host = self.apic_config.vmm_controller_host
 
     @property
     def apic_mapper(self):
@@ -517,7 +518,7 @@ class APICManager(object):
             usracc_dn = self.apic.vmmUsrAccP.dn(vmm_type, vmm_name, vmm_name)
             self.apic.vmmCtrlrP.create(
                 vmm_type, vmm_name, vmm_name, scope="openstack",
-                rootContName=vmm_name, hostOrIp="192.168.65.154",
+                rootContName=vmm_name, hostOrIp=self.vmm_controller_host,
                 mode="ovs", transaction=trs)
             self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
                                       tDn=usracc_dn, transaction=trs)
