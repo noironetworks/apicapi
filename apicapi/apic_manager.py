@@ -144,7 +144,8 @@ class APICManager(object):
             self.apic_vmm_type, self.apic_config.apic_domain_name)
         self.domain_dn = (self.vmm_domain_dn if self.use_vmm else
                           self.phys_domain_dn)
-        self.entity_profile_dn = None
+        self.entity_profile_dn = self.apic.infraAttEntityP.dn(
+            self.apic_config.apic_entity_profile)
         name_mapping = self.apic_config.apic_name_mapping
         min_suffix = self.apic_config.min_id_suffix_size
         self._apic_mapper = apic_mapper.APICNameMapper(
@@ -295,8 +296,6 @@ class APICManager(object):
                 # also attach the entity profile to openStack vmm domain
                 self.apic.infraRsDomP.create(
                      name, openstack_vmm_domain_dn, transaction=trs)
-
-        self.entity_profile_dn = self.apic.infraAttEntityP.dn(name)
 
     def ensure_function_profile_created_on_apic(self, name, transaction=None):
         """Create the infrastructure function profile."""
