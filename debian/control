@@ -10,7 +10,7 @@ Vcs-Browser: http://github.com/noironetworks/apicapi/
 
 Package: python-apicapi
 Architecture: all
-Depends: python-click (>=3.3), python-oslo.config (>=1.4),
+Depends: python-click-cli (>=3.3), python-oslo.config (>=1.4),
          ${misc:Depends}, ${python:Depends}
 Description: Python interface to Cisco APIC APIs
  Library that provides an interface to the APIC REST APIs
