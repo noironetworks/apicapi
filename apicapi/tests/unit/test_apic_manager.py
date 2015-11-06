@@ -326,7 +326,6 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_ensure_bd_created(self):
         self.mock_response_for_post(self.get_top_container(
             self.mgr.apic.fvBD.mo))
-        self.mock_response_for_get('fvCtx')
         self.mgr.ensure_bd_created_on_apic('t2', 'three')
         self.assert_responses_drained()
 
@@ -519,7 +518,6 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assert_responses_drained()
 
     def test_ensure_external_epg_created(self):
-        self.mock_response_for_get('fvCtx')
         self.mock_response_for_post(self.get_top_container(
             self.mgr.apic.l3extSubnet.mo))
         self.mgr.ensure_external_epg_created(mocked.APIC_ROUTER)
@@ -575,10 +573,10 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_grow_if_needed(self):
         mapper = self.mgr._apic_mapper
         test_values = set([('network', 'onename'),
-                           ('network', 'onename12345'),
-                           ('router', 'onename12345678'),
-                           ('router', 'onename123456789'),
-                           ('router', 'onename1234567890'),
+                           ('network', 'onename_12345'),
+                           ('router', 'onename_12345678'),
+                           ('router', 'onename_123456789'),
+                           ('router', 'onename_1234567890'),
                            ])
 
         def get_filtered_apic_names(neutron_type=None, apic_name=None):
@@ -593,17 +591,17 @@ class TestCiscoApicManager(base.BaseTestCase,
             'differentname', mapper._grow_id_if_needed(test_id, 'network',
                                                        test_result, start=5))
 
-        test_result = 'onename12345'
+        test_result = 'onename_12345'
         # One character is added to clashing name
         self.assertEqual(
-            'onename123456', mapper._grow_id_if_needed(test_id, 'network',
-                                                       test_result, start=5))
+            'onename_123456', mapper._grow_id_if_needed(test_id, 'network',
+                                                        test_result, start=5))
         # Clashing name of different type is returned as is
         self.assertEqual(
-            'onename12345', mapper._grow_id_if_needed(test_id, 'router',
-                                                      test_result, start=5))
+            'onename_12345', mapper._grow_id_if_needed(test_id, 'router',
+                                                       test_result, start=5))
         # Give up when the whole id is consumed
-        test_result = 'onename12345678'
+        test_result = 'onename_12345678'
         self.assertEqual(
-            'onename1234567890', mapper._grow_id_if_needed(
+            'onename_1234567890', mapper._grow_id_if_needed(
                 test_id, 'router', test_result, start=8))

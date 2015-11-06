@@ -55,8 +55,7 @@ class TestShell(base.BaseTestCase):
         self.assertIsNotNone(result.exception)
         self.assertTrue(
             'Error: Invalid value: You must provide a token via either '
-            '--os-token or env[OS_TOKEN] when providing a service URL' in
-            result.output)
+            '--os-token or env[OS_TOKEN]' in result.output)
 
     def test_apic_client_ssl_error(self):
         apic_client.RestClient = mock.Mock(side_effect=r_exc.SSLError)

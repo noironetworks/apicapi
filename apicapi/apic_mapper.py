@@ -146,7 +146,7 @@ class APICNameMapper(object):
             while True:
                 if self.db.get_filtered_apic_names(neutron_type=name_type,
                                                    apic_name=result):
-                    if x == 0:
+                    if x == 0 and start == 0:
                         result += '_'
                     # This name overlaps, add more ID characters
                     result += resource_id[start + x]

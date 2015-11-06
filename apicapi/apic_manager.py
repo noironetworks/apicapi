@@ -205,7 +205,8 @@ class APICManager(object):
                 if vmm_dom is None:
                     raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
 
-                # use the default domain name to create the openStack vmm domain
+                # use the default domain name to create the openStack vmm
+                # domain
                 vmm_name = self.apic_system_id
             else:
                 raise cexc.ApicVmmTypeNotSupported(
@@ -224,15 +225,17 @@ class APICManager(object):
                 APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
                 mcast_min, mcast_max)
 
-            # Attempt to set encapMode on DomP...catch and ignore exceptions as older
-            # APIC versions do not support the field
+            # Attempt to set encapMode on DomP...catch and ignore exceptions
+            # as older APIC versions do not support the field
             encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
             vmm_dn = self.apic.vmmDomP.dn(self.apic_vmm_type, vmm_name)
             try:
                 self.apic.vmmDomP.update(
-                    self.apic_vmm_type, vmm_name, dn=vmm_dn, encapMode=encap_mode)
+                    self.apic_vmm_type, vmm_name, dn=vmm_dn,
+                    encapMode=encap_mode)
             except cexc.ApicResponseNotOk as ex:
-                # Ignore as older APIC versions will not support vmmDomP.encapMode
+                # Ignore as older APIC versions will not support
+                # vmmDomP.encapMode
                 LOG.info("Expected failure for APIC 1.1 %s", ex)
 
         # Create entity profile
