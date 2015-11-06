@@ -38,6 +38,7 @@ apic_opts = [
     cfg.BoolOpt('apic_provision_hostlinks', default=True),
     cfg.BoolOpt('apic_multiple_hostlinks', default=False),
     cfg.BoolOpt('scope_names', default=True),
+    cfg.BoolOpt('scope_infra', default=True),
     cfg.BoolOpt('renew_names', default=False),
     cfg.StrOpt('apic_model',
                default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),

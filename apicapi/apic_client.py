@@ -121,14 +121,14 @@ class ManagedObjectClass(object):
 
         'infraInfra': ManagedObjectName(None, 'infra'),
         'infraNodeP': ManagedObjectName('infraInfra', 'nprof-%(name)s',
-                                        name_fmt='__%s'),
+                                        name_fmt='==%s'),
         'infraLeafS': ManagedObjectName('infraNodeP', 'leaves-%s-typ-%s'),
         'infraNodeBlk': ManagedObjectName('infraLeafS', 'nodeblk-%s'),
         'infraRsAccPortP': ManagedObjectName('infraNodeP', 'rsaccPortP-[%s]'),
         'infraRsAccNodePGrp': ManagedObjectName('infraLeafS', 'rsaccNodePGrp'),
         'infraAccPortP': ManagedObjectName('infraInfra',
                                            'accportprof-%(name)s',
-                                           name_fmt='__%s'),
+                                           name_fmt='==%s'),
         'infraHPortS': ManagedObjectName('infraAccPortP', 'hports-%s-typ-%s'),
         'infraPortBlk': ManagedObjectName('infraHPortS', 'portblk-%s'),
         'infraRsAccBaseGrp': ManagedObjectName('infraHPortS', 'rsaccBaseGrp'),
@@ -149,7 +149,7 @@ class ManagedObjectClass(object):
                                               'portblk-block1'),
 
         'infraAttEntityP': ManagedObjectName('infraInfra', 'attentp-%(name)s',
-                                             name_fmt='__%s'),
+                                             name_fmt='==%s'),
         'infraProvAcc': ManagedObjectName('infraAttEntityP', 'provacc'),
         'infraRsDomP': ManagedObjectName('infraAttEntityP', 'rsdomP-[%s]'),
         'infraRsVlanNs__phys': ManagedObjectName('physDomP', 'rsvlanNs'),
@@ -206,6 +206,10 @@ class ManagedObjectClass(object):
         'fvTenant': [('common',)],
     }
 
+    infa_scope_exceptios = {
+
+    }
+
     # Note(Henry): The use of a mutable default argument _inst_cache is
     # intentional. It persists for the life of MoClass to cache instances.
     # noinspection PyDefaultArgument
@@ -253,15 +257,22 @@ class ManagedObjectClass(object):
         return 'uni/%s' % self.rn_fmt, param
 
     def _scope(self, fmt, *params):
-        if ManagedObjectClass.scope_exceptions:
-            exc = ManagedObjectClass.scope_exceptions.get(self.klass)
+        res = self._fmt_replace(
+            fmt, params, ManagedObjectClass.scope_exceptions, '__')
+        res = self._fmt_replace(
+            res, params, ManagedObjectClass.infa_scope_exceptios, '==')
+        return res % params
+
+    def _fmt_replace(self, fmt, params, exceptions, token):
+        if exceptions is not None:
+            exc = exceptions.get(self.klass)
             res = fmt.replace(
-                '__', '' if exc and (params in exc) or any(
+                token, '' if exc and (params in exc) or any(
                     x for x in params if getattr(x, "existing", False)) else
                 ManagedObjectClass.scope)
         else:
-            res = fmt.replace('__', '')
-        return res % params
+            res = fmt.replace(token, '')
+        return res
 
     def dn(self, *params):
         """Return the distinguished name for a managed object."""
@@ -803,10 +814,13 @@ class RestClient(ApicSession):
     def __init__(self, log, system_id, hosts, usr=None, pwd=None, ssl=True,
                  scope_names=True, renew_names=True, verify=False,
                  request_timeout=None, cert_name=None, private_key_file=None,
-                 sign_algo=None, sign_hash=None):
+                 sign_algo=None, sign_hash=None, scope_infra=True):
         """Establish a session with the APIC."""
         if not scope_names:
             ManagedObjectClass.scope_exceptions = None
+        if not scope_infra:
+            ManagedObjectClass.infa_scope_exceptios = None
+
         global LOG
         LOG = log.getLogger(__name__)
         super(RestClient, self).__init__(hosts, usr, pwd, ssl, verify,
