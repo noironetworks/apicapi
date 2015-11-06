@@ -129,6 +129,7 @@ class APICManager(object):
             self.apic_config.apic_password,
             self.apic_config.apic_use_ssl,
             scope_names=self.apic_config.scope_names,
+            scope_infra=self.apic_config.scope_infra,
             renew_names=self.apic_config.renew_names,
             verify=self.apic_config.verify_ssl_certificate,
             request_timeout=self.apic_config.apic_request_timeout,
