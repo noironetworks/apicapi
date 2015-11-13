@@ -285,6 +285,9 @@ class APICNameMapper(object):
         return ApicName(result, app_profile, None,
                         self, self.app_profile.__name__)
 
+    def delete_apic_name(self, object_id):
+        self.db.delete_apic_name(object_id)
+
     def is_valid_name_type(self, name_type):
         return name_type in NAME_TYPES
 
