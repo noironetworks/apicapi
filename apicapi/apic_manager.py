@@ -1379,3 +1379,18 @@ class APICManager(object):
                     self.db.session.query(HostLink).delete()
                 except orm.exc.NoResultFound:
                     return
+
+    def get_switch_and_port_for_host(self, host):
+        host_config = self.db.get_switch_and_port_for_host(host)
+        if not host_config:
+            raise cexc.ApicHostNotConfigured(host=host)
+        result = []
+        for switch, module, port in host_config:
+            if port.startswith("bundle-"):
+                # Split for VPC
+                parts = port.split('-')
+                result.append((parts[1], 'eth' + parts[2] + '/' + parts[3]))
+                result.append((parts[5], 'eth' + parts[6] + '/' + parts[7]))
+            else:
+                result.append((switch, 'eth' + module + '/' + port))
+        return result
