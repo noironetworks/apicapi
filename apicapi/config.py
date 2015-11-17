@@ -95,7 +95,7 @@ apic_opts = [
     cfg.StrOpt('vmm_controller_host', default='openstack',
                help='VMM controller IP address or DNS name, used '
                     'for OpenStack VMM'),
-    cfg.StrOpt('vmm_shared_secred', default='',
+    cfg.StrOpt('vmm_shared_secret', default='',
                help='Shared secret with the APIC VMM for EP validation.'),
 ]
 

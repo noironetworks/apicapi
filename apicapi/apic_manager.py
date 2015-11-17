@@ -171,7 +171,7 @@ class APICManager(object):
             CONTEXT_SHARED.value = self.apic_config.shared_context_name
             CONTEXT_SHARED.existing = True
         self.vmm_controller_host = self.apic_config.vmm_controller_host
-        self.vmm_shared_secred = self.apic_config.vmm_shared_secred
+        self.vmm_shared_secret = self.apic_config.vmm_shared_secret
 
     @property
     def apic_mapper(self):
@@ -523,7 +523,7 @@ class APICManager(object):
             self.apic.vmmCtrlrP.create(
                 vmm_type, vmm_name, vmm_name, scope="openstack",
                 rootContName=vmm_name, hostOrIp=self.vmm_controller_host,
-                mode="ovs", epValidatorKey=self.vmm_shared_secred,
+                mode="ovs", epValidatorKey=self.vmm_shared_secret,
                 transaction=trs)
             self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
                                       tDn=usracc_dn, transaction=trs)
