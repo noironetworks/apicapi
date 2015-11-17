@@ -648,3 +648,18 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assertEqual(
             'onename_1234567890', mapper._grow_id_if_needed(
                 test_id, 'router', test_result, start=8))
+
+    def test_get_switch_and_port_for_host(self):
+        # Add one vpc and a normal port
+        self.mock_db_query_filterby_distinct_return(
+            mocked.FakeQuery(('101', 'vpc-1-34',
+                              'bundle-101-1-34-and-102-1-34')))
+        h1 = self.mgr.get_switch_and_port_for_host('h1')
+        self.assertEqual(2, len(h1))
+        self.assertEqual(set([('101', 'eth1/34'), ('102', 'eth1/34')]),
+                         set(h1))
+        self.mock_db_query_filterby_distinct_return(
+            mocked.FakeQuery(('102', '1', '32')))
+        h2 = self.mgr.get_switch_and_port_for_host('h2')
+        self.assertEqual(1, len(h2))
+        self.assertEqual([('102', 'eth1/32')], h2)
