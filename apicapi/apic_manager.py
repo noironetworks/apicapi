@@ -143,10 +143,14 @@ class APICManager(object):
             self.apic_config.apic_domain_name)
         self.vmm_domain_dn = self.apic.vmmDomP.dn(
             self.apic_vmm_type, self.apic_config.apic_domain_name)
+        self.l3ext_domain_dn = self.apic.l3extDomP.dn(
+            self.apic_config.apic_external_routed_domain_name)
         self.domain_dn = (self.vmm_domain_dn if self.use_vmm else
                           self.phys_domain_dn)
         self.entity_profile_dn = self.apic.infraAttEntityP.dn(
             self.apic_config.apic_entity_profile)
+        self.l3ext_entity_profile_dn = self.apic.infraAttEntityP.dn(
+            self.apic_config.apic_external_routed_entity_profile)
         name_mapping = self.apic_config.apic_name_mapping
         min_suffix = self.apic_config.min_id_suffix_size
         self._apic_mapper = apic_mapper.APICNameMapper(
@@ -160,6 +164,8 @@ class APICManager(object):
         self.lacp_profile = self.apic_config.apic_lacp_profile
         self.sw_pg_name = self.apic_config.apic_switch_pg_name
         self.switch_pg_dn = self.apic.infraAccNodePGrp.dn(self.sw_pg_name)
+        self.l3ext_function_profile_dn = self.apic.infraAccPortGrp.dn(
+            self.apic_config.apic_external_routed_function_profile)
 
         # Hack to modify the key value at runtime
         global CONTEXT_SHARED
@@ -255,9 +261,22 @@ class APICManager(object):
         # clear local hostlinks in DB (as it is discovered state)
         self.clear_all_hostlinks()
 
+        switches = set([s[0] for s in self.db.get_switches()])
+
+        # get configuration of ports connected to external networks
+        ext_ports = set()
+        for _, ext_info in self.ext_net_dict.iteritems():
+            pre = ext_info.get('preexisting', 'false')
+            pre = pre.lower() in ['true', 'yes', '1']
+            switch = ext_info.get('switch')
+            port = ext_info.get('port', '').split('/', 1)
+            if not pre and switch and len(port) == 2 and port[0] and port[1]:
+                ext_ports.add((switch, port[0], port[1]))
+                switches.add(switch)
+
         # first make sure that all existing switches in DB are in apic
-        for switch in self.db.get_switches():
-            self.ensure_infra_created_for_switch(switch[0])
+        for switch in switches:
+            self.ensure_infra_created_for_switch(switch)
 
         # now create add any new switches in config to apic and DB
         for switch in self.switch_dict:
@@ -267,6 +286,22 @@ class APICManager(object):
                 for host in hosts:
                     self.add_hostlink(host, 'static', None, switch, module,
                                       port)
+
+        # set-up infra for external routed domains
+        if ext_ports and self.provision_infra:
+            self.ensure_l3ext_domain_created_on_apic(
+                self.apic_config.apic_external_routed_domain_name)
+            self.ensure_entity_profile_created_on_apic(
+                self.apic_config.apic_external_routed_entity_profile,
+                domain_dn=self.l3ext_domain_dn,
+                enable_infra_vlan=False,
+                incl_vmware_vmm=False)
+            self.ensure_function_profile_created_on_apic(
+                self.apic_config.apic_external_routed_function_profile,
+                entity_profile_dn=self.l3ext_entity_profile_dn)
+            for (sw, mod, pt) in ext_ports:
+                self.ensure_access_port_selector_created(sw, mod, pt,
+                    self.l3ext_function_profile_dn)
 
     def ensure_context_enforced(self, owner=TENANT_COMMON,
                                 ctx_id=CONTEXT_SHARED, transaction=None):
@@ -281,19 +316,21 @@ class APICManager(object):
         self.apic.fvCtx.delete(owner, ctx_id, transaction=transaction)
 
     def ensure_entity_profile_created_on_apic(self, name,
-                                              transaction=None):
+        domain_dn=None, enable_infra_vlan=True,
+        incl_vmware_vmm=True, transaction=None):
         """Create the infrastructure entity profile."""
         if not self.provision_infra:
             return
 
         with self.apic.transaction(transaction) as trs:
             self.apic.infraAttEntityP.create(name, transaction=trs)
-            self.apic.infraProvAcc.create(name, transaction=trs)
+            if enable_infra_vlan:
+                self.apic.infraProvAcc.create(name, transaction=trs)
             # Attach phys domain to entity profile
             self.apic.infraRsDomP.create(
-                name, self.domain_dn, transaction=trs)
+                name, domain_dn or self.domain_dn, transaction=trs)
 
-            if APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
+            if incl_vmware_vmm and APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
                 # get the default openstack vmm domain dn
                 openstack_vmm_domain_dn = self.apic.vmmDomP.dn(
                        APIC_VMM_TYPE_OPENSTACK, self.apic_system_id)
@@ -301,7 +338,8 @@ class APICManager(object):
                 self.apic.infraRsDomP.create(
                      name, openstack_vmm_domain_dn, transaction=trs)
 
-    def ensure_function_profile_created_on_apic(self, name, transaction=None):
+    def ensure_function_profile_created_on_apic(self, name,
+        entity_profile_dn=None, transaction=None):
         """Create the infrastructure function profile."""
         if not self.provision_infra:
             return
@@ -310,8 +348,8 @@ class APICManager(object):
             self.apic.infraAccPortGrp.create(name, transaction=trs)
             # Attach entity profile to function profile
             self.apic.infraRsAttEntP.create(name,
-                                            tDn=self.entity_profile_dn,
-                                            transaction=trs)
+                tDn=entity_profile_dn or self.entity_profile_dn,
+                transaction=trs)
 
     def ensure_switch_pg_on_apic(self, name, transaction=None):
         """Create the infrastructure function profile."""
@@ -331,6 +369,9 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.lacpLagPol.create(name, mode='active', transaction=trs)
 
+    def _get_switch_port_profile_name(self, switch):
+        return 'pprofile-%s' % switch
+
     def ensure_infra_created_for_switch(self, switch, transaction=None):
         # Create a node and profile for this switch
         if not self.provision_infra:
@@ -343,7 +384,7 @@ class APICManager(object):
             LOG.warn(ex.message)
 
         with self.apic.transaction(transaction) as trs:
-            ppname = self.ensure_port_profile_created_for_switch(
+            self.ensure_port_profile_created_for_switch(
                 switch, transaction=trs)
 
             # Setup each module and port range
@@ -359,21 +400,10 @@ class APICManager(object):
                                                                  module)]
                     ports.sort()
                 for port in ports:
-                    pbname = '%s-%s' % (port, port)
-                    hname = 'hports-%s-%s' % (module, pbname)
-                    self.apic.infraHPortS.create(ppname, hname, 'range',
-                                                 transaction=trs)
                     fpdn = self.get_function_profile(switch, module, port,
                                                      transaction=trs)
-                    self.apic.infraRsAccBaseGrp.create(ppname, hname, 'range',
-                                                       tDn=fpdn,
-                                                       transaction=trs)
-                    self.apic.infraPortBlk.create(ppname, hname, 'range',
-                                                  pbname, fromCard=module,
-                                                  toCard=module,
-                                                  fromPort=str(port),
-                                                  toPort=str(port),
-                                                  transaction=trs)
+                    self.ensure_access_port_selector_created(switch, module,
+                        port, fpdn, transaction=trs)
                     # Enrich function profile
                     nname = switch + '-' + port
                     self.apic.infraConnNodeS.create(
@@ -390,6 +420,26 @@ class APICManager(object):
                         self.function_profile, nname, 'range')
                     self.apic.infraRsConnPortS.create(
                         self.function_profile, nname, dn)
+
+    def ensure_access_port_selector_created(self, switch, module,
+                                            port, function_profile_dn,
+                                            transaction=None):
+        if not self.provision_infra:
+            return
+        ppname = self._get_switch_port_profile_name(switch)
+        with self.apic.transaction(transaction) as trs:
+            pbname = '%s-%s' % (port, port)
+            hname = 'hports-%s-%s' % (module, pbname)
+            self.apic.infraHPortS.create(ppname, hname, 'range',
+                                         transaction=trs)
+            self.apic.infraRsAccBaseGrp.create(ppname, hname,
+                'range', tDn=function_profile_dn, transaction=trs)
+            self.apic.infraPortBlk.create(ppname, hname, 'range',
+                                          pbname, fromCard=module,
+                                          toCard=module,
+                                          fromPort=str(port),
+                                          toPort=str(port),
+                                          transaction=trs)
 
     def get_function_profile(self, switch, module, port, transaction=None):
         fpdn = self.apic.infraAccPortGrp.dn(self.function_profile)
@@ -474,7 +524,7 @@ class APICManager(object):
         """Check and create infra port profiles for a node."""
 
         # Generate id port profile
-        ppname = 'pprofile-%s' % switch
+        ppname = self._get_switch_port_profile_name(switch)
 
         # Create port profile for this switch
         with self.apic.transaction(transaction) as trs:
@@ -528,6 +578,15 @@ class APICManager(object):
             if vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_type, vmm_name, tDn=vlan_ns_dn, transaction=trs)
+
+    def ensure_l3ext_domain_created_on_apic(self, l3ext_name,
+                                            transaction=None):
+        """Create external routed domain."""
+        if not self.provision_infra:
+            return
+
+        with self.apic.transaction(transaction) as trs:
+            self.apic.l3extDomP.create(l3ext_name, transaction=trs)
 
     def ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
                                        transaction=None):
@@ -1142,6 +1201,11 @@ class APICManager(object):
                                                transaction=None):
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extOut.delete(owner, ext_out_id, transaction=trs)
+
+    def set_domain_for_external_routed_network(self, ext_out_id,
+            domain_dn=None, owner=TENANT_COMMON, transaction=None):
+        self.apic.l3extRsL3DomAtt.create(owner, ext_out_id,
+            tDn=domain_dn or self.l3ext_domain_dn, transaction=transaction)
 
     def ensure_logical_node_profile_created(self, ext_out_id,
                                             switch, module, port, encap,

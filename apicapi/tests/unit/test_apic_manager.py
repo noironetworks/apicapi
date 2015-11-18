@@ -69,6 +69,10 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.addCleanup(mock.patch.stopall)
         self.mgr.use_vmm = True
 
+    def _get_ext_switches_to_provision(self):
+        return set([x['switch'] for x in self.external_network_dict.values()
+                    if x.get('switch')])
+
     def test_mgr_session_login(self):
         login = self.mgr.apic.authentication
         self.assertEqual(login['userName'], mocked.APIC_USR)
@@ -136,6 +140,15 @@ class TestCiscoApicManager(base.BaseTestCase,
         new_dom = self.mgr.phys_domain_dn
         self.assertEqual(new_dom, self.mgr.apic.physDomP.mo.dn(dom))
 
+    def test_ensure_l3ext_domain_created(self):
+        dom = mocked.APIC_L3EXT_DOMAIN
+        self.mock_response_for_post(self.get_top_container(
+            self.mgr.apic.l3extDomP.mo))
+        self.mgr.ensure_l3ext_domain_created_on_apic(dom)
+        self.assert_responses_drained()
+        new_dom = self.mgr.l3ext_domain_dn
+        self.assertEqual(new_dom, self.mgr.apic.l3extDomP.mo.dn(dom))
+
     def _infra_created_setup(self):
         self.mock_db_query_filterby_first_return(None)
         self.mock_db_query_distinct_return([])
@@ -143,6 +156,7 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_ensure_infra_created_no_infra(self):
         self._infra_created_setup()
         self.mgr.switch_dict = {}
+        self.mgr.ext_net_dict = {}
         self.mgr.ensure_infra_created_on_apic()
 
     def _ensure_infra_created_seq1_setup(self):
@@ -163,11 +177,14 @@ class TestCiscoApicManager(base.BaseTestCase,
         num_links = sum([len(j)
                         for i in self.mgr.switch_dict.values()
                         for j in i.values()])
+        num_ext_switch = len(self._get_ext_switches_to_provision())
 
         self.mgr.ensure_infra_created_on_apic()
         self.assert_responses_drained()
-        self.assertEqual(np_create_for_switch.call_count, num_links)
-        self.assertEqual(pp_create_for_switch.call_count, num_links)
+        self.assertEqual(np_create_for_switch.call_count,
+            num_links + num_ext_switch)
+        self.assertEqual(pp_create_for_switch.call_count,
+            num_links + num_ext_switch)
 
     def test_ensure_infra_created_seq1_exc(self):
         self.mock_error_post_response(wexc.HTTPBadRequest)
@@ -199,8 +216,9 @@ class TestCiscoApicManager(base.BaseTestCase,
         num_links = sum([len(j)
                         for i in self.mgr.switch_dict.values()
                         for j in i.values()])
+        num_ext_switch = len(self._get_ext_switches_to_provision())
         self.assertEqual(np_create_for_switch.call_count,
-                         num_links)
+                         num_links + num_ext_switch)
 
     def test_ensure_infra_created_seq2_exc(self):
         self.mock_db_query_filterby_all_return([])
@@ -229,6 +247,31 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.mgr.apic_vmm_type = 'wrong_type'
         self.assertRaises(cexc.ApicVmmTypeNotSupported,
                           self.mgr.ensure_infra_created_on_apic)
+
+    def test_ensure_infra_created_l3ext_domain(self):
+        self._ensure_infra_created_seq1_setup()
+
+        mgr = self.mgr
+        mgr.ensure_l3ext_domain_created_on_apic = mock.Mock()
+        mgr.ensure_entity_profile_created_on_apic = mock.Mock()
+        mgr.ensure_function_profile_created_on_apic = mock.Mock()
+        mgr.ensure_access_port_selector_created = mock.Mock()
+
+        mgr.ensure_infra_created_on_apic()
+        mgr.ensure_l3ext_domain_created_on_apic.assert_called_once_with(
+            mocked.APIC_L3EXT_DOMAIN)
+        mgr.ensure_entity_profile_created_on_apic.assert_called_with(
+            mocked.APIC_L3EXT_ATT_ENT_PROF,
+            domain_dn=mgr.apic.l3extDomP.mo.dn(mocked.APIC_L3EXT_DOMAIN),
+            enable_infra_vlan=False, incl_vmware_vmm=False)
+        mgr.ensure_function_profile_created_on_apic.assert_called_with(
+            mocked.APIC_L3EXT_FUNC_PROF,
+            entity_profile_dn=mgr.apic.infraAttEntityP.mo.dn(
+                mocked.APIC_L3EXT_ATT_ENT_PROF))
+        mgr.ensure_access_port_selector_created.assert_called_once_with(
+            mocked.APIC_EXT_SWITCH, mocked.APIC_EXT_MODULE,
+            mocked.APIC_EXT_PORT,
+            mgr.apic.infraAccPortGrp.mo.dn(mocked.APIC_L3EXT_FUNC_PROF))
 
     def test_ensure_context_enforced_new_ctx(self):
         self.mock_response_for_post(self.get_top_container(

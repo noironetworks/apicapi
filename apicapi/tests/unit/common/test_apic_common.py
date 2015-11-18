@@ -48,10 +48,13 @@ APIC_CONTRACT = 'signedContract'
 
 APIC_SYSTEM_ID = 'sysid'
 APIC_DOMAIN = 'cumuloNimbus'
+APIC_L3EXT_DOMAIN = '%s_l3ext' % APIC_SYSTEM_ID
 
 APIC_NODE_PROF = 'red'
 APIC_FUNC_PROF = 'beta'
 APIC_ATT_ENT_PROF = 'delta'
+APIC_L3EXT_FUNC_PROF = '%s_l3ext_function_profile' % APIC_SYSTEM_ID
+APIC_L3EXT_ATT_ENT_PROF = '%s_l3ext_entity_profile' % APIC_SYSTEM_ID
 APIC_VLAN_NAME = 'gamma'
 APIC_VLANID_FROM = 2900
 APIC_VLANID_TO = 2999
@@ -282,6 +285,16 @@ class ConfigMixin(object):
                 'encap': APIC_EXT_ENCAP,
                 'cidr_exposed': APIC_EXT_CIDR_EXPOSED,
                 'gateway_ip': APIC_EXT_GATEWAY_IP,
+            },
+            APIC_NETWORK + '-1-name': {
+                'switch': APIC_EXT_SWITCH,
+                'port': APIC_EXT_MODULE + '/' + APIC_EXT_PORT,
+                'encap': APIC_EXT_ENCAP,
+                'cidr_exposed': APIC_EXT_CIDR_EXPOSED,
+                'gateway_ip': APIC_EXT_GATEWAY_IP,
+            },
+            APIC_NETWORK + '-pre-name': {
+                'preexisting': 'true',
             },
         }
         self.vlan_ranges = ['physnet1:100:199']

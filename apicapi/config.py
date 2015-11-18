@@ -95,6 +95,17 @@ apic_opts = [
     cfg.StrOpt('vmm_controller_host', default='openstack',
                help='VMM controller IP address or DNS name, used '
                     'for OpenStack VMM'),
+    cfg.StrOpt('apic_external_routed_domain_name',
+               default='${apic_system_id}_l3ext',
+               help=("Name of external routed domain to be created on APIC")),
+    cfg.StrOpt('apic_external_routed_entity_profile',
+               default='${apic_system_id}_l3ext_entity_profile',
+               help=("Name of the entity profile to be created for "
+                     "external routed domain")),
+    cfg.StrOpt('apic_external_routed_function_profile',
+               default='${apic_system_id}_l3ext_function_profile',
+               help=("Name of the function profile to be created for "
+                     "external routed domain")),
 ]
 
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
@@ -229,6 +240,9 @@ class ConfigValidator(object):
         'private_key_file': [valid_file],
         'apic_vmm_type': [valid_apic_name],
         'vmm_controller_host': [valid_controller_host],
+        'apic_external_routed_domain_name': [valid_apic_name],
+        'apic_external_routed_entity_profile': [valid_apic_name],
+        'apic_external_routed_function_profile': [valid_apic_name],
     }
 
     class RaiseUtils(object):
