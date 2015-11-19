@@ -100,6 +100,7 @@ class ManagedObjectClass(object):
         'l3extOut': ManagedObjectName('fvTenant', 'out-%(name)s',
                                       name_fmt='__%s'),
         'l3extRsEctx': ManagedObjectName('l3extOut', 'rsectx'),
+        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'l3extRsL3DomAtt'),
         'l3extLNodeP': ManagedObjectName('l3extOut', 'lnodep-%s'),
         'l3extRsNodeL3OutAtt': ManagedObjectName('l3extLNodeP',
                                                  'rsnodeL3OutAtt-[%s]'),
@@ -118,6 +119,7 @@ class ManagedObjectClass(object):
             ManagedObjectName('l3extInstP', 'l3extRsInstPToNatMappingEPg'),
 
         'physDomP': ManagedObjectName(None, 'phys-%s'),
+        'l3extDomP': ManagedObjectName(None, 'l3dom-%s'),
 
         'infraInfra': ManagedObjectName(None, 'infra'),
         'infraNodeP': ManagedObjectName('infraInfra', 'nprof-%(name)s',
