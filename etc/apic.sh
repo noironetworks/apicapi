@@ -1,3 +1,7 @@
+if [ "$(id -u)" != "0" ]; then
+    exit 0
+fi
+
 pcat() {
   for i in "$@"
   do
