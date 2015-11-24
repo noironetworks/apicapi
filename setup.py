@@ -18,7 +18,7 @@ import setuptools
 
 setuptools.setup(
     name="apicapi",
-    version="1.0.6",
+    version="1.0.7",
     zip_safe=False,
     packages=setuptools.find_packages(exclude=["*.tests", "*.tests.*",
                                                "tests.*", "tests"]),
