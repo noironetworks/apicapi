@@ -231,10 +231,15 @@ class APICManager(object):
             # as older APIC versions do not support the field
             encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
             vmm_dn = self.apic.vmmDomP.dn(self.apic_vmm_type, vmm_name)
+            epv_dn = self.apic.vmmEpValidatorPol.dn(self.apic_vmm_type,
+                         vmm_name, vmm_name)
             try:
                 self.apic.vmmDomP.update(
                     self.apic_vmm_type, vmm_name, dn=vmm_dn,
                     encapMode=encap_mode)
+                self.apic.vmmEpValidatorPol.create(
+                    self.apic_vmm_type, vmm_name, vmm_name, dn=epv_dn,
+                    currentKey=self.vmm_shared_secret)
             except cexc.ApicResponseNotOk as ex:
                 # Ignore as older APIC versions will not support
                 # vmmDomP.encapMode
@@ -523,8 +528,7 @@ class APICManager(object):
             self.apic.vmmCtrlrP.create(
                 vmm_type, vmm_name, vmm_name, scope="openstack",
                 rootContName=vmm_name, hostOrIp=self.vmm_controller_host,
-                mode="ovs", epValidatorKey=self.vmm_shared_secret,
-                transaction=trs)
+                mode="ovs", transaction=trs)
             self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
                                       tDn=usracc_dn, transaction=trs)
             if vlan_ns_dn:
