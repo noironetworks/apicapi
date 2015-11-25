@@ -171,7 +171,6 @@ class APICManager(object):
             CONTEXT_SHARED.value = self.apic_config.shared_context_name
             CONTEXT_SHARED.existing = True
         self.vmm_controller_host = self.apic_config.vmm_controller_host
-        self.vmm_shared_secret = self.apic_config.vmm_shared_secret
 
     @property
     def apic_mapper(self):
@@ -231,15 +230,10 @@ class APICManager(object):
             # as older APIC versions do not support the field
             encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
             vmm_dn = self.apic.vmmDomP.dn(self.apic_vmm_type, vmm_name)
-            epv_dn = self.apic.vmmEpValidatorPol.dn(self.apic_vmm_type,
-                         vmm_name, vmm_name)
             try:
                 self.apic.vmmDomP.update(
                     self.apic_vmm_type, vmm_name, dn=vmm_dn,
                     encapMode=encap_mode)
-                self.apic.vmmEpValidatorPol.create(
-                    self.apic_vmm_type, vmm_name, vmm_name, dn=epv_dn,
-                    currentKey=self.vmm_shared_secret)
             except cexc.ApicResponseNotOk as ex:
                 # Ignore as older APIC versions will not support
                 # vmmDomP.encapMode
@@ -1398,3 +1392,20 @@ class APICManager(object):
             else:
                 result.append((switch, 'eth' + module + '/' + port))
         return result
+
+    def set_vmm_secret(self, current=None, previous=None):
+        if self.use_vmm and APIC_VMM_TYPE_OPENSTACK == self.apic_vmm_type:
+            vmm_name = self.apic_config.apic_domain_name
+            epv_dn = self.apic.vmmEpValidatorPol.dn(self.apic_vmm_type,
+                                                    vmm_name, vmm_name)
+            kwargs = {}
+            if current:
+                kwargs['currentKey'] = current
+            if previous:
+                kwargs['previousKey'] = previous
+            self.apic.vmmEpValidatorPol.create(
+                self.apic_vmm_type, vmm_name, vmm_name, dn=epv_dn, **kwargs)
+        else:
+            raise cexc.ApicInvalidActionOnVMM(action='set_vmm_secret',
+                                              use_vmm=self.use_vmm,
+                                              vmm_type=self.apic_vmm_type)
