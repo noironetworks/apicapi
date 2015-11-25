@@ -105,3 +105,8 @@ class ApicVmmTypeNotSupported(ApicException):
     """The APIC VMM type is not supported at this moment."""
     message = ("VMM type '%(type)s' is not supported. Currently we only "
                "support '%(list)s'.")
+
+
+class ApicInvalidActionOnVMM(ApicException):
+    message = ("Action %(action)s is invalid when use_vmm is %(use_vmm)s "
+               "and vmm_type %(vmm_type)s")
