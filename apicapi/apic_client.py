@@ -204,6 +204,7 @@ class ManagedObjectClass(object):
         'fvnsMcastAddrBlk': ManagedObjectName('fvnsMcastAddrInstP',
                                               'fromaddr-[%s]-toaddr-[%s]'),
         'vmmRsAcc': ManagedObjectName('vmmCtrlrP', 'rsacc'),
+        'vmmEpValidatorPol': ManagedObjectName('vmmCtrlrP', 'epv'),
     }
 
     # The ManagedObjects specified below will not be scoped whenever
