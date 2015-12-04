@@ -442,7 +442,8 @@ class APICManager(object):
                                           transaction=trs)
 
     def get_function_profile(self, switch, module, port, transaction=None):
-        fpdn = self.apic.infraAccPortGrp.dn(self.function_profile)
+        # If fpdn is not found, let's return None.
+        fpdn = None
         with self.apic.transaction(transaction) as trs:
             if switch in self.vpc_dict:
                 link1 = switch, module, port
