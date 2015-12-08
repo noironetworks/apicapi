@@ -365,36 +365,34 @@ class APICManager(object):
                                                  transaction=trs)
                     fpdn = self.get_function_profile(switch, module, port,
                                                      transaction=trs)
-                    if fpdn:
-                        self.apic.infraRsAccBaseGrp.create(ppname, hname, 'range',
-                                                           tDn=fpdn,
-                                                           transaction=trs)
-                        self.apic.infraPortBlk.create(ppname, hname, 'range',
-                                                      pbname, fromCard=module,
-                                                      toCard=module,
-                                                      fromPort=str(port),
-                                                      toPort=str(port),
-                                                      transaction=trs)
-                        # Enrich function profile
-                        nname = switch + '-' + port
-                        self.apic.infraConnNodeS.create(
-                            self.function_profile, nname)
-                        self.apic.infraConnNodeBlk.create(
-                            self.function_profile, nname, from_=switch,
-                            to_=switch)
-                        self.apic.infraHConnPortS.create(
-                            self.function_profile, nname, 'range')
-                        self.apic.infraConnPortBlk.create(
-                            self.function_profile, nname, 'range', fromPort=port,
-                            toPort=port)
-                        dn = self.apic.infraHConnPortS.dn(
-                            self.function_profile, nname, 'range')
-                        self.apic.infraRsConnPortS.create(
-                            self.function_profile, nname, dn)
+                    self.apic.infraRsAccBaseGrp.create(ppname, hname, 'range',
+                                                       tDn=fpdn,
+                                                       transaction=trs)
+                    self.apic.infraPortBlk.create(ppname, hname, 'range',
+                                                  pbname, fromCard=module,
+                                                  toCard=module,
+                                                  fromPort=str(port),
+                                                  toPort=str(port),
+                                                  transaction=trs)
+                    # Enrich function profile
+                    nname = switch + '-' + port
+                    self.apic.infraConnNodeS.create(
+                        self.function_profile, nname)
+                    self.apic.infraConnNodeBlk.create(
+                        self.function_profile, nname, from_=switch,
+                        to_=switch)
+                    self.apic.infraHConnPortS.create(
+                        self.function_profile, nname, 'range')
+                    self.apic.infraConnPortBlk.create(
+                        self.function_profile, nname, 'range', fromPort=port,
+                        toPort=port)
+                    dn = self.apic.infraHConnPortS.dn(
+                        self.function_profile, nname, 'range')
+                    self.apic.infraRsConnPortS.create(
+                        self.function_profile, nname, dn)
 
     def get_function_profile(self, switch, module, port, transaction=None):
-        # If fpdn is not found, let's return None.
-        fpdn = None
+        fpdn = self.apic.infraAccPortGrp.dn(self.function_profile)
         with self.apic.transaction(transaction) as trs:
             if switch in self.vpc_dict:
                 link1 = switch, module, port
