@@ -92,7 +92,7 @@ class ApicMultipleVlanRanges(ApicException):
 
 
 class ApicInvalidTransactionMultipleRoot(ApicException):
-    """The switch and port for the specified host are not configured."""
+    """The current transaction has more than one root node."""
     message = "An apic transaction cannot start from multiple root nodes"
 
 
