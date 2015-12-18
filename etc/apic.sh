@@ -1,6 +1,4 @@
-if [ "$(id -u)" != "0" ]; then
-    exit 0
-fi
+if [ "$(id -u)" = "0" ]; then
 
 pcat() {
   for i in "$@"
@@ -43,3 +41,5 @@ vxlan-pkts() {
   fi
   tcpdump -lane -i "$opflex_iface" "$@" port 8472 | grep --line-buffered -v OTV ;
 }
+
+fi
