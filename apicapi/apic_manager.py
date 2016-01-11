@@ -69,9 +69,15 @@ class APICManager(object):
     """
     def __init__(self, db, log, network_config, apic_config,
                  keyclient=None, keystone_authtoken=None,
-                 apic_system_id='openstack'):
+                 apic_system_id='openstack',
+                 default_apic_model=None):
         self.db = db
         self.apic_config = apic_config
+        if default_apic_model:
+            for opt in config.apic_opts:
+                if opt.name == "apic_model":
+                    opt.default = default_apic_model
+                    break
         self.apic_config._conf.register_opts(
             config.apic_opts, self.apic_config._group.name)
         # Config pre validation
