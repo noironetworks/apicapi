@@ -125,12 +125,13 @@ class APICNameMapper(object):
                         result = inst._grow_id_if_needed(
                             purged_id, name_type, result,
                             start=inst.min_suffix)
-                    inst.db.update_apic_name(resource_id, name_type, result)
-                    if prefix:
-                        result = prefix + result
-                        result = truncate(result, MAX_APIC_NAME_LENGTH)
                 else:
                     result = purged_id
+
+                inst.db.update_apic_name(resource_id, name_type, result)
+                if prefix:
+                    result = prefix + result
+                    result = truncate(result, MAX_APIC_NAME_LENGTH)
                 return ApicName(result, resource_id, context, inst,
                                 func.__name__, prefix=prefix)
             return inner
