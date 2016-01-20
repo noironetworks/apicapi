@@ -39,7 +39,6 @@ rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
 %{_bindir}/apic
 %{_bindir}/apic-cleanup
 %{_sysconfdir}/bash_completion.d
-%{_sysconfdir}/profile.d
 
 %changelog
 * Mon May 18 2015 Amit Bose <bose@noironetworks.com> - 1.0.4-1
