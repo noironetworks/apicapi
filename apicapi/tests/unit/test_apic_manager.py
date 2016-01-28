@@ -648,3 +648,28 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assertEqual(
             'onename_1234567890', mapper._grow_id_if_needed(
                 test_id, 'router', test_result, start=8))
+
+    def test_bd_enforce_subnet_check(self):
+        self.mgr.apic.fvBD.create = mock.Mock()
+        self.mgr.default_enforce_subnet_check = True
+        self.mgr.ensure_bd_created_on_apic('test', 'test')
+        self.mgr.apic.fvBD.create.assert_called_once_with(
+                'test', 'test',
+                arpFlood=mock.ANY,
+                unkMacUcastAct=mock.ANY,
+                unicastRoute=mock.ANY,
+                epMoveDetectMode=mock.ANY,
+                limitIpLearnToSubnets='yes',
+                transaction=mock.ANY)
+        # verifies explicit arg overrides the ip check
+        self.mgr.apic.fvBD.create.reset_mock()
+        self.mgr.ensure_bd_created_on_apic('test', 'test',
+                                           enforce_subnet_check=False)
+        self.mgr.apic.fvBD.create.assert_called_once_with(
+                'test', 'test',
+                arpFlood=mock.ANY,
+                unkMacUcastAct=mock.ANY,
+                unicastRoute=mock.ANY,
+                epMoveDetectMode=mock.ANY,
+                limitIpLearnToSubnets='no',
+                transaction=mock.ANY)

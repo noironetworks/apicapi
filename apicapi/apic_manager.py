@@ -672,7 +672,8 @@ class APICManager(object):
                                   ctx_owner=TENANT_COMMON,
                                   ctx_name=CONTEXT_SHARED,
                                   transaction=None, allow_broadcast=False,
-                                  unicast_route=True):
+                                  unicast_route=True,
+                                  enforce_subnet_check=None):
         """Creates a Bridge Domain on the APIC."""
         self.ensure_context_enforced(ctx_owner, ctx_name)
         with self.apic.transaction(transaction) as trs:
@@ -686,7 +687,8 @@ class APICManager(object):
                 unicastRoute=YES_NO[unicast_route],
                 epMoveDetectMode=self.default_ep_move_detect,
                 limitIpLearnToSubnets=YES_NO[
-                    self.default_enforce_subnet_check],
+                    enforce_subnet_check if enforce_subnet_check is not None
+                    else self.default_enforce_subnet_check],
                 transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
