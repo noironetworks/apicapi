@@ -28,6 +28,7 @@ global_opts = [
     cfg.StrOpt('apic_system_id',
                default='openstack',
                help="Prefix for APIC domain/names/profiles created"),
+    cfg.StrOpt('config_file', default='etc/config_sample.ini'),
 ]
 
 
