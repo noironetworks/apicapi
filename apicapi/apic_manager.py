@@ -18,6 +18,12 @@ from apicapi import apic_mapper
 from apicapi import config
 from apicapi import exceptions as cexc
 
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
+
+
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
 YES_NO = {True: 'yes', False: 'no'}
@@ -71,15 +77,33 @@ class APICManager(object):
                  keyclient=None, keystone_authtoken=None,
                  apic_system_id='openstack',
                  default_apic_model=None):
+        # Network config looks like follows:
+        # network_config = {
+        #     'vlan_ranges': cfg.CONF.ml2_type_vlan.network_vlan_ranges,
+        #     'switch_dict': config.create_switch_dictionary(),
+        #     'vpc_dict': config.create_vpc_dictionary(),
+        #     'external_network_dict':
+        #     config.create_external_network_dictionary(),
+        # }
+
+        # If the following keys are not set (which will happen once deprecation
+        # is complete on the Neutron side) gather the configuration and set it
+        # instead.
+        network_config.setdefault('switch_dict',
+                                  config.create_switch_dictionary())
+        network_config.setdefault('vpc_dict', config.create_vpc_dictionary())
+        network_config.setdefault('external_network_dict',
+                                  config.create_external_network_dictionary())
+
+        ext_config = apic_config
         self.db = db
-        self.apic_config = apic_config
         if default_apic_model:
             for opt in config.apic_opts:
                 if opt.name == "apic_model":
                     opt.default = default_apic_model
                     break
-        self.apic_config._conf.register_opts(
-            config.apic_opts, self.apic_config._group.name)
+        # Enrich config with apic specific configuration options
+        self.apic_config = self._build_config(ext_config)
         # Config pre validation
         config.ConfigValidator(log).validate(self.apic_config)
 
@@ -1449,3 +1473,17 @@ class APICManager(object):
                     self.db.session.query(HostLink).delete()
                 except orm.exc.NoResultFound:
                     return
+
+    def _build_config(self, ext_config):
+        if cfg.CONF.apic_config_version == '2.0':
+            # We are using new style config options
+            return cfg.CONF.apic
+        else:
+            configs = []
+            for x in config.apic_opts:
+                # Deprecate options into external config since APICAPI will
+                # have its own config group
+                x.deprecated_for_removal = True
+                configs.append(x)
+            ext_config._conf.register_opts(configs, ext_config._group.name)
+            return ext_config

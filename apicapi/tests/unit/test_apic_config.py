@@ -23,7 +23,8 @@ from apicapi.tests.unit.common import test_apic_common as mocked
 
 class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
 
-    def setUp(self):
+    def setUp(self, config_group='ml2_cisco_apic'):
+        self.config_group = config_group
         super(TestCiscoApicConfig, self).setUp()
         mocked.ConfigMixin.set_up_mocks(self)
         self.apic_config._conf.register_opts(
@@ -147,3 +148,11 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
         self.override_config('apic_vmm_type', 'OpenStack', 'ml2_cisco_apic')
         self.assertRaises(
             exc.InvalidConfig, self.validator.validate, self.apic_config)
+
+
+class TestCiscoApicNewConf(TestCiscoApicConfig):
+
+    def setUp(self):
+        # Switch to new-style APIC config
+        self.override_config('apic_config_version', '2.0')
+        super(TestCiscoApicNewConf, self).setUp(config_group='apic')

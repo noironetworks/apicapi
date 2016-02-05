@@ -108,6 +108,76 @@ apic_opts = [
                      "external routed domain")),
 ]
 
+# REVISIT(ivar): apic_new_opts are new options that never were part of the
+# ml2_cisco_apic group to begin with. Will blend this options with the above
+# once the old group deprecation is complete
+global_opts = [
+    # REVISIT(ivar): apic_config_version was born already deprecated, for it
+    # will be removed together with the ml2_cisco_apic group options. We need
+    # this option (instead of just opportunistically use new-style config)
+    # because we can't tell whether a new-style option was actually set by the
+    # user or it's just the default value being loaded.
+    cfg.StrOpt('apic_config_version', default='1.0',
+               deprecated_for_removal=True,
+               help=("Decide what configuration version to use for apicapi."
+                     "- 1.0 Init, everything in [ml2_cisco_apic] section"
+                     "- 2.0 [apic] section and multiple VMM domains")),
+]
+
+cfg.CONF.register_opts(global_opts)
+
+# These options are moved from ML2 to APICAPI and are relevant to apicapi.
+# TODO(ivar): remove VMM specific option for multiple VMM implementation
+apic_opts_from_ml2 = [
+    cfg.ListOpt('apic_hosts',
+                default=[],
+                help=("An ordered list of host names or IP addresses of "
+                      "the APIC controller(s).")),
+    cfg.StrOpt('apic_username',
+               help=("Username for the APIC controller")),
+    cfg.StrOpt('apic_password',
+               help=("Password for the APIC controller"), secret=True),
+    cfg.StrOpt('apic_name_mapping',
+               default='use_uuid',
+               help=("Name mapping strategy to use: use_uuid | use_name")),
+    cfg.BoolOpt('apic_use_ssl',
+                default=True,
+                help=("Use SSL to connect to the APIC controller")),
+    cfg.StrOpt('apic_domain_name',
+               default='${apic_system_id}',
+               help=("Name for the domain created on APIC")),
+    cfg.StrOpt('apic_app_profile_name',
+               default='${apic_system_id}_app',
+               help=("Name for the app profile used for Openstack")),
+    cfg.StrOpt('apic_vlan_ns_name',
+               default='${apic_system_id}_vlan_ns',
+               help=("Name for the vlan namespace to be used for Openstack")),
+    cfg.StrOpt('apic_node_profile',
+               default='${apic_system_id}_node_profile',
+               help=("Name of the node profile to be created")),
+    cfg.StrOpt('apic_entity_profile',
+               default='${apic_system_id}_entity_profile',
+               help=("Name of the entity profile to be created")),
+    cfg.StrOpt('apic_function_profile',
+               default='${apic_system_id}_function_profile',
+               help=("Name of the function profile to be created")),
+    cfg.StrOpt('apic_lacp_profile',
+               default='${apic_system_id}_lacp_profile',
+               help=("Name of the LACP profile to be created")),
+    cfg.ListOpt('apic_host_uplink_ports',
+                default=[],
+                help=('The uplink ports to check for ACI connectivity')),
+    cfg.ListOpt('apic_vpc_pairs',
+                default=[],
+                help=('The switch pairs for VPC connectivity')),
+    cfg.StrOpt('apic_vlan_range',
+               default='2:4093',
+               help=("Range of VLAN's to be used for Openstack")),
+]
+
+
+cfg.CONF.register_opts(apic_opts + apic_opts_from_ml2, "apic")
+
 APP_PROFILE_REGEX = "[a-zA-Z0-9_.:-]+"
 NOT_SET = object()
 
@@ -280,3 +350,56 @@ class ConfigValidator(object):
                     self._validate(opt, value, conf)
                 except cfg.NoSuchOptError:
                     pass
+
+
+# With apic specific config split from apic_ml2, creating the switch
+# dictionaries should be done by apicapi itself
+def _get_specific_config(prefix):
+    """retrieve config in the format [<prefix>:<value>]."""
+    conf_dict = {}
+    multi_parser = cfg.MultiConfigParser()
+    multi_parser.read(cfg.CONF.config_file)
+    for parsed_file in multi_parser.parsed:
+        for parsed_item in parsed_file.keys():
+            if parsed_item.startswith(prefix):
+                found_prefix, value = parsed_item.split(':')
+                if found_prefix.lower() == prefix.lower():
+                    conf_dict[value] = parsed_file[parsed_item].items()
+    return conf_dict
+
+
+def create_switch_dictionary():
+    switch_dict = {}
+    conf = _get_specific_config('apic_switch')
+    for switch_id in conf:
+        switch_dict[switch_id] = switch_dict.get(switch_id, {})
+        for host_list, port in conf[switch_id]:
+            hosts = host_list.split(',')
+            port = port[0]
+            switch_dict[switch_id][port] = (
+                switch_dict[switch_id].get(port, []) + hosts)
+    return switch_dict
+
+
+def create_vpc_dictionary():
+    vpc_dict = {}
+    for pair in cfg.CONF.ml2_cisco_apic.apic_vpc_pairs:
+        pair_tuple = pair.split(':')
+        if (len(pair_tuple) != 2 or
+                any(map(lambda x: not x.isdigit(), pair_tuple))):
+            # Validation error, ignore this item
+            continue
+        vpc_dict[pair_tuple[0]] = pair_tuple[1]
+        vpc_dict[pair_tuple[1]] = pair_tuple[0]
+    return vpc_dict
+
+
+def create_external_network_dictionary():
+    router_dict = {}
+    conf = _get_specific_config('apic_external_network')
+    for net_id in conf:
+        router_dict[net_id] = router_dict.get(net_id, {})
+        for key, value in conf[net_id]:
+            router_dict[net_id][key] = value[0] if value else None
+
+    return router_dict
