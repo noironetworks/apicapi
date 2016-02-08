@@ -703,6 +703,7 @@ class APICManager(object):
             self.apic.fvBD.delete(tenant_id, bd_id, transaction=trs)
 
     def ensure_subnet_created_on_apic(self, tenant_id, bd_id, gw_ip,
+                                      scope=None,
                                       transaction=None):
         """Creates a subnet on the APIC
 
@@ -712,7 +713,8 @@ class APICManager(object):
         if self.aci_routing_enabled and gw_ip:
             with self.apic.transaction(transaction) as trs:
                 self.apic.fvSubnet.create(tenant_id, bd_id, gw_ip,
-                                          scope=self.default_subnet_scope,
+                                          scope=(scope or
+                                              self.default_subnet_scope),
                                           transaction=trs)
 
     def ensure_subnet_deleted_on_apic(self, tenant_id, bd_id, gw_ip,

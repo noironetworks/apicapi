@@ -383,6 +383,9 @@ class TestCiscoApicManager(base.BaseTestCase,
             self.mgr.apic.fvSubnet.mo))
         self.mgr.ensure_subnet_created_on_apic('t2', 'bd3', '4.4.4.4/16')
         self.assert_responses_drained()
+        self.mgr.ensure_subnet_created_on_apic('t3', 'bd4', '4.4.4.4/16',
+                                               scope='public')
+        self.assert_responses_drained()
 
     def test_ensure_epg_created(self):
         tenant = mocked.APIC_TENANT
