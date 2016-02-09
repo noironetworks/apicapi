@@ -403,3 +403,23 @@ def create_external_network_dictionary():
             router_dict[net_id][key] = value[0] if value else None
 
     return router_dict
+
+
+def _create_apic_dom_dictionary(prefix):
+    dom_dict = {}
+    conf = _get_specific_config(prefix)
+    for dom in conf:
+        dom_dict.setdefault(dom, {})
+        for key, value in conf[dom]:
+            if value:
+                dom_dict[dom][key] = value[0]
+
+    return dom_dict
+
+
+def create_physdom_dictionary():
+    return _create_apic_dom_dictionary('apic_physdom')
+
+
+def create_vmdom_dictionary():
+    return _create_apic_dom_dictionary('apic_vmdom')
