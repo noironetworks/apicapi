@@ -108,23 +108,6 @@ apic_opts = [
                      "external routed domain")),
 ]
 
-# REVISIT(ivar): apic_new_opts are new options that never were part of the
-# ml2_cisco_apic group to begin with. Will blend this options with the above
-# once the old group deprecation is complete
-global_opts = [
-    # REVISIT(ivar): apic_config_version was born already deprecated, for it
-    # will be removed together with the ml2_cisco_apic group options. We need
-    # this option (instead of just opportunistically use new-style config)
-    # because we can't tell whether a new-style option was actually set by the
-    # user or it's just the default value being loaded.
-    cfg.StrOpt('apic_config_version', default='1.0',
-               deprecated_for_removal=True,
-               help=("Decide what configuration version to use for apicapi."
-                     "- 1.0 Init, everything in [ml2_cisco_apic] section"
-                     "- 2.0 [apic] section and multiple VMM domains")),
-]
-
-cfg.CONF.register_opts(global_opts)
 
 # These options are moved from ML2 to APICAPI and are relevant to apicapi.
 # TODO(ivar): remove VMM specific option for multiple VMM implementation

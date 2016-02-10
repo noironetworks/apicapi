@@ -1314,7 +1314,7 @@ class APICManager(object):
                     return
 
     def _build_config(self, ext_config):
-        if cfg.CONF.apic_config_version == '2.0':
+        if cfg.CONF.apic.apic_password is not None:
             # We are using new style config options
             return cfg.CONF.apic
         else:
@@ -1329,7 +1329,7 @@ class APICManager(object):
 
     def retrieve_domains(self, log, network_config):
         domains = []
-        if cfg.CONF.apic_config_version == '2.0':
+        if cfg.CONF.apic.apic_password is not None:
             for name, conf in config.create_physdom_dictionary().items():
                 domains.append(apic_domain.PhysDom(
                     self.apic_system_id, self.apic, log, self.apic_config,

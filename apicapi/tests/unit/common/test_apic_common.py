@@ -307,6 +307,9 @@ class ConfigMixin(object):
     def override_config(self, opt, val, group=None):
         cfg.CONF.set_override(opt, val, group)
 
+    def clear_config(self, opt, group=None):
+        cfg.CONF.clear_override(opt, group)
+
 
 class DbModelMixin(object):
 

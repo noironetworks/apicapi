@@ -154,5 +154,4 @@ class TestCiscoApicNewConf(TestCiscoApicConfig):
 
     def setUp(self):
         # Switch to new-style APIC config
-        self.override_config('apic_config_version', '2.0')
         super(TestCiscoApicNewConf, self).setUp(config_group='apic')

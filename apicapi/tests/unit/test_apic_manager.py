@@ -37,7 +37,7 @@ class TestCiscoApicManager(base.BaseTestCase,
     def setUp(self, config_group='ml2_cisco_apic'):
         self.config_group = config_group
         if config_group == 'ml2_cisco_apic':
-            self.override_config('apic_config_version', '1.0')
+            self.clear_config('apic_password', 'apic')
         super(TestCiscoApicManager, self).setUp()
         self._initialize_manager()
 
@@ -689,7 +689,6 @@ class TestCiscoApicManagerNewConf(TestCiscoApicManager):
 
     def setUp(self):
         # Switch to new-style APIC config
-        self.override_config('apic_config_version', '2.0')
         super(TestCiscoApicManagerNewConf, self).setUp(config_group='apic')
 
     def _initialize_manager(self, vmm=False):
