@@ -52,6 +52,8 @@ class TestCiscoApicManager(base.BaseTestCase,
                              'ml2_cisco_apic')
         self.override_config('vmm_controller_host', 'somename',
                              'ml2_cisco_apic')
+        self.override_config('apic_switch_pg_name', mocked.APIC_SW_PG_NAME,
+                             'ml2_cisco_apic')
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
             network_config= {
@@ -61,6 +63,8 @@ class TestCiscoApicManager(base.BaseTestCase,
                 'external_network_dict': self.external_network_dict,
             }, apic_system_id=mocked.APIC_SYSTEM_ID,
             log=self.log, db=apic_model.ApicDbModel())
+
+        self.mgr.apic.infraAccNodePGrp.get = mock.Mock(return_value='not-None')
         self.mgr.app_profile_name = mocked.APIC_AP
         self.mocked_session.begin = self.fake_transaction
         self.session = self.mgr.apic.session
@@ -676,3 +680,21 @@ class TestCiscoApicManager(base.BaseTestCase,
                 epMoveDetectMode=mock.ANY,
                 limitIpLearnToSubnets='no',
                 transaction=mock.ANY)
+
+    def test_sw_pg_name_scoped(self):
+        self._initialize_manager()
+        self.assertEqual(
+            '_' + mocked.APIC_SYSTEM_ID + '_' + mocked.APIC_SW_PG_NAME,
+            self.mgr.sw_pg_name)
+        self.assertEqual(
+            self.mgr.apic.infraAccNodePGrp.dn('_' + mocked.APIC_SYSTEM_ID +
+                                              '_' + mocked.APIC_SW_PG_NAME),
+            self.mgr.switch_pg_dn)
+
+    def test_sw_pg_name_unscoped(self):
+        self._initialize_manager()
+        self.mgr.apic.infraAccNodePGrp.get = mock.Mock(return_value=None)
+        self.assertEqual(mocked.APIC_SW_PG_NAME, self.mgr.sw_pg_name)
+        self.assertEqual(
+            self.mgr.apic.infraAccNodePGrp.dn(mocked.APIC_SW_PG_NAME),
+            self.mgr.switch_pg_dn)
