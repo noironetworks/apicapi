@@ -176,8 +176,8 @@ class APICManager(object):
 
         self.function_profile = self.apic_config.apic_function_profile
         self.lacp_profile = self.apic_config.apic_lacp_profile
-        self.sw_pg_name = self.apic_config.apic_switch_pg_name
-        self.switch_pg_dn = self.apic.infraAccNodePGrp.dn(self.sw_pg_name)
+        self._sw_pg_name = None
+        self._switch_pg_dn = None
         self.l3ext_function_profile_dn = self.apic.infraAccPortGrp.dn(
             self.apic_config.apic_external_routed_function_profile)
 
@@ -194,6 +194,19 @@ class APICManager(object):
     @property
     def apic_mapper(self):
         return self._apic_mapper
+
+    @property
+    def sw_pg_name(self):
+        if not self._sw_pg_name:
+            self._sw_pg_name = self._get_sw_pg_name(
+                self.apic_config.apic_switch_pg_name)
+        return self._sw_pg_name
+
+    @property
+    def switch_pg_dn(self):
+        if not self._switch_pg_dn:
+            self._switch_pg_dn = self.apic.infraAccNodePGrp.dn(self.sw_pg_name)
+        return self._switch_pg_dn
 
     def ensure_infra_created_on_apic(self):
         """Ensure the infrastructure is setup.
@@ -220,7 +233,7 @@ class APICManager(object):
         # Create function profile
         func_name = self.function_profile
         self.ensure_function_profile_created_on_apic(func_name)
-        self.ensure_switch_pg_on_apic(self.sw_pg_name)
+        self.ensure_switch_pg_on_apic()
 
         # clear local hostlinks in DB (as it is discovered state)
         self.clear_all_hostlinks()
@@ -311,15 +324,14 @@ class APICManager(object):
                 name, tDn=entity_profile_dn or self.entity_profile_dn,
                 transaction=trs)
 
-    def ensure_switch_pg_on_apic(self, name, transaction=None):
+    def ensure_switch_pg_on_apic(self, name=None, transaction=None):
         """Create the infrastructure function profile."""
         if not self.provision_infra:
             return
 
         with self.apic.transaction(transaction) as trs:
-            self.apic.infraAccNodePGrp.create(name, transaction=trs)
-
-        self.switch_pg_dn = self.apic.infraAccNodePGrp.dn(name)
+            self.apic.infraAccNodePGrp.create(name or self.sw_pg_name,
+                                              transaction=trs)
 
     def ensure_lacp_profile_created_on_apic(self, name, transaction=None):
         """Create the lacp profile."""
@@ -570,6 +582,7 @@ class APICManager(object):
             self.apic.fvBD.delete(tenant_id, bd_id, transaction=trs)
 
     def ensure_subnet_created_on_apic(self, tenant_id, bd_id, gw_ip,
+                                      scope=None,
                                       transaction=None):
         """Creates a subnet on the APIC
 
@@ -579,7 +592,8 @@ class APICManager(object):
         if self.aci_routing_enabled and gw_ip:
             with self.apic.transaction(transaction) as trs:
                 self.apic.fvSubnet.create(tenant_id, bd_id, gw_ip,
-                                          scope=self.default_subnet_scope,
+                                          scope=(scope or
+                                              self.default_subnet_scope),
                                           transaction=trs)
 
     def ensure_subnet_deleted_on_apic(self, tenant_id, bd_id, gw_ip,
@@ -1360,3 +1374,11 @@ class APICManager(object):
                     self.apic_system_id, self.apic, log, self.apic_config,
                     self.apic_config.apic_domain_name, {}, network_config))
         return domains
+
+    def _get_sw_pg_name(self, configured):
+        if self.apic.infraAccNodePGrp.get(
+                apic_client.ManagedObjectClass.scope + configured):
+            # Old scoped switch PG exists
+            return apic_client.ManagedObjectClass.scope + configured
+        else:
+            return configured

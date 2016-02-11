@@ -56,6 +56,15 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.override_config('vmm_controller_host', 'somename',
                              self.config_group)
         self.override_config('use_vmm', vmm, self.config_group)
+        self.override_config('apic_switch_pg_name', mocked.APIC_SW_PG_NAME,
+                             self.config_group)
+        domain = {mocked.APIC_DOMAIN: {}}
+        config.create_physdom_dictionary = mock.Mock(return_value={})
+        config.create_vmdom_dictionary = mock.Mock(return_value={})
+        if vmm:
+            config.create_vmdom_dictionary = mock.Mock(return_value=domain)
+        else:
+            config.create_physdom_dictionary = mock.Mock(return_value=domain)
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
             network_config= {
@@ -65,6 +74,7 @@ class TestCiscoApicManager(base.BaseTestCase,
                 'external_network_dict': self.external_network_dict,
             }, apic_system_id=mocked.APIC_SYSTEM_ID,
             log=self.log, db=apic_model.ApicDbModel())
+        self.mgr.apic.infraAccNodePGrp.get = mock.Mock(return_value='not-None')
         self.mgr.app_profile_name = mocked.APIC_AP
         self.mocked_session.begin = self.fake_transaction
         self.session = self.mgr.apic.session
@@ -393,6 +403,9 @@ class TestCiscoApicManager(base.BaseTestCase,
             self.mgr.apic.fvSubnet.mo))
         self.mgr.ensure_subnet_created_on_apic('t2', 'bd3', '4.4.4.4/16')
         self.assert_responses_drained()
+        self.mgr.ensure_subnet_created_on_apic('t3', 'bd4', '4.4.4.4/16',
+                                               scope='public')
+        self.assert_responses_drained()
 
     def test_ensure_epg_created(self):
         tenant = mocked.APIC_TENANT
@@ -684,46 +697,27 @@ class TestCiscoApicManager(base.BaseTestCase,
                 limitIpLearnToSubnets='no',
                 transaction=mock.ANY)
 
+    def test_sw_pg_name_scoped(self):
+        self._initialize_manager()
+        self.assertEqual(
+            '_' + mocked.APIC_SYSTEM_ID + '_' + mocked.APIC_SW_PG_NAME,
+            self.mgr.sw_pg_name)
+        self.assertEqual(
+            self.mgr.apic.infraAccNodePGrp.dn('_' + mocked.APIC_SYSTEM_ID +
+                                              '_' + mocked.APIC_SW_PG_NAME),
+            self.mgr.switch_pg_dn)
+
+    def test_sw_pg_name_unscoped(self):
+        self._initialize_manager()
+        self.mgr.apic.infraAccNodePGrp.get = mock.Mock(return_value=None)
+        self.assertEqual(mocked.APIC_SW_PG_NAME, self.mgr.sw_pg_name)
+        self.assertEqual(
+            self.mgr.apic.infraAccNodePGrp.dn(mocked.APIC_SW_PG_NAME),
+            self.mgr.switch_pg_dn)
+
 
 class TestCiscoApicManagerNewConf(TestCiscoApicManager):
 
     def setUp(self):
         # Switch to new-style APIC config
         super(TestCiscoApicManagerNewConf, self).setUp(config_group='apic')
-
-    def _initialize_manager(self, vmm=False):
-        mocked.ControllerMixin.set_up_mocks(self)
-        mocked.ConfigMixin.set_up_mocks(self)
-        mocked.DbModelMixin.set_up_mocks(self)
-
-        self.mock_apic_manager_login_responses()
-        mock.patch('apicapi.apic_mapper.'
-                   'APICNameMapper.app_profile').start()
-        self.apic_config._conf.register_opts(
-            config.apic_opts, self.apic_config._group.name)
-        self.override_config('apic_model', 'apicapi.tests.db.apic_model',
-                             self.config_group)
-        self.override_config('vmm_controller_host', 'somename',
-                             self.config_group)
-        domain = {mocked.APIC_DOMAIN: {}}
-        config.create_physdom_dictionary = mock.Mock(return_value={})
-        config.create_vmdom_dictionary = mock.Mock(return_value={})
-        if vmm:
-            config.create_vmdom_dictionary = mock.Mock(return_value=domain)
-        else:
-            config.create_physdom_dictionary = mock.Mock(return_value=domain)
-        self.mgr = apic_manager.APICManager(
-            apic_config=self.apic_config,
-            network_config= {
-                'vlan_ranges': self.vlan_ranges,
-                'switch_dict': self.switch_dict,
-                'vpc_dict': self.vpc_dict,
-                'external_network_dict': self.external_network_dict,
-            }, apic_system_id=mocked.APIC_SYSTEM_ID,
-            log=self.log, db=apic_model.ApicDbModel())
-        self.mgr.app_profile_name = mocked.APIC_AP
-        self.mocked_session.begin = self.fake_transaction
-        self.session = self.mgr.apic.session
-        self.assert_responses_drained()
-        self.reset_reponses()
-        self.addCleanup(mock.patch.stopall)

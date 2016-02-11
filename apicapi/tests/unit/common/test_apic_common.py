@@ -49,6 +49,7 @@ APIC_CONTRACT = 'signedContract'
 APIC_SYSTEM_ID = 'sysid'
 APIC_DOMAIN = 'cumuloNimbus'
 APIC_L3EXT_DOMAIN = '%s_l3ext' % APIC_SYSTEM_ID
+APIC_SW_PG_NAME = 'switch_pg'
 
 APIC_NODE_PROF = 'red'
 APIC_FUNC_PROF = 'beta'
