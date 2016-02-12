@@ -37,7 +37,7 @@ class TestCiscoApicManager(base.BaseTestCase,
     def setUp(self, config_group='ml2_cisco_apic'):
         self.config_group = config_group
         if config_group == 'ml2_cisco_apic':
-            self.clear_config('apic_password', 'apic')
+            self.clear_config('apic_username', 'apic')
         super(TestCiscoApicManager, self).setUp()
         self._initialize_manager()
 
