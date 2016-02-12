@@ -243,6 +243,7 @@ class ConfigMixin(object):
 
         # Configure global option apic_system_id
         cfg.CONF.set_override('apic_system_id', APIC_SYSTEM_ID)
+        cfg.CONF.set_override('config_file', 'etc/conf_sample.ini')
 
         # Configure the Cisco APIC mechanism driver
         apic_test_config = {
@@ -257,7 +258,7 @@ class ConfigMixin(object):
             'apic_function_profile': APIC_FUNC_PROF,
         }
         for opt, val in apic_test_config.items():
-            self.override_config(opt, val, 'ml2_cisco_apic')
+            self.override_config(opt, val, self.config_group)
         self.apic_config = cfg.CONF.ml2_cisco_apic
 
         # Configure switch topology
@@ -306,6 +307,9 @@ class ConfigMixin(object):
 
     def override_config(self, opt, val, group=None):
         cfg.CONF.set_override(opt, val, group)
+
+    def clear_config(self, opt, group=None):
+        cfg.CONF.clear_override(opt, group)
 
 
 class DbModelMixin(object):

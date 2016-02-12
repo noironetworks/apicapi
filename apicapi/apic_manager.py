@@ -14,9 +14,16 @@
 #    under the License.
 
 from apicapi import apic_client
+from apicapi import apic_domain
 from apicapi import apic_mapper
 from apicapi import config
 from apicapi import exceptions as cexc
+
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
+
 
 CONTEXT_ENFORCED = '1'
 CONTEXT_UNENFORCED = '2'
@@ -54,10 +61,8 @@ MAX_APIC_SYSID_LEN = 16
 
 LOG = None
 
-# VMM type supported
-APIC_VMM_TYPE_OPENSTACK = 'OpenStack'
-APIC_VMM_TYPE_VMWARE = 'VMware'
-APIC_VMM_TYPES_SUPPORTED = [APIC_VMM_TYPE_OPENSTACK, APIC_VMM_TYPE_VMWARE]
+APIC_VMM_TYPES_SUPPORTED = [apic_domain.APIC_VMM_TYPE_OPENSTACK,
+                            apic_domain.APIC_VMM_TYPE_VMWARE]
 
 
 class APICManager(object):
@@ -69,17 +74,38 @@ class APICManager(object):
     """
     def __init__(self, db, log, network_config, apic_config,
                  keyclient=None, keystone_authtoken=None,
-                 apic_system_id='openstack',
-                 default_apic_model=None):
+                 apic_system_id='openstack', default_apic_model=None):
+        # Network config looks like follows:
+        # network_config = {
+        #     'vlan_ranges': cfg.CONF.ml2_type_vlan.network_vlan_ranges,
+        #     'switch_dict': config.create_switch_dictionary(),
+        #     'vpc_dict': config.create_vpc_dictionary(),
+        #     'external_network_dict':
+        #     config.create_external_network_dictionary(),
+        # }
+
+        if len(apic_system_id) > MAX_APIC_SYSID_LEN:
+            raise Exception(
+                'Apic system ID max length is ' + str(MAX_APIC_SYSID_LEN))
+        self.apic_system_id = apic_system_id
+
+        # If the following keys are not set (which will happen once deprecation
+        # is complete on the Neutron side) gather the configuration and set it
+        # instead.
+        network_config.setdefault('switch_dict',
+                                  config.create_switch_dictionary())
+        network_config.setdefault('vpc_dict', config.create_vpc_dictionary())
+        network_config.setdefault('external_network_dict',
+                                  config.create_external_network_dictionary())
+        ext_config = apic_config
         self.db = db
-        self.apic_config = apic_config
         if default_apic_model:
             for opt in config.apic_opts:
                 if opt.name == "apic_model":
                     opt.default = default_apic_model
                     break
-        self.apic_config._conf.register_opts(
-            config.apic_opts, self.apic_config._group.name)
+        # Enrich config with apic specific configuration options
+        self.apic_config = self._build_config(ext_config)
         # Config pre validation
         config.ConfigValidator(log).validate(self.apic_config)
 
@@ -94,16 +120,6 @@ class APICManager(object):
         self.default_enforce_subnet_check = (
             self.apic_config.default_enforce_subnet_check)
         self.default_subnet_scope = self.apic_config.default_subnet_scope
-        self.use_vmm = self.apic_config.use_vmm
-
-        if (APIC_VMM_TYPE_OPENSTACK.lower() ==
-                self.apic_config.apic_vmm_type.lower()):
-            self.apic_vmm_type = APIC_VMM_TYPE_OPENSTACK
-        elif (APIC_VMM_TYPE_VMWARE.lower() ==
-              self.apic_config.apic_vmm_type.lower()):
-            self.apic_vmm_type = APIC_VMM_TYPE_VMWARE
-        else:
-            self.apic_vmm_type = self.apic_config.apic_vmm_type
 
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
@@ -115,14 +131,9 @@ class APICManager(object):
             self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
                                 network_config.get('vlan_ranges')]
 
-        self.mcast_ranges = self.apic_config.mcast_ranges
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
         self.ext_net_dict = network_config.get('external_network_dict', {})
-        if len(apic_system_id) > MAX_APIC_SYSID_LEN:
-            raise Exception(
-                'Apic system ID max length is ' + str(MAX_APIC_SYSID_LEN))
-        self.apic_system_id = apic_system_id
         global LOG
         LOG = log.getLogger(__name__)
 
@@ -145,14 +156,11 @@ class APICManager(object):
             sign_hash=self.apic_config.signature_hash_type
         )
 
-        self.phys_domain_dn = self.apic.physDomP.dn(
-            self.apic_config.apic_domain_name)
-        self.vmm_domain_dn = self.apic.vmmDomP.dn(
-            self.apic_vmm_type, self.apic_config.apic_domain_name)
+        # Build the domains list
+        self.domains = self.retrieve_domains(log, network_config)
+
         self.l3ext_domain_dn = self.apic.l3extDomP.dn(
             self.apic_config.apic_external_routed_domain_name)
-        self.domain_dn = (self.vmm_domain_dn if self.use_vmm else
-                          self.phys_domain_dn)
         self.entity_profile_dn = self.apic.infraAttEntityP.dn(
             self.apic_config.apic_entity_profile)
         self.l3ext_entity_profile_dn = self.apic.infraAttEntityP.dn(
@@ -182,7 +190,6 @@ class APICManager(object):
             CONTEXT_SHARED.uid = self.apic_config.shared_context_name
             CONTEXT_SHARED.value = self.apic_config.shared_context_name
             CONTEXT_SHARED.existing = True
-        self.vmm_controller_host = self.apic_config.vmm_controller_host
 
     @property
     def apic_mapper(self):
@@ -208,61 +215,12 @@ class APICManager(object):
         Loop over the switch dictionary from the config and
         setup profiles for switches, modules and ports
         """
-        # Create VLAN namespace
-        vlan_ns_dn = None
-        if self.vlan_ranges:
-            vlan_ns_name = self.apic_config.apic_vlan_ns_name
-            vlan_range = self.vlan_ranges[0]
-            (vlan_min, vlan_max) = vlan_range.split(':')
-            vlan_ns_dn = self.ensure_vlan_ns_created_on_apic(
-                vlan_ns_name, vlan_min, vlan_max)
 
-        # Create domain
-        if not self.use_vmm:
-            phys_name = self.apic_config.apic_domain_name
-            self.ensure_phys_domain_created_on_apic(phys_name, vlan_ns_dn)
-        else:
-            # Create VMM domain
-            if APIC_VMM_TYPE_OPENSTACK == self.apic_vmm_type:
-                vmm_name = self.apic_config.apic_domain_name
-            elif APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
-                vmm_name = self.apic_config.apic_domain_name
-                vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
-                if vmm_dom is None:
-                    raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
+        if not self.provision_infra:
+            return
 
-                # use the default domain name to create the openStack vmm
-                # domain
-                vmm_name = self.apic_system_id
-            else:
-                raise cexc.ApicVmmTypeNotSupported(
-                    type=self.apic_vmm_type, list=APIC_VMM_TYPES_SUPPORTED)
-
-            self.ensure_vmm_domain_created_on_apic(
-                    APIC_VMM_TYPE_OPENSTACK, vmm_name,
-                    self.apic_config.openstack_user,
-                    self.apic_config.openstack_password,
-                    self.apic_config.multicast_address, vlan_ns_dn=vlan_ns_dn)
-            # Create Multicast namespace for VMM
-            mcast_name = self.apic_config.apic_multicast_ns_name
-            mcast_range = self.mcast_ranges[0]
-            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-            self.ensure_mcast_ns_created_on_apic(
-                APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
-                mcast_min, mcast_max)
-
-            # Attempt to set encapMode on DomP...catch and ignore exceptions
-            # as older APIC versions do not support the field
-            encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
-            vmm_dn = self.apic.vmmDomP.dn(self.apic_vmm_type, vmm_name)
-            try:
-                self.apic.vmmDomP.update(
-                    self.apic_vmm_type, vmm_name, dn=vmm_dn,
-                    encapMode=encap_mode)
-            except cexc.ApicResponseNotOk as ex:
-                # Ignore as older APIC versions will not support
-                # vmmDomP.encapMode
-                LOG.info("Expected failure for APIC 1.1 %s", ex)
+        for domain in self.domains:
+            domain.create()
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
@@ -307,7 +265,7 @@ class APICManager(object):
                                       port)
 
         # set-up infra for external routed domains
-        if ext_ports and self.provision_infra:
+        if ext_ports:
             self.ensure_l3ext_domain_created_on_apic(
                 self.apic_config.apic_external_routed_domain_name)
             self.ensure_entity_profile_created_on_apic(
@@ -334,9 +292,9 @@ class APICManager(object):
                                transaction=None):
         self.apic.fvCtx.delete(owner, ctx_id, transaction=transaction)
 
-    def ensure_entity_profile_created_on_apic(self, name,
-        domain_dn=None, enable_infra_vlan=True,
-        incl_vmware_vmm=True, transaction=None):
+    def ensure_entity_profile_created_on_apic(
+            self, name, domain_dn=None, enable_infra_vlan=True,
+            incl_vmware_vmm=True, transaction=None):
         """Create the infrastructure entity profile."""
         if not self.provision_infra:
             return
@@ -345,20 +303,16 @@ class APICManager(object):
             self.apic.infraAttEntityP.create(name, transaction=trs)
             if enable_infra_vlan:
                 self.apic.infraProvAcc.create(name, transaction=trs)
-            # Attach phys domain to entity profile
-            self.apic.infraRsDomP.create(
-                name, domain_dn or self.domain_dn, transaction=trs)
+            # Attach domain(s) to entity profile
+            if domain_dn:
+                self.apic.infraRsDomP.create(name, domain_dn, transaction=trs)
+            else:
+                for domain in self.domains:
+                    self.apic.infraRsDomP.create(name, domain.dn,
+                                                 transaction=trs)
 
-            if incl_vmware_vmm and APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
-                # get the default openstack vmm domain dn
-                openstack_vmm_domain_dn = self.apic.vmmDomP.dn(
-                       APIC_VMM_TYPE_OPENSTACK, self.apic_system_id)
-                # also attach the entity profile to openStack vmm domain
-                self.apic.infraRsDomP.create(
-                     name, openstack_vmm_domain_dn, transaction=trs)
-
-    def ensure_function_profile_created_on_apic(self, name,
-        entity_profile_dn=None, transaction=None):
+    def ensure_function_profile_created_on_apic(
+            self, name, entity_profile_dn=None, transaction=None):
         """Create the infrastructure function profile."""
         if not self.provision_infra:
             return
@@ -366,8 +320,8 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.infraAccPortGrp.create(name, transaction=trs)
             # Attach entity profile to function profile
-            self.apic.infraRsAttEntP.create(name,
-                tDn=entity_profile_dn or self.entity_profile_dn,
+            self.apic.infraRsAttEntP.create(
+                name, tDn=entity_profile_dn or self.entity_profile_dn,
                 transaction=trs)
 
     def ensure_switch_pg_on_apic(self, name=None, transaction=None):
@@ -552,51 +506,6 @@ class APICManager(object):
             self.apic.infraRsAccPortP.create(switch, ppdn, transaction=trs)
         return ppname
 
-    def ensure_phys_domain_created_on_apic(self, phys_name, vlan_ns_dn=None,
-                                           transaction=None):
-        """Create physical domain.
-
-        Creates the physical domain on the APIC and adds a VLAN
-        namespace to that physical domain.
-        """
-        if not self.provision_infra:
-            return
-
-        with self.apic.transaction(transaction) as trs:
-            self.apic.physDomP.create(phys_name, transaction=trs)
-            if vlan_ns_dn:
-                self.apic.infraRsVlanNs__phys.create(
-                    phys_name, tDn=vlan_ns_dn, transaction=trs)
-
-    def ensure_vmm_domain_created_on_apic(self, vmm_type, vmm_name, usr, pwd,
-                                          multicast_addr, vlan_ns_dn=None,
-                                          transaction=None):
-        """Create vmm domain.
-
-        Creates the physical domain on the APIC and adds a VLAN
-        namespace to that vmm domain.
-        """
-        if not self.provision_infra:
-            return
-
-        with self.apic.transaction(transaction) as trs:
-            self.apic.vmmDomP.create(
-                vmm_type, vmm_name, enfPref="sw", mode="ovs",
-                mcastAddr=multicast_addr,
-                transaction=trs)
-            self.apic.vmmUsrAccP.create(vmm_type, vmm_name, vmm_name, usr=usr,
-                                        pwd=pwd, transaction=trs)
-            usracc_dn = self.apic.vmmUsrAccP.dn(vmm_type, vmm_name, vmm_name)
-            self.apic.vmmCtrlrP.create(
-                vmm_type, vmm_name, vmm_name, scope="openstack",
-                rootContName=vmm_name, hostOrIp=self.vmm_controller_host,
-                mode="ovs", transaction=trs)
-            self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
-                                      tDn=usracc_dn, transaction=trs)
-            if vlan_ns_dn:
-                self.apic.infraRsVlanNs__vmm.create(
-                    vmm_type, vmm_name, tDn=vlan_ns_dn, transaction=trs)
-
     def ensure_l3ext_domain_created_on_apic(self, l3ext_name,
                                             transaction=None):
         """Create external routed domain."""
@@ -605,48 +514,6 @@ class APICManager(object):
 
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extDomP.create(l3ext_name, transaction=trs)
-
-    def ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
-                                       transaction=None):
-        """Creates a static VLAN namespace with the given vlan range."""
-
-        ns_args = (name, 'static' if not self.use_vmm else 'dynamic')
-        if self.provision_infra:
-            vlan_min = 'vlan-' + vlan_min
-            vlan_max = 'vlan-' + vlan_max
-            ns_blk_args = ns_args + (vlan_min, vlan_max)
-            ns_kw_args = {
-                'name': 'encap',
-                'from': vlan_min,
-                'to': vlan_max
-            }
-            with self.apic.transaction(transaction) as trs:
-                self.apic.fvnsVlanInstP.create(*ns_args, transaction=trs)
-                self.apic.fvnsEncapBlk__vlan.create(*ns_blk_args,
-                                                    transaction=trs,
-                                                    **ns_kw_args)
-        return self.apic.fvnsVlanInstP.dn(*ns_args)
-
-    def ensure_mcast_ns_created_on_apic(self, vmm_type, vmm_name,
-                                        name, mcast_min, mcast_max,
-                                        transaction=None):
-        """Creates a Multicast namespace with the given vni range."""
-
-        ns_args = (name,)
-        dn = self.apic.fvnsMcastAddrInstP.dn(*ns_args)
-        if self.provision_infra:
-            ns_blk_args = name, mcast_min, mcast_max
-            ns_kw_args = {
-                'from': mcast_min,
-                'to': mcast_max
-            }
-            with self.apic.transaction(transaction) as trs:
-                self.apic.fvnsMcastAddrInstP.create(*ns_args, transaction=trs)
-                self.apic.fvnsMcastAddrBlk.create(*ns_blk_args,
-                                                  transaction=trs,
-                                                  **ns_kw_args)
-            self.apic.vmmRsDomMcastAddrNs.create(vmm_type, vmm_name, tDn=dn)
-        return dn
 
     def ensure_bgp_pod_policy_created_on_apic(self, bgp_pol_name='default',
                                               asn='1', pp_group_name='default',
@@ -767,18 +634,11 @@ class APICManager(object):
                                     transaction=trs)
 
             # Add EPG to domain
-            self.apic.fvRsDomAtt.create(
-                tenant_id, app_profile_name, epg_uid, self.domain_dn,
-                transaction=trs)
-
-            if APIC_VMM_TYPE_VMWARE == self.apic_vmm_type:
-                # get the default openstack vmm domain dn
-                openstack_vmm_domain_dn = self.apic.vmmDomP.dn(
-                       APIC_VMM_TYPE_OPENSTACK, self.apic_system_id)
-                # also associate with openStack vmm domain
+            for domain in self.domains:
                 self.apic.fvRsDomAtt.create(
-                    tenant_id, app_profile_name, epg_uid,
-                    openstack_vmm_domain_dn, transaction=trs)
+                    tenant_id, app_profile_name, epg_uid, domain.dn,
+                    transaction=trs)
+
         return epg_uid
 
     def delete_epg_for_network(self, tenant_id, network_id, transaction=None,
@@ -1390,8 +1250,11 @@ class APICManager(object):
                                     transaction=trs)
             self.apic.fvRsBd.create(owner, app_profile_name, nat_epg,
                                     tnFvBDName=nat_bd, transaction=trs)
-            self.apic.fvRsDomAtt.create(owner, app_profile_name, nat_epg,
-                                        self.domain_dn, transaction=trs)
+            for domain in self.domains:
+                LOG.debug("Adding nat EPG %(epg)s to domain %(domain)s",
+                          {'epg': nat_epg, 'domain': domain.dn})
+                self.apic.fvRsDomAtt.create(owner, app_profile_name, nat_epg,
+                                            domain.dn, transaction=trs)
             # create allow-everything contract
             filter_name = '%s-allow-all' % str(app_profile_name)
             self.create_tenant_filter(filter_name, owner, entry="allow-all",
@@ -1463,6 +1326,54 @@ class APICManager(object):
                     self.db.session.query(HostLink).delete()
                 except orm.exc.NoResultFound:
                     return
+
+    def _build_config(self, ext_config):
+        if cfg.CONF.apic.apic_password is not None:
+            # We are using new style config options
+            return cfg.CONF.apic
+        else:
+            configs = []
+            for x in config.apic_opts:
+                # Deprecate options into external config since APICAPI will
+                # have its own config group
+                x.deprecated_for_removal = True
+                configs.append(x)
+            ext_config._conf.register_opts(configs, ext_config._group.name)
+            return ext_config
+
+    def retrieve_domains(self, log, network_config):
+        domains = []
+        if cfg.CONF.apic.apic_password is not None:
+            for name, conf in config.create_physdom_dictionary().items():
+                domains.append(apic_domain.PhysDom(
+                    self.apic_system_id, self.apic, log, self.apic_config,
+                    name, conf, network_config))
+            for name, conf in config.create_vmdom_dictionary().items():
+                domains.append(apic_domain.VmDomain(
+                    self.apic_system_id, self.apic, log, self.apic_config,
+                    name, conf, network_config))
+        else:
+            LOG.info("Old configuration method used for domain creation.")
+            if self.apic_config.use_vmm:
+                LOG.info("Configure old-config VMM domain")
+                domains.append(apic_domain.VmDomain(
+                    self.apic_system_id, self.apic, log, self.apic_config,
+                    self.apic_config.apic_domain_name, {}, network_config))
+                # If VMware domain we also need an openstack one
+                if domains[0].vmm_type == apic_domain.APIC_VMM_TYPE_VMWARE:
+                    LOG.info("Setup extra Openstack domain")
+                    # apic_system_id will be the name of this VMM
+                    extra_domain = apic_domain.VmDomain(
+                        self.apic_system_id, self.apic, log, self.apic_config,
+                        self.apic_system_id, {}, network_config)
+                    extra_domain.vmm_type = apic_domain.APIC_VMM_TYPE_OPENSTACK
+                    domains.append(extra_domain)
+            else:
+                LOG.info("Configure old-config Physical domain")
+                domains.append(apic_domain.PhysDom(
+                    self.apic_system_id, self.apic, log, self.apic_config,
+                    self.apic_config.apic_domain_name, {}, network_config))
+        return domains
 
     def _get_sw_pg_name(self, configured):
         if self.apic.infraAccNodePGrp.get(

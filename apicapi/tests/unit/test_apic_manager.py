@@ -34,11 +34,14 @@ class TestCiscoApicManager(base.BaseTestCase,
                            mocked.ConfigMixin,
                            mocked.DbModelMixin):
 
-    def setUp(self):
+    def setUp(self, config_group='ml2_cisco_apic'):
+        self.config_group = config_group
+        if config_group == 'ml2_cisco_apic':
+            self.clear_config('apic_password', 'apic')
         super(TestCiscoApicManager, self).setUp()
         self._initialize_manager()
 
-    def _initialize_manager(self):
+    def _initialize_manager(self, vmm=False):
         mocked.ControllerMixin.set_up_mocks(self)
         mocked.ConfigMixin.set_up_mocks(self)
         mocked.DbModelMixin.set_up_mocks(self)
@@ -49,11 +52,19 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.apic_config._conf.register_opts(
             config.apic_opts, self.apic_config._group.name)
         self.override_config('apic_model', 'apicapi.tests.db.apic_model',
-                             'ml2_cisco_apic')
+                             self.config_group)
         self.override_config('vmm_controller_host', 'somename',
-                             'ml2_cisco_apic')
+                             self.config_group)
+        self.override_config('use_vmm', vmm, self.config_group)
         self.override_config('apic_switch_pg_name', mocked.APIC_SW_PG_NAME,
-                             'ml2_cisco_apic')
+                             self.config_group)
+        domain = {mocked.APIC_DOMAIN: {}}
+        config.create_physdom_dictionary = mock.Mock(return_value={})
+        config.create_vmdom_dictionary = mock.Mock(return_value={})
+        if vmm:
+            config.create_vmdom_dictionary = mock.Mock(return_value=domain)
+        else:
+            config.create_physdom_dictionary = mock.Mock(return_value=domain)
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
             network_config= {
@@ -63,7 +74,6 @@ class TestCiscoApicManager(base.BaseTestCase,
                 'external_network_dict': self.external_network_dict,
             }, apic_system_id=mocked.APIC_SYSTEM_ID,
             log=self.log, db=apic_model.ApicDbModel())
-
         self.mgr.apic.infraAccNodePGrp.get = mock.Mock(return_value='not-None')
         self.mgr.app_profile_name = mocked.APIC_AP
         self.mocked_session.begin = self.fake_transaction
@@ -71,7 +81,6 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assert_responses_drained()
         self.reset_reponses()
         self.addCleanup(mock.patch.stopall)
-        self.mgr.use_vmm = True
 
     def _get_ext_switches_to_provision(self):
         return set([x['switch'] for x in self.external_network_dict.values()
@@ -123,25 +132,27 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_ensure_phys_domain_created_new_no_vlan_ns(self):
         dom = mocked.APIC_DOMAIN
         self._mock_phys_dom_responses()
-        self.mgr.ensure_phys_domain_created_on_apic(dom)
+        self.mgr.domains[0]._ensure_phys_domain_created_on_apic(dom)
         self.assert_responses_drained()
-        new_dom = self.mgr.phys_domain_dn
+        new_dom = self.mgr.domains[0].dn
         self.assertEqual(new_dom, self.mgr.apic.physDomP.dn(dom))
 
     def test_ensure_phys_domain_created_new_no_vlan_ns_exc(self):
         dom = mocked.APIC_DOMAIN
         self.mock_error_post_response(wexc.HTTPBadRequest)
-        self.assertRaises(cexc.ApicResponseNotOk,
-                          self.mgr.ensure_phys_domain_created_on_apic, dom)
+        self.assertRaises(
+            cexc.ApicResponseNotOk,
+            self.mgr.domains[0]._ensure_phys_domain_created_on_apic, dom)
         self.assert_responses_drained()
 
     def test_ensure_phys_domain_created_new_with_vlan_ns(self):
         dom = mocked.APIC_DOMAIN
         self._mock_phys_dom_responses()
         ns = 'test_vlan_ns'
-        self.mgr.ensure_phys_domain_created_on_apic(dom, vlan_ns_dn=ns)
+        self.mgr.domains[0]._ensure_phys_domain_created_on_apic(dom,
+                                                                vlan_ns_dn=ns)
         self.assert_responses_drained()
-        new_dom = self.mgr.phys_domain_dn
+        new_dom = self.mgr.domains[0].dn
         self.assertEqual(new_dom, self.mgr.apic.physDomP.mo.dn(dom))
 
     def test_ensure_l3ext_domain_created(self):
@@ -235,20 +246,23 @@ class TestCiscoApicManager(base.BaseTestCase,
         np_create_for_switch, pp_create_for_switch = (
             self._ensure_infra_created_seq1_setup())
         self.mgr.apic_vmm_type = 'VMware'
-        self.override_config('apic_domain_name', 'good_name', 'ml2_cisco_apic')
+        self.override_config('apic_domain_name', 'good_name',
+                             self.config_group)
         self.mock_response_for_get('vmmDomP', dn="good_dn")
         self.mgr.ensure_infra_created_on_apic()
 
     def test_nonexist_vmware_vmm_domain_inside_ensure_infra_created_on_apic(
             self):
-        self.mgr.apic_vmm_type = 'VMware'
-        self.override_config('apic_domain_name', 'bad_name', 'ml2_cisco_apic')
+        self.override_config('apic_vmm_type', 'VMware', self.config_group)
+        self._initialize_manager(True)
+        self.override_config('apic_domain_name', 'bad_name', self.config_group)
         self.mock_response_for_get('vmmDomP')
         self.assertRaises(cexc.ApicVmwareVmmDomainNotConfigured,
                           self.mgr.ensure_infra_created_on_apic)
 
     def test_wrong_vmm_type_inside_ensure_infra_created_on_apic(self):
-        self.mgr.apic_vmm_type = 'wrong_type'
+        self.override_config('apic_vmm_type', 'wrong-type', self.config_group)
+        self._initialize_manager(True)
         self.assertRaises(cexc.ApicVmmTypeNotSupported,
                           self.mgr.ensure_infra_created_on_apic)
 
@@ -298,7 +312,7 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def _mock_phys_dom_prereq(self, dom):
         self._mock_phys_dom_responses()
-        self.mgr.ensure_phys_domain_created_on_apic(dom)
+        self.mgr.domains[0]._ensure_phys_domain_created_on_apic(dom)
 
     def test_ensure_entity_profile_created_old(self):
         ep = mocked.APIC_ATT_ENT_PROF
@@ -364,8 +378,10 @@ class TestCiscoApicManager(base.BaseTestCase,
         self._mock_new_vlan_instance()
         ft = [False, True]
         for x in ft:
-            self.mgr.use_vmm = x
-            new_ns = self.mgr.ensure_vlan_ns_created_on_apic(ns, '300', '399')
+            # Initialize manager based on domain type
+            self._initialize_manager(x)
+            new_ns = self.mgr.domains[0]._ensure_vlan_ns_created_on_apic(
+                ns, '300', '399')
             self.assert_responses_drained()
             self.assertEqual(new_ns, self.mgr.apic.fvnsVlanInstP.dn(
                 ns, 'static' if not x else 'dynamic'))
@@ -588,10 +604,10 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def test_segment_config(self):
         vlan_ranges = ['200:299']
-        self.override_config('vlan_ranges', vlan_ranges, 'ml2_cisco_apic')
+        self.override_config('vlan_ranges', vlan_ranges, self.config_group)
         self._initialize_manager()
         self.assertEqual(self.mgr.vlan_ranges, vlan_ranges)
-        self.override_config('vlan_ranges', [], 'ml2_cisco_apic')
+        self.override_config('vlan_ranges', [], self.config_group)
         self._initialize_manager()
         self.assertEqual(self.mgr.vlan_ranges,
                          [':'.join(self.vlan_ranges[0].split(':')[-2:])])
@@ -698,3 +714,10 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assertEqual(
             self.mgr.apic.infraAccNodePGrp.dn(mocked.APIC_SW_PG_NAME),
             self.mgr.switch_pg_dn)
+
+
+class TestCiscoApicManagerNewConf(TestCiscoApicManager):
+
+    def setUp(self):
+        # Switch to new-style APIC config
+        super(TestCiscoApicManagerNewConf, self).setUp(config_group='apic')
