@@ -158,7 +158,9 @@ class APICManager(object):
 
         # Build the domains list
         self.domains = self.retrieve_domains(log, network_config)
-
+        # Check whether we use VMMs
+        self.use_vmm = bool(any(x for x in self.domains if
+                                isinstance(x, apic_domain.VmDomain)))
         self.l3ext_domain_dn = self.apic.l3extDomP.dn(
             self.apic_config.apic_external_routed_domain_name)
         self.entity_profile_dn = self.apic.infraAttEntityP.dn(

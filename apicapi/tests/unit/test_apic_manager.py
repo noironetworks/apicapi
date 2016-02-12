@@ -715,6 +715,12 @@ class TestCiscoApicManager(base.BaseTestCase,
             self.mgr.apic.infraAccNodePGrp.dn(mocked.APIC_SW_PG_NAME),
             self.mgr.switch_pg_dn)
 
+    def test_use_vmm(self):
+        self._initialize_manager(False)
+        self.assertFalse(self.mgr.use_vmm)
+        self._initialize_manager(True)
+        self.assertTrue(self.mgr.use_vmm)
+
 
 class TestCiscoApicManagerNewConf(TestCiscoApicManager):
 
