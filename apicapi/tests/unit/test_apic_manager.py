@@ -313,6 +313,26 @@ class TestCiscoApicManager(base.BaseTestCase,
             mocked.APIC_EXT_PORT,
             mgr.apic.infraAccPortGrp.mo.dn(mocked.APIC_L3EXT_FUNC_PROF))
 
+    def test_no_provision_infra(self):
+        self._initialize_manager(
+            phys_domains={mocked.APIC_DOMAIN: {}},
+            vmm_domains={mocked.APIC_DOMAIN + '1': {
+                            'apic_vmm_type': 'OpenStack'},
+                         mocked.APIC_DOMAIN + '2': {
+                             'apic_vmm_type': 'VMware'}})
+        self.mgr.provision_infra = False
+        self.mgr.ensure_entity_profile_created_on_apic = mock.Mock()
+        with mock.patch(
+            'apicapi.apic_domain.VmDomain._ensure_vmm_domain_created_on_apic'):
+            self.mock_response_for_get('vmmDomP', dn="/uni/vmware")
+
+            self.mgr.ensure_infra_created_on_apic()
+            advd = apic_domain.VmDomain
+            self.assertEqual(1,
+                advd._ensure_vmm_domain_created_on_apic.call_count)
+            self.assertFalse(
+                self.mgr.ensure_entity_profile_created_on_apic.called)
+
     def test_ensure_context_enforced_new_ctx(self):
         self.mock_response_for_post(self.get_top_container(
             self.mgr.apic.fvCtx.mo))

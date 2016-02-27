@@ -22,6 +22,7 @@ try:
 except ImportError:
     from oslo_config import cfg
 
+from apicapi import apic_domain
 from apicapi import apic_mapper
 from apicapi import exceptions as exc
 
@@ -44,7 +45,7 @@ apic_opts = [
                default='neutron.plugins.ml2.drivers.cisco.apic.apic_model'),
     cfg.BoolOpt('use_vmm', default=True),
     cfg.StrOpt('apic_vmm_type',
-               default='OpenStack',
+               default=apic_domain.APIC_VMM_TYPE_OPENSTACK,
                help=("The vmm type of choice. Currently we only support "
                      "either OpenStack or VMware")),
     cfg.StrOpt('apic_multicast_ns_name',
