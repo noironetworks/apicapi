@@ -115,16 +115,16 @@ class VmDomain(ApicDomain):
         vlan_ns_dn = self._create_vlan_namespace()
         # Create VMM domain
         if APIC_VMM_TYPE_OPENSTACK == self.vmm_type:
-            vmm_name = self.apic_domain_name
+            vmm_name = self.name
         elif APIC_VMM_TYPE_VMWARE == self.vmm_type:
-            vmm_name = self.apic_domain_name
+            vmm_name = self.name
             vmm_dom = self.apic.vmmDomP.get(APIC_VMM_TYPE_VMWARE, vmm_name)
             if vmm_dom is None:
                 raise cexc.ApicVmwareVmmDomainNotConfigured(name=vmm_name)
 
             # use the default domain name to create the openStack vmm
             # domain
-            vmm_name = self.apic_system_id
+            vmm_name = self.apic_domain_name
         else:
             raise cexc.ApicVmmTypeNotSupported(
                 type=self.vmm_type, list=APIC_VMM_TYPES_SUPPORTED)

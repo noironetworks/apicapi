@@ -16,6 +16,7 @@
 import mock
 from webob import exc as wexc
 
+from apicapi import apic_domain
 from apicapi import apic_manager
 from apicapi import config
 from apicapi import exceptions as cexc
@@ -41,7 +42,8 @@ class TestCiscoApicManager(base.BaseTestCase,
         super(TestCiscoApicManager, self).setUp()
         self._initialize_manager()
 
-    def _initialize_manager(self, vmm=False):
+    def _initialize_manager(self, vmm=False, phys_domains=None,
+                            vmm_domains=None):
         mocked.ControllerMixin.set_up_mocks(self)
         mocked.ConfigMixin.set_up_mocks(self)
         mocked.DbModelMixin.set_up_mocks(self)
@@ -55,16 +57,23 @@ class TestCiscoApicManager(base.BaseTestCase,
                              self.config_group)
         self.override_config('vmm_controller_host', 'somename',
                              self.config_group)
-        self.override_config('use_vmm', vmm, self.config_group)
+        self.override_config('use_vmm', bool(vmm or vmm_domains),
+                             self.config_group)
         self.override_config('apic_switch_pg_name', mocked.APIC_SW_PG_NAME,
                              self.config_group)
         domain = {mocked.APIC_DOMAIN: {}}
-        config.create_physdom_dictionary = mock.Mock(return_value={})
-        config.create_vmdom_dictionary = mock.Mock(return_value={})
-        if vmm:
-            config.create_vmdom_dictionary = mock.Mock(return_value=domain)
-        else:
-            config.create_physdom_dictionary = mock.Mock(return_value=domain)
+        config.create_physdom_dictionary = mock.Mock(
+            return_value=phys_domains or {})
+        config.create_vmdom_dictionary = mock.Mock(
+            return_value=vmm_domains or {})
+        if not phys_domains and not vmm_domains:
+            if vmm:
+                config.create_vmdom_dictionary = mock.Mock(
+                    return_value=domain)
+            else:
+                config.create_physdom_dictionary = mock.Mock(
+                    return_value=domain)
+
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
             network_config= {
@@ -85,6 +94,19 @@ class TestCiscoApicManager(base.BaseTestCase,
     def _get_ext_switches_to_provision(self):
         return set([x['switch'] for x in self.external_network_dict.values()
                     if x.get('switch')])
+
+    def _check_call_list(self, expected, observed, check_all=True):
+        observed_copy = list(observed)
+        for call in expected:
+            self.assertTrue(call in observed,
+                            msg='Call not found, expected:\n%s\nobserved:'
+                                '\n%s' % (str(call), str(observed)))
+            observed_copy.remove(call)
+        if check_all:
+            self.assertFalse(
+                len(observed_copy),
+                msg='There are more calls than expected: %s' %
+                    str(observed_copy))
 
     def test_mgr_session_login(self):
         login = self.mgr.apic.authentication
@@ -716,9 +738,9 @@ class TestCiscoApicManager(base.BaseTestCase,
             self.mgr.switch_pg_dn)
 
     def test_use_vmm(self):
-        self._initialize_manager(False)
+        self._initialize_manager()
         self.assertFalse(self.mgr.use_vmm)
-        self._initialize_manager(True)
+        self._initialize_manager(vmm_domains={mocked.APIC_DOMAIN: {}})
         self.assertTrue(self.mgr.use_vmm)
 
 
@@ -727,3 +749,35 @@ class TestCiscoApicManagerNewConf(TestCiscoApicManager):
     def setUp(self):
         # Switch to new-style APIC config
         super(TestCiscoApicManagerNewConf, self).setUp(config_group='apic')
+
+    def test_ensure_epg_created(self):
+        pass
+
+    def test_ensure_epg_created_exc(self):
+        pass
+
+    def test_vmm_creation(self):
+        self.override_config('apic_vmm_type', 'OpenStack', 'apic')
+        self._initialize_manager(vmm_domains={mocked.APIC_DOMAIN + '1': {},
+                                              mocked.APIC_DOMAIN + '2': {}})
+        self.assertEqual(2, len(self.mgr.domains))
+        self.mgr.domains[0]._ensure_vmm_domain_created_on_apic = mock.Mock()
+        self.mgr.domains[1]._ensure_vmm_domain_created_on_apic = mock.Mock()
+        self.mgr.db.get_switches = mock.Mock(return_value=[])
+        self.mgr.db.get_modules_for_switch = mock.Mock(return_value=[])
+        self.mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=[])
+
+        self.mgr.ensure_infra_created_on_apic()
+        (self.mgr.domains[0]._ensure_vmm_domain_created_on_apic.
+            assert_called_once_with(apic_domain.APIC_VMM_TYPE_OPENSTACK,
+                                    self.mgr.domains[0].name,
+                                   mock.ANY, mock.ANY, mock.ANY,
+                                   vlan_ns_dn=mock.ANY))
+        (self.mgr.domains[1]._ensure_vmm_domain_created_on_apic.
+            assert_called_once_with(apic_domain.APIC_VMM_TYPE_OPENSTACK,
+                                    self.mgr.domains[1].name,
+                                    mock.ANY, mock.ANY, mock.ANY,
+                                    vlan_ns_dn=mock.ANY))
+        self.assertEqual(
+            set([mocked.APIC_DOMAIN + '1', mocked.APIC_DOMAIN + '2']),
+            set([self.mgr.domains[0].name, self.mgr.domains[1].name]))
