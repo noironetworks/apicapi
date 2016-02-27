@@ -743,6 +743,33 @@ class TestCiscoApicManager(base.BaseTestCase,
         self._initialize_manager(vmm_domains={mocked.APIC_DOMAIN: {}})
         self.assertTrue(self.mgr.use_vmm)
 
+    def test_vmware_vmm_creation(self):
+        self.override_config('apic_vmm_type', 'vmware', self.config_group)
+        self._initialize_manager(vmm=True)
+
+        # this is because in retrieve_domains(), it will insert
+        # the extra openStack vmm domain
+        self.assertEqual(2, len(self.mgr.domains))
+
+        self.mgr.domains[0]._ensure_vmm_domain_created_on_apic = mock.Mock()
+        self.mgr.domains[1]._ensure_vmm_domain_created_on_apic = mock.Mock()
+        self.mgr.db.get_switches = mock.Mock(return_value=[])
+        self.mgr.db.get_modules_for_switch = mock.Mock(return_value=[])
+        self.mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=[])
+        self.mock_response_for_get('vmmDomP', dn='good_dn')
+
+        self.mgr.ensure_infra_created_on_apic()
+        (self.assertFalse(self.mgr.domains[0].
+            _ensure_vmm_domain_created_on_apic.called))
+        (self.mgr.domains[1]._ensure_vmm_domain_created_on_apic.
+            assert_called_once_with(apic_domain.APIC_VMM_TYPE_OPENSTACK,
+                                    mocked.APIC_SYSTEM_ID,
+                                    mock.ANY, mock.ANY, mock.ANY,
+                                    vlan_ns_dn=mock.ANY))
+        self.assertEqual(
+            set([mocked.APIC_DOMAIN, mocked.APIC_SYSTEM_ID]),
+            set([self.mgr.domains[0].name, self.mgr.domains[1].name]))
+
 
 class TestCiscoApicManagerNewConf(TestCiscoApicManager):
 
@@ -781,3 +808,6 @@ class TestCiscoApicManagerNewConf(TestCiscoApicManager):
         self.assertEqual(
             set([mocked.APIC_DOMAIN + '1', mocked.APIC_DOMAIN + '2']),
             set([self.mgr.domains[0].name, self.mgr.domains[1].name]))
+
+    def test_vmware_vmm_creation(self):
+        pass
