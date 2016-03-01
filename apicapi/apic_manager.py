@@ -218,11 +218,13 @@ class APICManager(object):
         setup profiles for switches, modules and ports
         """
 
+        for domain in self.domains:
+            if (self.provision_infra or
+                    isinstance(domain, apic_domain.VmDomain)):
+                domain.create()
+
         if not self.provision_infra:
             return
-
-        for domain in self.domains:
-            domain.create()
 
         # Create entity profile
         ent_name = self.apic_config.apic_entity_profile
