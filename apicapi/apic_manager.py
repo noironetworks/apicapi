@@ -1071,6 +1071,19 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extOut.delete(owner, ext_out_id, transaction=trs)
 
+    def set_context_for_external_routed_network(self, owner, ext_out_id,
+                                                ctx, transaction=None):
+        """Update the context (VRF) associated with L3-Out.
+
+           Parameter 'ctx' may be set to None to unset the associated
+           context.
+        """
+        with self.apic.transaction(transaction) as trs:
+            self.apic.l3extRsEctx.create(
+                owner, ext_out_id,
+                tnFvCtxName=(ctx and self.apic.fvCtx.name(ctx) or None),
+                transaction=trs)
+
     def ensure_external_routed_network_created(self, ext_out_id,
                                                owner=TENANT_COMMON,
                                                context=CONTEXT_SHARED,
@@ -1078,9 +1091,8 @@ class APICManager(object):
         """Creates a L3 External context on the APIC."""
         with self.apic.transaction(transaction) as trs:
             # Link external context to the internal router ctx
-            self.apic.l3extRsEctx.create(
-                owner, ext_out_id, tnFvCtxName=self.apic.fvCtx.name(context),
-                transaction=trs)
+            self.set_context_for_external_routed_network(
+                owner, ext_out_id, context, transaction=trs)
 
     def ensure_external_routed_network_deleted(self, ext_out_id,
                                                owner=TENANT_COMMON,

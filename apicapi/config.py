@@ -348,7 +348,7 @@ def _get_specific_config(prefix):
             if parsed_item.startswith(prefix):
                 found_prefix, value = parsed_item.split(':')
                 if found_prefix.lower() == prefix.lower():
-                    conf_dict[value] = parsed_file[parsed_item].items()
+                    conf_dict[value.strip()] = parsed_file[parsed_item].items()
     return conf_dict
 
 
