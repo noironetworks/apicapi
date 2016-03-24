@@ -357,3 +357,9 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             ['_openstack-maple_', 'openstack-maple_app',
              'public_ff5b842c-8a76-4cb4-8197-9f9726be44ac'],
             manager.decompose_endpoint_group(epg))
+
+    def test_aci_decompose(self):
+        manager = self.apic.dn_manager
+        res = manager.aci_decompose('uni/tn-ivar-wstest/BD-test/rsctx',
+                                    'fvRsCtx')
+        self.assertEqual(['ivar-wstest', 'test', 'rsctx'], res)

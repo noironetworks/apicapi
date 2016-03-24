@@ -903,7 +903,7 @@ class DNManager(object):
 
         split = dn.split('/')
         param = re.findall(fmt, split[-1])
-        if not param or len(param) != mo.rn_param_count:
+        if (not param or len(param) != mo.rn_param_count) and param != [fmt]:
             raise DNManager.InvalidNameFormat()
         if mo.container:
             return self._decompose(
@@ -922,3 +922,6 @@ class DNManager(object):
                 dn, ManagedObjectClass(DNManager.nice_to_rn[nice]))
         except DNManager.InvalidNameFormat:
             return None
+
+    def aci_decompose(self, dn, ugly):
+        return self._decompose(dn, ManagedObjectClass(ugly))
