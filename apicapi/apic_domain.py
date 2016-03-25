@@ -130,17 +130,19 @@ class VmDomain(ApicDomain):
                 self.conf.openstack_password,
                 self.conf.multicast_address, vlan_ns_dn=vlan_ns_dn)
 
-        # Create Multicast namespace for VMM
-        mcast_name = self.conf.apic_multicast_ns_name
-        mcast_range = self.conf.mcast_ranges[0]
-        (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-        self._ensure_mcast_ns_created_on_apic(
-            APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
-            mcast_min, mcast_max)
+        encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
+
+        # Create Multicast namespace for VMM in vxlan mode
+        if encap_mode == "vxlan":
+            mcast_name = self.conf.apic_multicast_ns_name
+            mcast_range = self.conf.mcast_ranges[0]
+            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
+            self._ensure_mcast_ns_created_on_apic(
+                APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
+                mcast_min, mcast_max)
 
         # Attempt to set encapMode on DomP...catch and ignore exceptions
         # as older APIC versions do not support the field
-        encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
         vmm_dn = self.apic.vmmDomP.dn(self.vmm_type, vmm_name)
         try:
             self.apic.vmmDomP.update(self.vmm_type, vmm_name, dn=vmm_dn,
