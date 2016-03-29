@@ -412,7 +412,12 @@ class ApicSession(object):
             request_str = '%s, data=%s' % (url, data)
             LOG.debug(("data = %s"), data)
         # imdata is where the APIC returns the useful information
-        imdata = response.json().get('imdata')
+        try:
+            imdata = response.json().get('imdata')
+        except ValueError:
+            LOG.error(response)
+            raise
+
         LOG.debug(("Response: %s"), imdata)
         if response.status_code != requests.codes.ok:
             try:
@@ -438,10 +443,13 @@ class ApicSession(object):
 
     # REST requests
 
-    def get_data(self, request):
+    def get_data(self, request, **kwargs):
         """Retrieve generic data from the server."""
         self._check_session()
         url = self._api_url(request)
+        if kwargs:
+            url += '?' + '&'.join(['%s=%s' % (k.replace('_', '-'), v)
+                                   for k, v in kwargs.iteritems()])
         return self._send(self.session.get, url)
 
     def get_mo(self, mo, *args):
