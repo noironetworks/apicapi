@@ -904,6 +904,7 @@ class DNManager(object):
         raise AttributeError
 
     def _decompose(self, dn, mo):
+        # TODO(amitbose) I think this can be replaced by _decompose_dn
         if not dn:
             raise DNManager.InvalidNameFormat()
         fmt = (mo.rn_fmt.replace('__', '').replace('%s', '(.+)').
@@ -931,5 +932,22 @@ class DNManager(object):
         except DNManager.InvalidNameFormat:
             return None
 
+    def _decompose_dn(self, dn, mo):
+        if not dn:
+            raise DNManager.InvalidNameFormat()
+        # RN components that don't have a variable part need to copied
+        # as is to the output. Hence make them a RE matching group by
+        # surrounding them with parenthesis.
+        dn_fmt = '/'.join('(%s)' % x if (x != 'uni' and '-' not in x) else x
+                          for x in mo.dn_fmt.split('/'))
+        dn_fmt = (dn_fmt.replace('__', '')
+                  .replace('[%s]', '\[([^\]]+)\]')
+                  .replace('%s', '([^\/]+)') + '$')
+
+        match = re.match(dn_fmt, dn)
+        if not match:
+            raise DNManager.InvalidNameFormat()
+        return list(match.groups())
+
     def aci_decompose(self, dn, ugly):
-        return self._decompose(dn, ManagedObjectClass(ugly))
+        return self._decompose_dn(dn, ManagedObjectClass(ugly))
