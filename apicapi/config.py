@@ -107,6 +107,27 @@ apic_opts = [
                default='${apic_system_id}_l3ext_function_profile',
                help=("Name of the function profile to be created for "
                      "external routed domain")),
+    cfg.ListOpt('apic_l3out_trim_attribute_list',
+               default=['l3extInstP', 'l3extRtBDToOut',
+                        'l3extExtEncapAllocator',
+                        'l3extRsOutToBDPublicSubnetHolder', 'modTs', 'uid',
+                        'lcOwn', 'monPolDn', 'forceResolve', 'rType', 'state',
+                        'stateQual', 'tCl', 'tType', 'type', 'tContextDn',
+                        'tRn', 'tag', 'name', 'configIssues'],
+               help=("Comma-separated list of attributes we have to trim from"
+                     " the existing l3out before we can clone it. This is the"
+                     " advanced config option and will only apply when the "
+                     "edge_nat is enabled for that preexisting l3out.")),
+    cfg.ListOpt('apic_l3out_trim_tDn_list',
+               default=['tnNdIfPolName', 'tnRtctrlProfileName',
+                        'tnOspfIfPolName', 'tnQosDppPolName',
+                        'tnBfdIfPolName', 'tnBgpPeerPfxPolName',
+                        'tnEigrpIfPolName'],
+               help=("Comma-separated list of attributes when present we have "
+                     "to trim the tDn attribute from the existing l3out before"
+                     " we can clone it. This is the advanced config option and"
+                     " will only apply when the edge_nat is enabled for that "
+                     "preexisting l3out.")),
 ]
 
 
@@ -297,6 +318,8 @@ class ConfigValidator(object):
         'apic_external_routed_domain_name': [valid_apic_name],
         'apic_external_routed_entity_profile': [valid_apic_name],
         'apic_external_routed_function_profile': [valid_apic_name],
+        'apic_l3out_trim_attribute_list': [not_null],
+        'apic_l3out_trim_tDn_list': [not_null],
     }
 
     class RaiseUtils(object):

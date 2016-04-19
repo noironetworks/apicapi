@@ -134,6 +134,10 @@ class APICManager(object):
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
         self.ext_net_dict = network_config.get('external_network_dict', {})
+        self.apic_l3out_trim_attribute_list = (self.apic_config
+                                               .apic_l3out_trim_attribute_list)
+        self.apic_l3out_trim_tDn_list = (self.apic_config
+                                         .apic_l3out_trim_tDn_list)
         global LOG
         LOG = log.getLogger(__name__)
 
