@@ -67,17 +67,50 @@ def truncate(string, max_length):
 
 
 class APICNameMapper(object):
+
     def __init__(self, db, log, keyclient, keystone_authtoken,
-                 strategy=NAMING_STRATEGY_UUID, min_suffix=None):
+                 strategy=NAMING_STRATEGY_UUID, min_suffix=None,
+                 keysession=None):
         self.db = db
         self.strategy = strategy
         self.keystone = None
         self.keyclient = keyclient
+        self.keysession = keysession
         self.keystone_authtoken = keystone_authtoken
         self.tenants = {}
         self.min_suffix = min_suffix if min_suffix is not None else 5
         global LOG
         LOG = log.getLogger(__name__)
+
+    @staticmethod
+    def get_key_password_params(keystone_conf, suffix=''):
+        auth_url = APICNameMapper.get_keystone_url(keystone_conf,
+                                                   suffix=suffix)
+        user = (keystone_conf.get('admin_user') or
+                keystone_conf.username)
+        pw = (keystone_conf.get('admin_password') or
+              keystone_conf.password)
+        tenant = (keystone_conf.get('admin_tenant_name') or
+                  keystone_conf.project_name)
+        return auth_url, user, pw, tenant
+
+    @staticmethod
+    def get_keystone_url(keystone_conf, suffix=''):
+        if keystone_conf.get('auth_uri'):
+            auth_url = keystone_conf.auth_uri.rstrip('/')
+            auth_url = auth_url.split('/')
+            if auth_url[-1].startswith('v2') or auth_url[-1].startswith('v3'):
+                auth_url = '/'.join(auth_url[:-1])
+            else:
+                auth_url = '/'.join(auth_url)
+            if not auth_url.endswith(suffix):
+                auth_url += suffix
+        else:
+            auth_url = ('%s://%s:%s' % (
+                keystone_conf.auth_protocol,
+                keystone_conf.auth_host,
+                keystone_conf.auth_port) + suffix)
+        return auth_url + '/'
 
     def mapper(name_type):
         """Wrapper to land all the common operations between mappers."""
@@ -169,22 +202,21 @@ class APICNameMapper(object):
         else:
             if self.keystone is None:
                 try:
-                    keystone_conf = self.keystone_authtoken
-                    auth_url = self._get_keystone_url(keystone_conf)
-                    user = (keystone_conf.get('admin_user') or
-                            keystone_conf.username)
-                    pw = (keystone_conf.get('admin_password') or
-                          keystone_conf.password)
-                    tenant = (keystone_conf.get('admin_tenant_name') or
-                              keystone_conf.project_name)
-                    self.keystone = self.keyclient.Client(
-                        username=user, password=pw, tenant_name=tenant,
-                        auth_url=auth_url)
+                    self.keystone = self._get_keystone()
                 except Exception as ex:
                     LOG.exception(ex)
                     return tenant_id
+            try:
+                # v2 API
+                LOG.debug("Calling tenant API")
+                tenant_list = self.keystone.tenants.list()
+            except AttributeError:
+                # v3 API
+                LOG.debug("Calling project API")
+                tenant_list = self.keystone.projects.list()
 
-            for tenant in self.keystone.tenants.list():
+            LOG.debug("Tenant list received %s" % tenant_list)
+            for tenant in tenant_list:
                 self.tenants[tenant.id] = tenant.name
                 if tenant.id == tenant_id:
                     tenant_name = tenant.name
@@ -292,17 +324,28 @@ class APICNameMapper(object):
     def is_valid_name_type(self, name_type):
         return name_type in NAME_TYPES
 
-    def _get_keystone_url(self, keystone_conf):
-        if keystone_conf.get('auth_uri'):
-            auth_url = keystone_conf.auth_uri.rstrip('/')
-            if not auth_url.endswith('/v2.0'):
-                auth_url += '/v2.0'
+    def _get_keystone(self):
+        keystone_conf = self.keystone_authtoken
+        if not self.keysession:
+            # This assumes v2
+            LOG.info("No session provided, assuming Keystone v2 API")
+            auth_url, user, pw, tenant = self.get_key_password_params(
+                keystone_conf, suffix='/v2.0')
+            return self.keyclient.Client(
+                username=user, password=pw, tenant_name=tenant,
+                auth_url=auth_url)
         else:
-            auth_url = ('%s://%s:%s/v2.0' % (
-                keystone_conf.auth_protocol,
-                keystone_conf.auth_host,
-                keystone_conf.auth_port))
-        return auth_url + '/'
+            auth_url = (keystone_conf.get('identity_uri') or
+                        self.get_keystone_url(keystone_conf))
+            LOG.info("Keystone identity URI %s" % auth_url)
+            version = keystone_conf.get('auth_version')
+            if version and version.startswith('v'):
+                version = version.lstrip('v')
+
+            version = (2,) if not version else (int(version),)
+            LOG.info("Keystone v%s API provided with session" % str(version))
+            return self.keyclient.Client(
+                session=self.keysession, endpoint=auth_url, version=version)
 
 
 class ApicName(object):

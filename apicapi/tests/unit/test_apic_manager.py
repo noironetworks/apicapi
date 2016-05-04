@@ -29,6 +29,9 @@ class FakeConf(dict):
     def __getattr__(self, attr):
         return self[attr]
 
+    def __setattr__(self, key, value):
+        self[key] = value
+
 
 class TestCiscoApicManager(base.BaseTestCase,
                            mocked.ControllerMixin,
@@ -657,7 +660,7 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_auth_url(self):
         mapper = self.mgr._apic_mapper
         conf = FakeConf()
-        correct_url = 'http://controller:5000/v2.0/'
+        correct_url = 'http://controller:5000/'
         test_inputs = ['http://controller:5000/v2.0/',
                        'http://controller:5000/v2.0////',
                        'http://controller:5000/v2.0',
@@ -668,11 +671,21 @@ class TestCiscoApicManager(base.BaseTestCase,
         conf.auth_protocol = 'http'
         conf.auth_host = 'controller'
         conf.auth_port = '5000'
+        conf.admin_user = 'user'
+        conf.admin_password = 'password'
+        conf.admin_tenant_name = 'tenant'
 
         for input in test_inputs:
             conf.auth_uri = input
-            url = mapper._get_keystone_url(conf)
-            self.assertEqual(correct_url, url)
+            url = mapper.get_key_password_params(conf)
+            self.assertEqual((correct_url, 'user', 'password', 'tenant'), url)
+
+        # Test with suffix
+        for input in test_inputs:
+            conf.auth_uri = input
+            url = mapper.get_key_password_params(conf, suffix='/v2.0')
+            self.assertEqual((correct_url + 'v2.0/', 'user', 'password',
+                              'tenant'), url)
 
     def test_timeout_set(self):
         client = self.mgr.apic

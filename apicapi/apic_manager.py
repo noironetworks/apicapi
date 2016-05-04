@@ -74,7 +74,8 @@ class APICManager(object):
     """
     def __init__(self, db, log, network_config, apic_config,
                  keyclient=None, keystone_authtoken=None,
-                 apic_system_id='openstack', default_apic_model=None):
+                 apic_system_id='openstack', default_apic_model=None,
+                 keysession=None):
         # Network config looks like follows:
         # network_config = {
         #     'vlan_ranges': cfg.CONF.ml2_type_vlan.network_vlan_ranges,
@@ -171,7 +172,7 @@ class APICManager(object):
         min_suffix = self.apic_config.min_id_suffix_size
         self._apic_mapper = apic_mapper.APICNameMapper(
             self.db, log, keyclient, keystone_authtoken,
-            name_mapping, min_suffix=min_suffix)
+            name_mapping, min_suffix=min_suffix, keysession=keysession)
         self.apic_system_id = apic_system_id
         self.app_profile_name = self.apic_mapper.app_profile(
             None, self.apic_config.apic_app_profile_name)
