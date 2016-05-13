@@ -978,7 +978,7 @@ class APICManager(object):
             if ifname == 'static':
                 ifname = 'static-vpc-%s' % switch
             vpcport = ''
-            if not self.provision_infra and oport is not None:
+            if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
             self.db.add_hostlink(host, ifname, ifmac,
                                  switch, vpcmodule, vpcport)
@@ -988,7 +988,7 @@ class APICManager(object):
 
             vpcport = self.get_bundle_name(
                 switch, module, port, switch2, module2, port2)
-            if not self.provision_infra and oport is not None:
+            if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
             if ifname == 'static':
                 ifname = 'static-vpc-%s' % switch
