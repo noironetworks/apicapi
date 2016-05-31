@@ -375,3 +375,8 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self.assertRaises(apic.DNManager.InvalidNameFormat,
                           manager.aci_decompose,
                           'uni/tn-ivar-wstest/BD-test', 'fvTenant')
+
+    def test_prefix_mos(self):
+        prefix_mos = apic.ManagedObjectClass.prefix_to_mos
+        self.assertEqual('fvBD', prefix_mos['BD'])
+        self.assertEqual('fvRsCtx', prefix_mos['rsctx'])

@@ -215,6 +215,11 @@ class ManagedObjectClass(object):
 
     }
 
+    prefix_to_mos = {
+        (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt): y
+        for y, x in supported_mos.items()
+    }
+
     # Note(Henry): The use of a mutable default argument _inst_cache is
     # intentional. It persists for the life of MoClass to cache instances.
     # noinspection PyDefaultArgument
