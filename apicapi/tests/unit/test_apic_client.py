@@ -357,3 +357,8 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             ['_openstack-maple_', 'openstack-maple_app',
              'public_ff5b842c-8a76-4cb4-8197-9f9726be44ac'],
             manager.decompose_endpoint_group(epg))
+
+    def test_prefix_mos(self):
+        prefix_mos = apic.ManagedObjectClass.prefix_to_mos
+        self.assertEqual('fvBD', prefix_mos['BD'])
+        self.assertEqual('fvRsCtx', prefix_mos['rsctx'])
