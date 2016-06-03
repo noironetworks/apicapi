@@ -364,9 +364,20 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                                     'fvRsCtx')
         self.assertEqual(['ivar-wstest', 'test', 'rsctx'], res)
 
+        res = manager.aci_decompose_with_type(
+            'uni/tn-ivar-wstest/BD-test/rsctx', 'fvRsCtx')
+        self.assertEqual([('fvTenant', 'ivar-wstest'),
+                          ('fvBD', 'test'),
+                          ('fvRsCtx', 'rsctx')], res)
+
         res = manager.aci_decompose(
             'uni/tn-ivar-wstest/BD-test/subnet-[10.10.1.1/28]', 'fvSubnet')
         self.assertEqual(['ivar-wstest', 'test', '10.10.1.1/28'], res)
+        res = manager.aci_decompose_with_type(
+            'uni/tn-ivar-wstest/BD-test/subnet-[10.10.1.1/28]', 'fvSubnet')
+        self.assertEqual([('fvTenant', 'ivar-wstest'),
+                          ('fvBD', 'test'),
+                          ('fvSubnet', '10.10.1.1/28')], res)
 
         self.assertRaises(apic.DNManager.InvalidNameFormat,
                           manager.aci_decompose,

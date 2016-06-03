@@ -952,7 +952,22 @@ class DNManager(object):
         match = re.match(dn_fmt, dn)
         if not match:
             raise DNManager.InvalidNameFormat()
-        return list(match.groups())
+        rn_values = list(match.groups())
+
+        mo_types = []
+        while mo:
+            mo_types.append(mo.klass_name)
+            mo = ManagedObjectClass(mo.container) if mo.container else None
+        mo_types.reverse()
+
+        if len(mo_types) != len(rn_values):
+            raise DNManager.InvalidNameFormat()
+        return (mo_types, rn_values)
 
     def aci_decompose(self, dn, ugly):
-        return self._decompose_dn(dn, ManagedObjectClass(ugly))
+        _, rn_values = self._decompose_dn(dn, ManagedObjectClass(ugly))
+        return rn_values
+
+    def aci_decompose_with_type(self, dn, ugly):
+        mo_types, rn_values = self._decompose_dn(dn, ManagedObjectClass(ugly))
+        return list(zip(mo_types, rn_values))
