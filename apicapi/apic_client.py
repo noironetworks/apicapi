@@ -967,10 +967,26 @@ class DNManager(object):
             raise DNManager.InvalidNameFormat()
         return (mo_types, rn_values)
 
+    def _aci_decompose(self, dn, ugly):
+        # Special case for Faults since the can have multiple type of
+        # parents
+        if ugly == 'faultInst':
+            # Find out the parent's type
+            split = dn.split('/')
+            prefix_to_mos = ManagedObjectClass.prefix_to_mos
+            parent_type = prefix_to_mos.get(
+                split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
+            mo_types, rn_values = self._aci_decompose('/'.join(split[:-1]),
+                                                      parent_type)
+            mo_types.append(ugly)
+            rn_values.append(split[-1][split[-1].find('-') + 1:])
+            return mo_types, rn_values
+        return self._decompose_dn(dn, ManagedObjectClass(ugly))
+
     def aci_decompose(self, dn, ugly):
-        _, rn_values = self._decompose_dn(dn, ManagedObjectClass(ugly))
+        _, rn_values = self._aci_decompose(dn, ugly)
         return rn_values
 
     def aci_decompose_with_type(self, dn, ugly):
-        mo_types, rn_values = self._decompose_dn(dn, ManagedObjectClass(ugly))
+        mo_types, rn_values = self._aci_decompose(dn, ugly)
         return list(zip(mo_types, rn_values))
