@@ -976,6 +976,8 @@ class DNManager(object):
             prefix_to_mos = ManagedObjectClass.prefix_to_mos
             parent_type = prefix_to_mos.get(
                 split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
+            if parent_type not in ManagedObjectClass.supported_mos:
+                raise cexc.ApicManagedObjectNotSupported(mo_class=parent_type)
             mo_types, rn_values = self._aci_decompose('/'.join(split[:-1]),
                                                       parent_type)
             mo_types.append(ugly)
