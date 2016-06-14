@@ -215,6 +215,14 @@ class ManagedObjectClass(object):
 
     }
 
+    prefix_to_mos = {
+        (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt): y
+        for y, x in supported_mos.items()
+    }
+    prefix_to_mos['fault'] = 'faultInst'
+
+    mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
+
     # Note(Henry): The use of a mutable default argument _inst_cache is
     # intentional. It persists for the life of MoClass to cache instances.
     # noinspection PyDefaultArgument
@@ -412,7 +420,12 @@ class ApicSession(object):
             request_str = '%s, data=%s' % (url, data)
             LOG.debug(("data = %s"), data)
         # imdata is where the APIC returns the useful information
-        imdata = response.json().get('imdata')
+        try:
+            imdata = response.json().get('imdata')
+        except ValueError:
+            LOG.error(response)
+            raise
+
         LOG.debug(("Response: %s"), imdata)
         if response.status_code != requests.codes.ok:
             try:
@@ -438,10 +451,13 @@ class ApicSession(object):
 
     # REST requests
 
-    def get_data(self, request):
+    def get_data(self, request, **kwargs):
         """Retrieve generic data from the server."""
         self._check_session()
         url = self._api_url(request)
+        if kwargs:
+            url += '?' + '&'.join(['%s=%s' % (k.replace('_', '-'), v)
+                                   for k, v in kwargs.iteritems()])
         return self._send(self.session.get, url)
 
     def get_mo(self, mo, *args):
@@ -896,6 +912,7 @@ class DNManager(object):
         raise AttributeError
 
     def _decompose(self, dn, mo):
+        # TODO(amitbose) I think this can be replaced by _decompose_dn
         if not dn:
             raise DNManager.InvalidNameFormat()
         fmt = (mo.rn_fmt.replace('__', '').replace('%s', '(.+)').
@@ -903,7 +920,7 @@ class DNManager(object):
 
         split = dn.split('/')
         param = re.findall(fmt, split[-1])
-        if not param or len(param) != mo.rn_param_count:
+        if (not param or len(param) != mo.rn_param_count) and param != [fmt]:
             raise DNManager.InvalidNameFormat()
         if mo.container:
             return self._decompose(
@@ -922,3 +939,56 @@ class DNManager(object):
                 dn, ManagedObjectClass(DNManager.nice_to_rn[nice]))
         except DNManager.InvalidNameFormat:
             return None
+
+    def _decompose_dn(self, dn, mo):
+        if not dn:
+            raise DNManager.InvalidNameFormat()
+        # RN components that don't have a variable part need to copied
+        # as is to the output. Hence make them a RE matching group by
+        # surrounding them with parenthesis.
+        dn_fmt = '/'.join('(%s)' % x if (x != 'uni' and '-' not in x) else x
+                          for x in mo.dn_fmt.split('/'))
+        dn_fmt = (dn_fmt.replace('__', '')
+                  .replace('[%s]', '\[([^\]]+)\]')
+                  .replace('%s', '([^\/]+)') + '$')
+
+        match = re.match(dn_fmt, dn)
+        if not match:
+            raise DNManager.InvalidNameFormat()
+        rn_values = list(match.groups())
+
+        mo_types = []
+        while mo:
+            mo_types.append(mo.klass_name)
+            mo = ManagedObjectClass(mo.container) if mo.container else None
+        mo_types.reverse()
+
+        if len(mo_types) != len(rn_values):
+            raise DNManager.InvalidNameFormat()
+        return (mo_types, rn_values)
+
+    def _aci_decompose(self, dn, ugly):
+        # Special case for Faults since the can have multiple type of
+        # parents
+        if ugly == 'faultInst':
+            # Find out the parent's type
+            split = dn.split('/')
+            prefix_to_mos = ManagedObjectClass.prefix_to_mos
+            parent_type = prefix_to_mos.get(
+                split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
+            if parent_type not in ManagedObjectClass.supported_mos:
+                raise cexc.ApicManagedObjectNotSupported(mo_class=parent_type)
+            mo_types, rn_values = self._aci_decompose('/'.join(split[:-1]),
+                                                      parent_type)
+            mo_types.append(ugly)
+            rn_values.append(split[-1][split[-1].find('-') + 1:])
+            return mo_types, rn_values
+        return self._decompose_dn(dn, ManagedObjectClass(ugly))
+
+    def aci_decompose(self, dn, ugly):
+        _, rn_values = self._aci_decompose(dn, ugly)
+        return rn_values
+
+    def aci_decompose_with_type(self, dn, ugly):
+        mo_types, rn_values = self._aci_decompose(dn, ugly)
+        return list(zip(mo_types, rn_values))

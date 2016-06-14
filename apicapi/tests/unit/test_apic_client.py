@@ -357,3 +357,37 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             ['_openstack-maple_', 'openstack-maple_app',
              'public_ff5b842c-8a76-4cb4-8197-9f9726be44ac'],
             manager.decompose_endpoint_group(epg))
+
+    def test_aci_decompose(self):
+        manager = self.apic.dn_manager
+        res = manager.aci_decompose('uni/tn-ivar-wstest/BD-test/rsctx',
+                                    'fvRsCtx')
+        self.assertEqual(['ivar-wstest', 'test', 'rsctx'], res)
+
+        res = manager.aci_decompose_with_type(
+            'uni/tn-ivar-wstest/BD-test/rsctx', 'fvRsCtx')
+        self.assertEqual([('fvTenant', 'ivar-wstest'),
+                          ('fvBD', 'test'),
+                          ('fvRsCtx', 'rsctx')], res)
+
+        res = manager.aci_decompose(
+            'uni/tn-ivar-wstest/BD-test/subnet-[10.10.1.1/28]', 'fvSubnet')
+        self.assertEqual(['ivar-wstest', 'test', '10.10.1.1/28'], res)
+        res = manager.aci_decompose_with_type(
+            'uni/tn-ivar-wstest/BD-test/subnet-[10.10.1.1/28]', 'fvSubnet')
+        self.assertEqual([('fvTenant', 'ivar-wstest'),
+                          ('fvBD', 'test'),
+                          ('fvSubnet', '10.10.1.1/28')], res)
+
+        self.assertRaises(apic.DNManager.InvalidNameFormat,
+                          manager.aci_decompose,
+                          'uni/tn-ivar-wstest/BD-test', 'fvSubnet')
+
+        self.assertRaises(apic.DNManager.InvalidNameFormat,
+                          manager.aci_decompose,
+                          'uni/tn-ivar-wstest/BD-test', 'fvTenant')
+
+    def test_prefix_mos(self):
+        prefix_mos = apic.ManagedObjectClass.prefix_to_mos
+        self.assertEqual('fvBD', prefix_mos['BD'])
+        self.assertEqual('fvRsCtx', prefix_mos['rsctx'])
