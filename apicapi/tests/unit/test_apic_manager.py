@@ -803,6 +803,36 @@ class TestCiscoApicManager(base.BaseTestCase,
             set([mocked.APIC_DOMAIN, mocked.APIC_SYSTEM_ID]),
             set([self.mgr.domains[0].name, self.mgr.domains[1].name]))
 
+    def _mock_db_calls(self, mgr):
+        mgr.db.get_switches = mock.Mock(return_value=[])
+        mgr.db.get_modules_for_switch = mock.Mock(return_value=[])
+        mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=[])
+
+    def _test_encap_mode(self, mode):
+        if mode:
+            self.override_config('encap_mode', mode, self.config_group)
+        self._initialize_manager(vmm_domains={mocked.APIC_DOMAIN: {}})
+        self.assertEqual(1, len(self.mgr.domains))
+        dom = self.mgr.domains[0]
+        self._mock_db_calls(self.mgr)
+
+        dom._ensure_mcast_ns_created_on_apic = mock.Mock()
+        self.mgr.ensure_infra_created_on_apic()
+
+        if mode != 'vxlan':
+            dom._ensure_mcast_ns_created_on_apic.assert_not_called()
+        else:
+            self.assertTrue(dom._ensure_mcast_ns_created_on_apic.called)
+
+    def test_encap_mode_default(self):
+        self._test_encap_mode(None)
+
+    def test_encap_mode_vlan(self):
+        self._test_encap_mode('vlan')
+
+    def test_encap_mode_vxlan(self):
+        self._test_encap_mode('vxlan')
+
 
 class TestCiscoApicManagerNewConf(TestCiscoApicManager):
 
@@ -823,9 +853,7 @@ class TestCiscoApicManagerNewConf(TestCiscoApicManager):
         self.assertEqual(2, len(self.mgr.domains))
         self.mgr.domains[0]._ensure_vmm_domain_created_on_apic = mock.Mock()
         self.mgr.domains[1]._ensure_vmm_domain_created_on_apic = mock.Mock()
-        self.mgr.db.get_switches = mock.Mock(return_value=[])
-        self.mgr.db.get_modules_for_switch = mock.Mock(return_value=[])
-        self.mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=[])
+        self._mock_db_calls(self.mgr)
 
         self.mgr.ensure_infra_created_on_apic()
         (self.mgr.domains[0]._ensure_vmm_domain_created_on_apic.

@@ -107,6 +107,10 @@ apic_opts = [
                default='${apic_system_id}_l3ext_function_profile',
                help=("Name of the function profile to be created for "
                      "external routed domain")),
+    cfg.StrOpt('encap_mode',
+               help=('Encapsulation to use (vlan, vxlan etc) with APIC '
+                     'domain. If unspecified, encap is inferred from values '
+                     'of other options')),
 ]
 
 
@@ -266,6 +270,13 @@ def valid_controller_host(key, value, **kwargs):
     util.re("%s needs to be set when use_vmm=True" % key)
 
 
+def valid_encap_mode(key, value, **kwargs):
+    util = ConfigValidator.RaiseUtils(value, key)
+    valid = ['vlan', 'vxlan']
+    if value and (value not in valid):
+        util.re("Allowed values: %s" % str(valid))
+
+
 class ConfigValidator(object):
     """Configuration validator for APICAPI.
 
@@ -297,6 +308,7 @@ class ConfigValidator(object):
         'apic_external_routed_domain_name': [valid_apic_name],
         'apic_external_routed_entity_profile': [valid_apic_name],
         'apic_external_routed_function_profile': [valid_apic_name],
+        'encap_mode': [valid_encap_mode],
     }
 
     class RaiseUtils(object):
@@ -407,3 +419,24 @@ def create_physdom_dictionary():
 
 def create_vmdom_dictionary():
     return _create_apic_dom_dictionary('apic_vmdom')
+
+
+def create_phy_node_segment_dict():
+    segments = {}
+    multi_parser = cfg.MultiConfigParser()
+    multi_parser.read(cfg.CONF.config_file)
+    for parsed_file in multi_parser.parsed:
+        for parsed_item in parsed_file.keys():
+            if parsed_item == 'apic_physical_node_segments':
+                segments.update(dict(parsed_file[parsed_item].items()))
+    host_segment_dict = {}
+    for seg, host_list in segments.iteritems():
+        seg = seg.strip()
+        if not seg:
+            continue
+        for host in host_list[0].split(','):
+            host = host.strip()
+            if not host:
+                continue
+            host_segment_dict[host] = seg
+    return host_segment_dict

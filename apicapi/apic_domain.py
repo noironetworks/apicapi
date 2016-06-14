@@ -41,6 +41,11 @@ class ApicDomain(object):
             self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
                                 network_config.get('vlan_ranges')]
 
+        self.encap_mode = self.conf.encap_mode
+        if not self.encap_mode:     # guess from other options
+            self.encap_mode = 'vlan' if self.vlan_ranges else 'vxlan'
+        LOG.info("Encap mode for domain %s is %s", self.name, self.encap_mode)
+
     @property
     def dn(self):
         return None
@@ -130,10 +135,8 @@ class VmDomain(ApicDomain):
                 self.conf.openstack_password,
                 self.conf.multicast_address, vlan_ns_dn=vlan_ns_dn)
 
-        encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
-
         # Create Multicast namespace for VMM in vxlan mode
-        if encap_mode == "vxlan":
+        if self.encap_mode == "vxlan":
             mcast_name = self.conf.apic_multicast_ns_name
             mcast_range = self.conf.mcast_ranges[0]
             (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
@@ -146,7 +149,7 @@ class VmDomain(ApicDomain):
         vmm_dn = self.apic.vmmDomP.dn(self.vmm_type, vmm_name)
         try:
             self.apic.vmmDomP.update(self.vmm_type, vmm_name, dn=vmm_dn,
-                                     encapMode=encap_mode)
+                                     encapMode=self.encap_mode)
         except cexc.ApicResponseNotOk as ex:
             # Ignore as older APIC versions will not support
             # vmmDomP.encapMode
@@ -171,7 +174,7 @@ class VmDomain(ApicDomain):
                 mode="ovs", transaction=trs)
             self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
                                       tDn=usracc_dn, transaction=trs)
-            if vlan_ns_dn:
+            if self.encap_mode == 'vlan' and vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_type, vmm_name, tDn=vlan_ns_dn, transaction=trs)
 
