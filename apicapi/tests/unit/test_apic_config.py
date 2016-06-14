@@ -149,6 +149,21 @@ class TestCiscoApicConfig(base.BaseTestCase, mocked.ConfigMixin):
         self.assertRaises(
             exc.InvalidConfig, self.validator.validate, self.apic_config)
 
+    def test_phy_node_segment_dict(self):
+        phy_net_dict = config.create_physical_network_dict()
+        self.assertEqual(2, len(phy_net_dict))
+        self.assertEqual({'hosts': set(['host1', 'host2', 'host3']),
+                          'segment_type': 'vlan'},
+                         phy_net_dict['rack1'])
+        self.assertEqual({'hosts': set(['host4', 'host5'])},
+                         phy_net_dict['rack2'])
+
+    def test_valid_encap_mode(self):
+        self._validate('encap_mode', 'vlan')
+        self._validate('encap_mode', 'vxlan')
+        self.assertRaises(
+            exc.InvalidConfig, self._validate, 'encap_mode', 'gre')
+
 
 class TestCiscoApicNewConf(TestCiscoApicConfig):
 
