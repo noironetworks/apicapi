@@ -39,6 +39,7 @@ SLEEP_ON_FULL_QUEUE = 1
 
 REFRESH_CODES = [APIC_CODE_FORBIDDEN, ]
 SCOPE = 'openstack_scope'
+MULTI_PARENT = ['faultInst', 'tagInst']
 
 
 # Info about a Managed Object's relative name (RN) and container.
@@ -205,6 +206,11 @@ class ManagedObjectClass(object):
         'vmmRsAcc': ManagedObjectName('vmmCtrlrP', 'rsacc'),
     }
 
+    supported_tags = {
+        'tagInst__%s' % x: ManagedObjectName(x, 'tag-%s')
+        for x in supported_mos}
+
+    supported_mos.update(supported_tags)
     # The ManagedObjects specified below will not be scoped whenever
     # The input parameters match the specified argument
     scope_exceptions = {
@@ -220,6 +226,7 @@ class ManagedObjectClass(object):
         for y, x in supported_mos.items()
     }
     prefix_to_mos['fault'] = 'faultInst'
+    prefix_to_mos['tag'] = 'tagInst'
 
     mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
 
@@ -970,7 +977,7 @@ class DNManager(object):
     def _aci_decompose(self, dn, ugly):
         # Special case for Faults since the can have multiple type of
         # parents
-        if ugly == 'faultInst':
+        if ugly in MULTI_PARENT:
             # Find out the parent's type
             split = dn.split('/')
             prefix_to_mos = ManagedObjectClass.prefix_to_mos
