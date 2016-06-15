@@ -135,6 +135,7 @@ class APICManager(object):
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
         self.ext_net_dict = network_config.get('external_network_dict', {})
+        self.phy_net_dict = config.create_physical_network_dict()
         global LOG
         LOG = log.getLogger(__name__)
 

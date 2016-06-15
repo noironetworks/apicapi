@@ -262,10 +262,17 @@ class ConfigMixin(object):
         self.apic_config = cfg.CONF.ml2_cisco_apic
 
         # Configure switch topology
-        apic_switch_cfg = {
+        apic_mock_cfg = {
             'apic_switch:101': {'ubuntu1,ubuntu2': ['3/11']},
             'apic_switch:102': {'rhel01,rhel02': ['4/21'],
                                 'rhel03': ['4/22']},
+            'apic_physical_network:rack1': {
+                'hosts': ['host1, host2, host3 '],
+                'segment_type': ['vlan'],
+            },
+            'apic_physical_network:rack2': {
+                'hosts': [' host4, , host5'],
+            },
         }
         self.switch_dict = {
             '101': {
@@ -302,8 +309,8 @@ class ConfigMixin(object):
         self.vlan_ranges = ['physnet1:100:199']
         self.mocked_parser = mock.patch.object(
             cfg, 'MultiConfigParser').start()
-        self.mocked_parser.return_value.read.return_value = [apic_switch_cfg]
-        self.mocked_parser.return_value.parsed = [apic_switch_cfg]
+        self.mocked_parser.return_value.read.return_value = [apic_mock_cfg]
+        self.mocked_parser.return_value.parsed = [apic_mock_cfg]
 
     def override_config(self, opt, val, group=None):
         cfg.CONF.set_override(opt, val, group)
