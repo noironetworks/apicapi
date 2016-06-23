@@ -111,6 +111,9 @@ apic_opts = [
                help=('Encapsulation to use (vlan, vxlan etc) with APIC '
                      'domain. If unspecified, encap is inferred from values '
                      'of other options')),
+    cfg.BoolOpt('per_tenant_nat_epg', default=False,
+                help=('Whether NAT-ed endpoints should be segregated by '
+                      'tenants')),
 ]
 
 
