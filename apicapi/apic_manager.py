@@ -121,6 +121,7 @@ class APICManager(object):
         self.default_enforce_subnet_check = (
             self.apic_config.default_enforce_subnet_check)
         self.default_subnet_scope = self.apic_config.default_subnet_scope
+        self.per_tenant_nat_epg = self.apic_config.per_tenant_nat_epg
 
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
