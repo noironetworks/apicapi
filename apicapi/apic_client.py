@@ -226,6 +226,7 @@ class ManagedObjectClass(object):
         for y, x in supported_mos.items()
     }
     prefix_to_mos['fault'] = 'faultInst'
+    prefix_to_mos['health'] = 'healthInst'
     prefix_to_mos['tag'] = 'tagInst'
 
     mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
