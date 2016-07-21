@@ -155,6 +155,16 @@ class VmDomain(ApicDomain):
             # vmmDomP.encapMode
             LOG.info("Expected failure for APIC 1.1 %s", ex)
 
+        # Attempt to set prefEncapMode on DomP...catch and ignore exceptions
+        # as older APIC versions do not support the field
+        try:
+            self.apic.vmmDomP.update(self.vmm_type, vmm_name, dn=vmm_dn,
+                                     prefEncapMode=self.encap_mode)
+        except cexc.ApicResponseNotOk as ex:
+            # Ignore as older APIC versions will not support
+            # vmmDomP.prefEncapMode
+            LOG.info("Expected failure for APIC versions before 2.1 %s", ex)
+
     def _ensure_vmm_domain_created_on_apic(self, vmm_type, vmm_name, usr, pwd,
                                            multicast_addr, vlan_ns_dn=None,
                                            transaction=None):
