@@ -578,15 +578,25 @@ class APICManager(object):
                 transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
-                self.apic.fvRsCtx.create(
-                    tenant_id, bd_id,
-                    tnFvCtxName=self.apic.fvCtx.name(ctx_name),
-                    transaction=trs)
+                self.set_context_for_bd(tenant_id, bd_id, ctx_name,
+                                        transaction=trs)
 
     def delete_bd_on_apic(self, tenant_id, bd_id, transaction=None):
         """Deletes a Bridge Domain from the APIC."""
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.delete(tenant_id, bd_id, transaction=trs)
+
+    def set_context_for_bd(self, tenant_id, bd_id, ctx, transaction=None):
+        """Update the context (VRF) associated with a Bridge Domain.
+
+           Parameter 'ctx' may be set to None to unset the associated
+           context.
+        """
+        with self.apic.transaction(transaction) as trs:
+            self.apic.fvRsCtx.create(
+                tenant_id, bd_id,
+                tnFvCtxName=self.apic.fvCtx.name(ctx) if ctx else '',
+                transaction=trs)
 
     def ensure_subnet_created_on_apic(self, tenant_id, bd_id, gw_ip,
                                       scope=None,
@@ -1084,7 +1094,7 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extRsEctx.create(
                 owner, ext_out_id,
-                tnFvCtxName=(ctx and self.apic.fvCtx.name(ctx) or None),
+                tnFvCtxName=(ctx and self.apic.fvCtx.name(ctx) or ''),
                 transaction=trs)
 
     def ensure_external_routed_network_created(self, ext_out_id,
