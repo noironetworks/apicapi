@@ -51,6 +51,13 @@ class ManagedObjectName(collections.namedtuple('MoPath',
                                                      can_create, name_fmt)
 
 
+def _to_klass_name(name):
+    klass_name = name.split('__')[0]
+    if klass_name[-1:] == '2':
+        klass_name = klass_name[:-1]
+    return klass_name
+
+
 class ManagedObjectClass(object):
 
     """Information about a Managed Object (MO) class.
@@ -222,7 +229,8 @@ class ManagedObjectClass(object):
     }
 
     prefix_to_mos = {
-        (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt): y
+        (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt):
+            _to_klass_name(y)
         for y, x in supported_mos.items()
     }
     prefix_to_mos['fault'] = 'faultInst'
@@ -246,9 +254,7 @@ class ManagedObjectClass(object):
 
     def __init__(self, mo_class):
         self.klass = mo_class
-        self.klass_name = mo_class.split('__')[0]
-        if (self.klass_name[-1:] == '2'):
-            self.klass_name = self.klass_name[:-1]
+        self.klass_name = _to_klass_name(mo_class)
         mo = self.supported_mos[mo_class]
         self.container = mo.container
         if mo.name_fmt:
@@ -396,7 +402,7 @@ class ApicSession(object):
     def _check_session(self):
         """Check that we are logged in and ensure the session is active."""
         if self._is_cert_auth():
-            return      # Certificate based authentication is session-less
+            return  # Certificate based authentication is session-less
         if not self.authentication:
             raise cexc.ApicSessionNotLoggedIn
         if time.time() > self.session_deadline:
@@ -639,7 +645,7 @@ class ApicSession(object):
     def refresh(self):
         """Called when a session has timed out or almost timed out."""
         if self._is_cert_auth():
-            return          # Certificate-based calls are session-less
+            return  # Certificate-based calls are session-less
         url = self._api_url('aaaRefresh')
         response = self._do_request(self.session.get, url,
                                     cookies=self.cookie)
@@ -986,8 +992,9 @@ class DNManager(object):
                 split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
             if parent_type not in ManagedObjectClass.supported_mos:
                 raise cexc.ApicManagedObjectNotSupported(mo_class=parent_type)
-            mo_types, rn_values = self._aci_decompose('/'.join(split[:-1]),
-                                                      parent_type)
+            _, mos_and_rns = self.aci_decompose_dn_guess('/'.join(split[:-1]),
+                                                         parent_type)
+            mo_types, rn_values = map(list, zip(*mos_and_rns))
             mo_types.append(ugly)
             rn_values.append(split[-1][split[-1].find('-') + 1:])
             return mo_types, rn_values
@@ -1000,3 +1007,35 @@ class DNManager(object):
     def aci_decompose_with_type(self, dn, ugly):
         mo_types, rn_values = self._aci_decompose(dn, ugly)
         return list(zip(mo_types, rn_values))
+
+    def aci_decompose_dn_guess(self, dn, mo_type_hint):
+        """
+        Decompose DN when input ACI ManagedObject type may not be exact.
+        If DN decomposition is successful, returns a tuple with the following
+        items:
+        * ManagedObject type that matches the DN
+        * List of (ManagedObject type, RN value) pairs for each DN
+          component
+        """
+        try:
+            return mo_type_hint, self.aci_decompose_with_type(dn, mo_type_hint)
+        except DNManager.InvalidNameFormat:
+            # check if DN fits another MO
+            other_mos = [m for m in ManagedObjectClass.supported_mos
+                         if ManagedObjectClass(m).klass_name == mo_type_hint]
+            for mo in other_mos:
+                try:
+                    return mo, self.aci_decompose_with_type(dn, mo)
+                except DNManager.InvalidNameFormat:
+                    pass
+        raise DNManager.InvalidNameFormat()
+
+    def build(self, mos_and_rns):
+        """
+        Build a DN string from a list of (ManagedObject type, RN value) pairs.
+        """
+        rns = ['uni']
+        for p in mos_and_rns:
+            mo = ManagedObjectClass(p[0])
+            rns.append(mo.rn(p[1]) if mo.rn_param_count else mo.rn())
+        return '/'.join(rns)
