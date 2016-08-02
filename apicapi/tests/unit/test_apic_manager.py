@@ -29,6 +29,9 @@ class FakeConf(dict):
     def __getattr__(self, attr):
         return self[attr]
 
+    def __setattr__(self, key, value):
+        self[key] = value
+
 
 class TestCiscoApicManager(base.BaseTestCase,
                            mocked.ControllerMixin,
@@ -657,7 +660,7 @@ class TestCiscoApicManager(base.BaseTestCase,
     def test_auth_url(self):
         mapper = self.mgr._apic_mapper
         conf = FakeConf()
-        correct_url = 'http://controller:5000/v2.0/'
+        correct_url = 'http://controller:5000/'
         test_inputs = ['http://controller:5000/v2.0/',
                        'http://controller:5000/v2.0////',
                        'http://controller:5000/v2.0',
@@ -668,11 +671,21 @@ class TestCiscoApicManager(base.BaseTestCase,
         conf.auth_protocol = 'http'
         conf.auth_host = 'controller'
         conf.auth_port = '5000'
+        conf.admin_user = 'user'
+        conf.admin_password = 'password'
+        conf.admin_tenant_name = 'tenant'
 
         for input in test_inputs:
             conf.auth_uri = input
-            url = mapper._get_keystone_url(conf)
-            self.assertEqual(correct_url, url)
+            url = mapper.get_key_password_params(conf)
+            self.assertEqual((correct_url, 'user', 'password', 'tenant'), url)
+
+        # Test with suffix
+        for input in test_inputs:
+            conf.auth_uri = input
+            url = mapper.get_key_password_params(conf, suffix='/v2.0')
+            self.assertEqual((correct_url + 'v2.0/', 'user', 'password',
+                              'tenant'), url)
 
     def test_timeout_set(self):
         client = self.mgr.apic
@@ -790,6 +803,36 @@ class TestCiscoApicManager(base.BaseTestCase,
             set([mocked.APIC_DOMAIN, mocked.APIC_SYSTEM_ID]),
             set([self.mgr.domains[0].name, self.mgr.domains[1].name]))
 
+    def _mock_db_calls(self, mgr):
+        mgr.db.get_switches = mock.Mock(return_value=[])
+        mgr.db.get_modules_for_switch = mock.Mock(return_value=[])
+        mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=[])
+
+    def _test_encap_mode(self, mode):
+        if mode:
+            self.override_config('encap_mode', mode, self.config_group)
+        self._initialize_manager(vmm_domains={mocked.APIC_DOMAIN: {}})
+        self.assertEqual(1, len(self.mgr.domains))
+        dom = self.mgr.domains[0]
+        self._mock_db_calls(self.mgr)
+
+        dom._ensure_mcast_ns_created_on_apic = mock.Mock()
+        self.mgr.ensure_infra_created_on_apic()
+
+        if mode != 'vxlan':
+            dom._ensure_mcast_ns_created_on_apic.assert_not_called()
+        else:
+            self.assertTrue(dom._ensure_mcast_ns_created_on_apic.called)
+
+    def test_encap_mode_default(self):
+        self._test_encap_mode(None)
+
+    def test_encap_mode_vlan(self):
+        self._test_encap_mode('vlan')
+
+    def test_encap_mode_vxlan(self):
+        self._test_encap_mode('vxlan')
+
 
 class TestCiscoApicManagerNewConf(TestCiscoApicManager):
 
@@ -810,9 +853,7 @@ class TestCiscoApicManagerNewConf(TestCiscoApicManager):
         self.assertEqual(2, len(self.mgr.domains))
         self.mgr.domains[0]._ensure_vmm_domain_created_on_apic = mock.Mock()
         self.mgr.domains[1]._ensure_vmm_domain_created_on_apic = mock.Mock()
-        self.mgr.db.get_switches = mock.Mock(return_value=[])
-        self.mgr.db.get_modules_for_switch = mock.Mock(return_value=[])
-        self.mgr.db.get_switch_and_port_for_host = mock.Mock(return_value=[])
+        self._mock_db_calls(self.mgr)
 
         self.mgr.ensure_infra_created_on_apic()
         (self.mgr.domains[0]._ensure_vmm_domain_created_on_apic.

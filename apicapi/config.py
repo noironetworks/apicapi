@@ -107,6 +107,13 @@ apic_opts = [
                default='${apic_system_id}_l3ext_function_profile',
                help=("Name of the function profile to be created for "
                      "external routed domain")),
+    cfg.StrOpt('encap_mode',
+               help=('Encapsulation to use (vlan, vxlan etc) with APIC '
+                     'domain. If unspecified, encap is inferred from values '
+                     'of other options')),
+    cfg.BoolOpt('per_tenant_nat_epg', default=False,
+                help=('Whether NAT-ed endpoints should be segregated by '
+                      'tenants')),
 ]
 
 
@@ -266,6 +273,13 @@ def valid_controller_host(key, value, **kwargs):
     util.re("%s needs to be set when use_vmm=True" % key)
 
 
+def valid_encap_mode(key, value, **kwargs):
+    util = ConfigValidator.RaiseUtils(value, key)
+    valid = ['vlan', 'vxlan']
+    if value and (value not in valid):
+        util.re("Allowed values: %s" % str(valid))
+
+
 class ConfigValidator(object):
     """Configuration validator for APICAPI.
 
@@ -297,6 +311,7 @@ class ConfigValidator(object):
         'apic_external_routed_domain_name': [valid_apic_name],
         'apic_external_routed_entity_profile': [valid_apic_name],
         'apic_external_routed_function_profile': [valid_apic_name],
+        'encap_mode': [valid_encap_mode],
     }
 
     class RaiseUtils(object):
@@ -407,3 +422,18 @@ def create_physdom_dictionary():
 
 def create_vmdom_dictionary():
     return _create_apic_dom_dictionary('apic_vmdom')
+
+
+def create_physical_network_dict():
+    phy_net_dict = {}
+    conf = _get_specific_config('apic_physical_network')
+    for segment in conf:
+        seg_kv = phy_net_dict.setdefault(segment, {'hosts': set()})
+        for key, value in conf[segment]:
+            if key == 'hosts':
+                host_list = value[0] if value else []
+                host_list = [h.strip() for h in host_list.split(',')]
+                seg_kv['hosts'] = set([h for h in host_list if h])
+            else:
+                seg_kv[key] = value[0] if value else None
+    return phy_net_dict

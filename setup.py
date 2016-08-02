@@ -18,7 +18,7 @@ import setuptools
 
 setuptools.setup(
     name="apicapi",
-    version="1.0.7",
+    version="1.0.10",
     zip_safe=False,
     packages=setuptools.find_packages(exclude=["*.tests", "*.tests.*",
                                                "tests.*", "tests"]),
@@ -29,8 +29,9 @@ setuptools.setup(
     description="This library provides an interface to the APIC REST api.",
     entry_points={
         'console_scripts': [
-            'apic-cleanup = apicapi.tools.cleanup:main',
             'apic = apicapi.tools.cli.shell:run',
+            'apic-bond-watch = apicapi.tools.bondwatch:main',
+            'apic-cleanup = apicapi.tools.cleanup:main',
         ]
     }
 )

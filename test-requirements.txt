@@ -22,3 +22,4 @@ os-testr>=0.1.0
 tempest-lib>=0.6.1
 ddt>=0.7.0
 python-neutronclient==2.3.9
+python-keystoneclient==2.3.1

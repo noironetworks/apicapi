@@ -74,7 +74,8 @@ class APICManager(object):
     """
     def __init__(self, db, log, network_config, apic_config,
                  keyclient=None, keystone_authtoken=None,
-                 apic_system_id='openstack', default_apic_model=None):
+                 apic_system_id='openstack', default_apic_model=None,
+                 keysession=None):
         # Network config looks like follows:
         # network_config = {
         #     'vlan_ranges': cfg.CONF.ml2_type_vlan.network_vlan_ranges,
@@ -120,6 +121,7 @@ class APICManager(object):
         self.default_enforce_subnet_check = (
             self.apic_config.default_enforce_subnet_check)
         self.default_subnet_scope = self.apic_config.default_subnet_scope
+        self.per_tenant_nat_epg = self.apic_config.per_tenant_nat_epg
 
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
@@ -134,6 +136,7 @@ class APICManager(object):
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
         self.ext_net_dict = network_config.get('external_network_dict', {})
+        self.phy_net_dict = config.create_physical_network_dict()
         global LOG
         LOG = log.getLogger(__name__)
 
@@ -171,7 +174,7 @@ class APICManager(object):
         min_suffix = self.apic_config.min_id_suffix_size
         self._apic_mapper = apic_mapper.APICNameMapper(
             self.db, log, keyclient, keystone_authtoken,
-            name_mapping, min_suffix=min_suffix)
+            name_mapping, min_suffix=min_suffix, keysession=keysession)
         self.apic_system_id = apic_system_id
         self.app_profile_name = self.apic_mapper.app_profile(
             None, self.apic_config.apic_app_profile_name)
@@ -575,15 +578,25 @@ class APICManager(object):
                 transaction=trs)
             # Add default context to the BD
             if ctx_name is not None:
-                self.apic.fvRsCtx.create(
-                    tenant_id, bd_id,
-                    tnFvCtxName=self.apic.fvCtx.name(ctx_name),
-                    transaction=trs)
+                self.set_context_for_bd(tenant_id, bd_id, ctx_name,
+                                        transaction=trs)
 
     def delete_bd_on_apic(self, tenant_id, bd_id, transaction=None):
         """Deletes a Bridge Domain from the APIC."""
         with self.apic.transaction(transaction) as trs:
             self.apic.fvBD.delete(tenant_id, bd_id, transaction=trs)
+
+    def set_context_for_bd(self, tenant_id, bd_id, ctx, transaction=None):
+        """Update the context (VRF) associated with a Bridge Domain.
+
+           Parameter 'ctx' may be set to None to unset the associated
+           context.
+        """
+        with self.apic.transaction(transaction) as trs:
+            self.apic.fvRsCtx.create(
+                tenant_id, bd_id,
+                tnFvCtxName=self.apic.fvCtx.name(ctx) if ctx else '',
+                transaction=trs)
 
     def ensure_subnet_created_on_apic(self, tenant_id, bd_id, gw_ip,
                                       scope=None,
@@ -977,7 +990,7 @@ class APICManager(object):
             if ifname == 'static':
                 ifname = 'static-vpc-%s' % switch
             vpcport = ''
-            if not self.provision_infra and oport is not None:
+            if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
             self.db.add_hostlink(host, ifname, ifmac,
                                  switch, vpcmodule, vpcport)
@@ -987,7 +1000,7 @@ class APICManager(object):
 
             vpcport = self.get_bundle_name(
                 switch, module, port, switch2, module2, port2)
-            if not self.provision_infra and oport is not None:
+            if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
             if ifname == 'static':
                 ifname = 'static-vpc-%s' % switch
@@ -1081,7 +1094,7 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             self.apic.l3extRsEctx.create(
                 owner, ext_out_id,
-                tnFvCtxName=(ctx and self.apic.fvCtx.name(ctx) or None),
+                tnFvCtxName=(ctx and self.apic.fvCtx.name(ctx) or ''),
                 transaction=trs)
 
     def ensure_external_routed_network_created(self, ext_out_id,

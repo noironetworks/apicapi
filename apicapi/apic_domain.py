@@ -41,6 +41,11 @@ class ApicDomain(object):
             self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
                                 network_config.get('vlan_ranges')]
 
+        self.encap_mode = self.conf.encap_mode
+        if not self.encap_mode:     # guess from other options
+            self.encap_mode = 'vlan' if self.vlan_ranges else 'vxlan'
+        LOG.info("Encap mode for domain %s is %s", self.name, self.encap_mode)
+
     @property
     def dn(self):
         return None
@@ -130,25 +135,35 @@ class VmDomain(ApicDomain):
                 self.conf.openstack_password,
                 self.conf.multicast_address, vlan_ns_dn=vlan_ns_dn)
 
-        # Create Multicast namespace for VMM
-        mcast_name = self.conf.apic_multicast_ns_name
-        mcast_range = self.conf.mcast_ranges[0]
-        (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
-        self._ensure_mcast_ns_created_on_apic(
-            APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
-            mcast_min, mcast_max)
+        # Create Multicast namespace for VMM in vxlan mode
+        if self.encap_mode == "vxlan":
+            mcast_name = self.conf.apic_multicast_ns_name
+            mcast_range = self.conf.mcast_ranges[0]
+            (mcast_min, mcast_max) = mcast_range.split(':')[-2:]
+            self._ensure_mcast_ns_created_on_apic(
+                APIC_VMM_TYPE_OPENSTACK, vmm_name, mcast_name,
+                mcast_min, mcast_max)
 
         # Attempt to set encapMode on DomP...catch and ignore exceptions
         # as older APIC versions do not support the field
-        encap_mode = ("vlan" if vlan_ns_dn else "vxlan")
         vmm_dn = self.apic.vmmDomP.dn(self.vmm_type, vmm_name)
         try:
             self.apic.vmmDomP.update(self.vmm_type, vmm_name, dn=vmm_dn,
-                                     encapMode=encap_mode)
+                                     encapMode=self.encap_mode)
         except cexc.ApicResponseNotOk as ex:
             # Ignore as older APIC versions will not support
             # vmmDomP.encapMode
             LOG.info("Expected failure for APIC 1.1 %s", ex)
+
+        # Attempt to set prefEncapMode on DomP...catch and ignore exceptions
+        # as older APIC versions do not support the field
+        try:
+            self.apic.vmmDomP.update(self.vmm_type, vmm_name, dn=vmm_dn,
+                                     prefEncapMode=self.encap_mode)
+        except cexc.ApicResponseNotOk as ex:
+            # Ignore as older APIC versions will not support
+            # vmmDomP.prefEncapMode
+            LOG.info("Expected failure for APIC versions before 2.1 %s", ex)
 
     def _ensure_vmm_domain_created_on_apic(self, vmm_type, vmm_name, usr, pwd,
                                            multicast_addr, vlan_ns_dn=None,
@@ -169,7 +184,7 @@ class VmDomain(ApicDomain):
                 mode="ovs", transaction=trs)
             self.apic.vmmRsAcc.create(vmm_type, vmm_name, vmm_name,
                                       tDn=usracc_dn, transaction=trs)
-            if vlan_ns_dn:
+            if self.encap_mode == 'vlan' and vlan_ns_dn:
                 self.apic.infraRsVlanNs__vmm.create(
                     vmm_type, vmm_name, tDn=vlan_ns_dn, transaction=trs)
 
