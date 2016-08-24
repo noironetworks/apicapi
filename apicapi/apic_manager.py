@@ -227,6 +227,8 @@ class APICManager(object):
                 domain.create()
 
         if not self.provision_infra:
+            self.clear_staticlinks()
+            self.add_staticlinks()
             return
 
         # Create entity profile
@@ -263,13 +265,7 @@ class APICManager(object):
             self.ensure_infra_created_for_switch(switch)
 
         # now create add any new switches in config to apic and DB
-        for switch in self.switch_dict:
-            for module_port in self.switch_dict[switch]:
-                module, port = module_port.split('/')
-                hosts = self.switch_dict[switch][module_port]
-                for host in hosts:
-                    self.add_hostlink(host, 'static', None, switch, module,
-                                      port)
+        self.add_staticlinks()
 
         # set-up infra for external routed domains
         if ext_ports:
@@ -927,6 +923,16 @@ class APICManager(object):
             tenant_id, app_profile_name, epg_id,
             mac_address, 'tep', transaction=transaction)
 
+    def add_staticlinks(self):
+        # add static hostlinks in config
+        for switch in self.switch_dict:
+            for module_port in self.switch_dict[switch]:
+                module, port = module_port.split('/')
+                hosts = self.switch_dict[switch][module_port]
+                for host in hosts:
+                    self.add_hostlink(host, 'static', None, switch, module,
+                                      port)
+
     def add_hostlink(self, host, ifname, ifmac, switch, module, port,
                      transaction=None):
         if switch in self.vpc_dict:
@@ -1353,6 +1359,18 @@ class APICManager(object):
             with self.db.session.begin(subtransactions=True):
                 try:
                     self.db.session.query(HostLink).delete()
+                except orm.exc.NoResultFound:
+                    return
+
+    def clear_staticlinks(self):
+        from sqlalchemy import orm
+        HostLink = self.get_hostlink_class()
+        if HostLink:
+            with self.db.session.begin(subtransactions=True):
+                try:
+                    self.db.session.query(HostLink).\
+                            filter(HostLink.ifname.like('static%')).\
+                            delete(synchronize_session=False)
                 except orm.exc.NoResultFound:
                     return
 
