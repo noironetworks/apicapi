@@ -18,6 +18,8 @@ import mock
 from apicapi.tests.db import api as db_api
 
 HostLink = mock
+HostLink.ifname = mock.Mock()
+HostLink.ifname.like = mock.Mock(return_value=None)
 
 
 class ApicDbModel(object):
