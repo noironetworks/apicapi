@@ -328,6 +328,7 @@ class TestCiscoApicManager(base.BaseTestCase,
         with mock.patch(
             'apicapi.apic_domain.VmDomain._ensure_vmm_domain_created_on_apic'):
             self.mock_response_for_get('vmmDomP', dn="/uni/vmware")
+            self.mock_db_query_filterby_distinct_return([('switch', 'ifname')])
 
             self.mgr.ensure_infra_created_on_apic()
             advd = apic_domain.VmDomain
