@@ -382,7 +382,12 @@ def create_switch_dictionary():
 
 def create_vpc_dictionary():
     vpc_dict = {}
-    for pair in cfg.CONF.ml2_cisco_apic.apic_vpc_pairs:
+    try:
+        pairs = cfg.CONF.ml2_cisco_apic.apic_vpc_pairs
+    except Exception:
+        pairs = cfg.CONF.apic.apic_vpc_pairs
+
+    for pair in pairs:
         pair_tuple = pair.split(':')
         if (len(pair_tuple) != 2 or
                 any(map(lambda x: not x.isdigit(), pair_tuple))):
