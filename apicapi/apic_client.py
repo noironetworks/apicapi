@@ -986,7 +986,7 @@ class DNManager(object):
         # parents
         if ugly in MULTI_PARENT:
             # Find out the parent's type
-            split = dn.split('/')
+            split = re.split(r"/+(?=[^\[\]]*(?:\[|$))", dn)
             prefix_to_mos = ManagedObjectClass.prefix_to_mos
             parent_type = prefix_to_mos.get(
                 split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))

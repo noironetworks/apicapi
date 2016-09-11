@@ -419,6 +419,14 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                           manager.aci_decompose_dn_guess,
                           'uni/tn-ivar-wstest/BD-test', 'vzRsFiltAtt')
 
+        res = manager.aci_decompose_dn_guess(
+            'uni/tn-tn1/BD-mybd/subnet-[10.10.10.1/28]/tag-aid', 'tagInst')
+        self.assertEqual('tagInst', res[0])
+        self.assertEqual([('fvTenant', 'tn1'),
+                          ('fvBD', 'mybd'),
+                          ('fvSubnet', '10.10.10.1/28'),
+                          ('tagInst', 'aid')], res[1])
+
     def test_aci_decompose_fault_dn(self):
         manager = self.apic.dn_manager
         res = manager.aci_decompose('uni/tn-amit1/brc-c/fault-F1228',
