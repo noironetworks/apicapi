@@ -324,6 +324,32 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             self.assertFalse(trs.commit.called)
         self.assertEqual(1, trs.commit.call_count)
 
+    def test_sub_transaction_top_send(self):
+
+        trs = apic.Transaction(self.apic, top_send=True)
+        trs.post_body = mock.Mock()
+        # first root
+        self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd', 'subnet',
+                                  transaction=trs)
+        # Second root with children
+        self.apic.fvBD.create(mocked.APIC_TENANT, 'bd1', transaction=trs)
+        self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd1', 'subnet',
+                                  transaction=trs)
+        self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd1', 'subnet1',
+                                  transaction=trs)
+        # Third root
+        self.apic.vzSubj.create(mocked.APIC_TENANT, 'c', 's',
+                                transaction=trs)
+        self.apic.vzRsFiltAtt__In.create(mocked.APIC_TENANT, 'c', 's', 'i1',
+                                         transaction=trs)
+        roots = trs.get_top_level_roots()
+        # Roots are BD1 and bd/subnet
+        self.assertEqual(3, len(roots))
+        # Verify children are there
+        for item in roots:
+            if item[1].mo_rn == 'BD-bd':
+                self.assertEqual(2, len(item[1].children))
+
     def test_renew_called(self):
         s_name = mapper.ApicName('name', 'id')
         s_name.renew = mock.Mock()

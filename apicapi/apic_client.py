@@ -211,7 +211,11 @@ class ManagedObjectClass(object):
         'fvnsMcastAddrBlk': ManagedObjectName('fvnsMcastAddrInstP',
                                               'fromaddr-[%s]-toaddr-[%s]'),
         'vmmRsAcc': ManagedObjectName('vmmCtrlrP', 'rsacc'),
+        # Generic tag as a reference for rn_fmt
+        'tagInst': ManagedObjectName(None, 'tag-%s', False),
     }
+
+    intermediate_mos = set(['vzRsFiltAtt__In', 'vzRsFiltAtt__Out'])
 
     supported_tags = {
         'tagInst__%s' % x: ManagedObjectName(x, 'tag-%s')
@@ -740,16 +744,18 @@ class ManagedObjectAccess(object):
 class Transaction(object):
     """API consistent with RestClient class to operate Transactions."""
 
-    def __init__(self, session):
+    def __init__(self, session, top_send=False):
         self.root = None
         self.root_params = []
         self.root_mo = None
         self.session = session
+        self.top_send = top_send
 
     def __getattr__(self, mo_class):
         if mo_class not in ManagedObjectClass.supported_mos:
             raise cexc.ApicManagedObjectNotSupported(mo_class=mo_class)
-        self.__dict__[mo_class] = TransactionBuilder(self, mo_class)
+        self.__dict__[mo_class] = TransactionBuilder(self, mo_class,
+                                                     self.top_send)
         return self.__dict__[mo_class]
 
     def init_root(self, mo, *params, **data):
@@ -798,22 +804,84 @@ class Transaction(object):
         # Mo is child of this node
         return self._append_child(parent, mo, *params)
 
+    def get_top_level_roots(self):
+        """
+
+        :return: list of nodes and their params
+        """
+
+        def is_intermediate_object(node):
+            # intmnl is an example of intermediate node
+            fmt = ManagedObjectClass.supported_mos[node.mo_class].rn_fmt
+            return '-' not in fmt and not fmt.startswith('rs')
+
+        result = []
+        to_visit = collections.OrderedDict()
+        to_visit['uni'] = [self.root]
+        # Verify if root is part of the solution
+        if self.root.attributes.get('apicapi_top'):
+            result.append(('uni' + '/' + self.root.mo_rn, self.root))
+        while to_visit:
+            partial_dn, nodes = to_visit.popitem(last=False)
+            for node in nodes:
+                dummy = not node.attributes.pop('apicapi_top', False)
+                # Look at the node's children
+                good_children = []
+                parent_dn = partial_dn + '/' + node.mo_rn
+                while node.children:
+                    # If child is not top node, pop it from the list
+                    child = node.children.pop()
+                    # Append the node for visit
+                    to_visit.setdefault(parent_dn, []).append(
+                        child)
+                    # If the current node is Dummy, put non-dummy nodes in the
+                    # result
+                    if child.attributes.get('apicapi_top'):
+                        if dummy:
+                            result.append((parent_dn + '/' + child.mo_rn,
+                                           child))
+                        else:
+                            # If current node is not dummy put it in the good
+                            # children list
+                            good_children.append(child)
+                    elif is_intermediate_object(child):
+                        # Put it in the good children if node is not dummy
+                        if not dummy:
+                            child.attributes['apicapi_top'] = True
+                            good_children.append(child)
+                # Restore node's children with good children
+                for child in good_children:
+                    node.children.append(child)
+        return result
+
     def commit(self):
-        return self.session.post_body(
-            self.root_mo, json.dumps(self.root),
-            *self.root_params)
+        if self.top_send:
+            roots = self.get_top_level_roots()
+            for root in roots:
+                mo_class = root[1].mo_class
+                params = DNManager().aci_decompose_dn_guess(root[0], mo_class)
+                mo = ManagedObjectClass(params[0])
+                self.session.post_body(mo, json.dumps(root[1]),
+                                       *[x[1] for x in params[1]])
+        else:
+            return self.session.post_body(self.root_mo, json.dumps(self.root),
+                                          *self.root_params)
 
 
 class TransactionBuilder(object):
     """Creates a ManagedObject subtree starting from a root."""
 
-    def __init__(self, transaction, mo_class):
+    def __init__(self, transaction, mo_class, top_send=False):
         self.trs = transaction
+        self.top_send = top_send
         self.mo = ManagedObjectClass(mo_class)
 
     def add(self, *args, **kwargs):
         node = self.trs.create_branch(self.mo, *args)
         node.update_attributes(**kwargs)
+        if self.top_send:
+            # Mark top level object:
+            node.update_attributes(apicapi_top=True)
 
     def remove(self, *args):
         node = self.trs.create_branch(self.mo, *args)
@@ -890,9 +958,9 @@ class RestClient(ApicSession):
         return False
 
     @contextlib.contextmanager
-    def transaction(self, transaction=None, ph=None):
+    def transaction(self, transaction=None, ph=None, top_send=False):
         if not transaction:
-            transaction = Transaction(self)
+            transaction = Transaction(self, top_send=top_send)
             yield transaction
             if transaction.root:
                 result = transaction.commit()
