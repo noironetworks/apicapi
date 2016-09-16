@@ -108,7 +108,7 @@ class ManagedObjectClass(object):
         'l3extOut': ManagedObjectName('fvTenant', 'out-%(name)s',
                                       name_fmt='__%s'),
         'l3extRsEctx': ManagedObjectName('l3extOut', 'rsectx'),
-        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'l3extRsL3DomAtt'),
+        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'rsL3DomAtt'),
         'l3extLNodeP': ManagedObjectName('l3extOut', 'lnodep-%s'),
         'l3extRsNodeL3OutAtt': ManagedObjectName('l3extLNodeP',
                                                  'rsnodeL3OutAtt-[%s]'),
@@ -124,7 +124,7 @@ class ManagedObjectClass(object):
         'fvCollectionCont': ManagedObjectName('fvRsCons', 'collectionDn-[%s]'),
         'l3extSubnet': ManagedObjectName('l3extInstP', 'extsubnet-[%s]'),
         'l3extRsInstPToNatMappingEPg':
-            ManagedObjectName('l3extInstP', 'l3extRsInstPToNatMappingEPg'),
+            ManagedObjectName('l3extInstP', 'rsInstPToNatMappingEPg'),
 
         'physDomP': ManagedObjectName(None, 'phys-%s'),
         'l3extDomP': ManagedObjectName(None, 'l3dom-%s'),
@@ -1036,7 +1036,9 @@ class DNManager(object):
 
         match = re.match(dn_fmt, dn)
         if not match:
-            raise DNManager.InvalidNameFormat()
+            raise DNManager.InvalidNameFormat(
+                "Invalid name format for"
+                "DN %s and mo %s" % (dn, mo.rn_fmt))
         rn_values = list(match.groups())
 
         mo_types = []
