@@ -1333,7 +1333,7 @@ class APICManager(object):
             __import__(self.apic_model)
             return sys.modules[self.apic_model].HostLink
         except Exception as e:
-            LOG.exception(e)
+            LOG.warn("Couldn't load HostLink class: %s", e.message)
         return None
 
     def update_hostlink_port(self, host, switch, module, port):

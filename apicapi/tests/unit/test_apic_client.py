@@ -324,6 +324,32 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             self.assertFalse(trs.commit.called)
         self.assertEqual(1, trs.commit.call_count)
 
+    def test_sub_transaction_top_send(self):
+
+        trs = apic.Transaction(self.apic, top_send=True)
+        trs.post_body = mock.Mock()
+        # first root
+        self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd', 'subnet',
+                                  transaction=trs)
+        # Second root with children
+        self.apic.fvBD.create(mocked.APIC_TENANT, 'bd1', transaction=trs)
+        self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd1', 'subnet',
+                                  transaction=trs)
+        self.apic.fvSubnet.create(mocked.APIC_TENANT, 'bd1', 'subnet1',
+                                  transaction=trs)
+        # Third root
+        self.apic.vzSubj.create(mocked.APIC_TENANT, 'c', 's',
+                                transaction=trs)
+        self.apic.vzRsFiltAtt__In.create(mocked.APIC_TENANT, 'c', 's', 'i1',
+                                         transaction=trs)
+        roots = trs.get_top_level_roots()
+        # Roots are BD1 and bd/subnet
+        self.assertEqual(3, len(roots))
+        # Verify children are there
+        for item in roots:
+            if item[1].mo_rn == 'BD-bd':
+                self.assertEqual(2, len(item[1].children))
+
     def test_renew_called(self):
         s_name = mapper.ApicName('name', 'id')
         s_name.renew = mock.Mock()
@@ -387,7 +413,96 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                           manager.aci_decompose,
                           'uni/tn-ivar-wstest/BD-test', 'fvTenant')
 
+    def test_aci_decompose_dn_guess(self):
+        manager = self.apic.dn_manager
+        res = manager.aci_decompose_dn_guess(
+            'uni/tn-amit1/brc-c/subj-s2/intmnl/rsfiltAtt-f', 'vzRsFiltAtt')
+        self.assertEqual('vzRsFiltAtt__In', res[0])
+        self.assertEqual([('fvTenant', 'amit1'),
+                          ('vzBrCP', 'c'),
+                          ('vzSubj', 's2'),
+                          ('vzInTerm', 'intmnl'),
+                          ('vzRsFiltAtt', 'f')], res[1])
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/tn-amit1/brc-c/subj-s2/outtmnl/rsfiltAtt-g', 'vzRsFiltAtt')
+        self.assertEqual('vzRsFiltAtt__Out', res[0])
+        self.assertEqual([('fvTenant', 'amit1'),
+                          ('vzBrCP', 'c'),
+                          ('vzSubj', 's2'),
+                          ('vzOutTerm', 'outtmnl'),
+                          ('vzRsFiltAtt', 'g')], res[1])
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/tn-amit1/brc-c/subj-s2/rsfiltAtt-h', 'vzRsFiltAtt')
+        self.assertEqual('vzRsFiltAtt', res[0])
+        self.assertEqual([('fvTenant', 'amit1'),
+                          ('vzBrCP', 'c'),
+                          ('vzSubj', 's2'),
+                          ('vzRsFiltAtt', 'h')], res[1])
+
+        self.assertRaises(apic.DNManager.InvalidNameFormat,
+                          manager.aci_decompose_dn_guess,
+                          'uni/tn-ivar-wstest/BD-test', 'vzRsFiltAtt')
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/tn-tn1/BD-mybd/subnet-[10.10.10.1/28]/tag-aid', 'tagInst')
+        self.assertEqual('tagInst', res[0])
+        self.assertEqual([('fvTenant', 'tn1'),
+                          ('fvBD', 'mybd'),
+                          ('fvSubnet', '10.10.10.1/28'),
+                          ('tagInst', 'aid')], res[1])
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/tn-common/out-default/instP-extnet/rsprov-default',
+            'fvRsProv')
+        self.assertEqual('fvRsProv__Ext', res[0])
+        self.assertEqual([('fvTenant', 'common'),
+                          ('l3extOut', 'default'),
+                          ('l3extInstP', 'extnet'),
+                          ('fvRsProv', 'default')], res[1])
+
+    def test_aci_decompose_fault_dn(self):
+        manager = self.apic.dn_manager
+        res = manager.aci_decompose('uni/tn-amit1/brc-c/fault-F1228',
+                                    'faultInst')
+        self.assertEqual(['amit1', 'c', 'F1228'], res)
+
+        res = manager.aci_decompose(
+            'uni/tn-amit1/brc-c/subj-s2/intmnl/rsfiltAtt-f/fault-F1111',
+            'faultInst')
+        self.assertEqual(['amit1', 'c', 's2', 'intmnl', 'f', 'F1111'], res)
+
+        res = manager.aci_decompose(
+            'uni/tn-amit1/brc-c/subj-s2/outtmnl/rsfiltAtt-g/fault-F1111',
+            'faultInst')
+        self.assertEqual(['amit1', 'c', 's2', 'outtmnl', 'g', 'F1111'], res)
+
+        res = manager.aci_decompose(
+            'uni/tn-amit1/brc-c/subj-s2/rsfiltAtt-h/fault-F1111',
+            'faultInst')
+        self.assertEqual(['amit1', 'c', 's2', 'h', 'F1111'], res)
+
     def test_prefix_mos(self):
         prefix_mos = apic.ManagedObjectClass.prefix_to_mos
         self.assertEqual('fvBD', prefix_mos['BD'])
         self.assertEqual('fvRsCtx', prefix_mos['rsctx'])
+        self.assertEqual('vzRsFiltAtt', prefix_mos['rsfiltAtt'])
+        self.assertEqual('infraRsAttEntP', prefix_mos['rsattEntP'])
+
+    def test_build_dn(self):
+        clnt = apic.RestClient(self.log, mocked.APIC_SYSTEM_ID,
+                               mocked.APIC_HOSTS, scope_names=False)
+        manager = clnt.dn_manager
+        self.assertEqual('uni/tn-amit1/brc-c/subj-s2/rsfiltAtt-h',
+                         manager.build([('fvTenant', 'amit1'),
+                                        ('vzBrCP', 'c'),
+                                        ('vzSubj', 's2'),
+                                        ('vzRsFiltAtt', 'h')]))
+
+        self.assertEqual('uni/tn-amit1/brc-c/subj-s2/intmnl/rsfiltAtt-f',
+                         manager.build([('fvTenant', 'amit1'),
+                                        ('vzBrCP', 'c'),
+                                        ('vzSubj', 's2'),
+                                        ('vzInTerm', 'intmnl'),
+                                        ('vzRsFiltAtt', 'f')]))

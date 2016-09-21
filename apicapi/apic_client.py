@@ -39,6 +39,7 @@ SLEEP_ON_FULL_QUEUE = 1
 
 REFRESH_CODES = [APIC_CODE_FORBIDDEN, ]
 SCOPE = 'openstack_scope'
+MULTI_PARENT = ['faultInst', 'tagInst']
 
 
 # Info about a Managed Object's relative name (RN) and container.
@@ -48,6 +49,13 @@ class ManagedObjectName(collections.namedtuple('MoPath',
     def __new__(cls, container, rn_fmt, can_create=True, name_fmt=None):
         return super(ManagedObjectName, cls).__new__(cls, container, rn_fmt,
                                                      can_create, name_fmt)
+
+
+def _to_klass_name(name):
+    klass_name = name.split('__')[0]
+    if klass_name[-1:] == '2':
+        klass_name = klass_name[:-1]
+    return klass_name
 
 
 class ManagedObjectClass(object):
@@ -100,7 +108,7 @@ class ManagedObjectClass(object):
         'l3extOut': ManagedObjectName('fvTenant', 'out-%(name)s',
                                       name_fmt='__%s'),
         'l3extRsEctx': ManagedObjectName('l3extOut', 'rsectx'),
-        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'l3extRsL3DomAtt'),
+        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'rsL3DomAtt'),
         'l3extLNodeP': ManagedObjectName('l3extOut', 'lnodep-%s'),
         'l3extRsNodeL3OutAtt': ManagedObjectName('l3extLNodeP',
                                                  'rsnodeL3OutAtt-[%s]'),
@@ -116,7 +124,7 @@ class ManagedObjectClass(object):
         'fvCollectionCont': ManagedObjectName('fvRsCons', 'collectionDn-[%s]'),
         'l3extSubnet': ManagedObjectName('l3extInstP', 'extsubnet-[%s]'),
         'l3extRsInstPToNatMappingEPg':
-            ManagedObjectName('l3extInstP', 'l3extRsInstPToNatMappingEPg'),
+            ManagedObjectName('l3extInstP', 'rsInstPToNatMappingEPg'),
 
         'physDomP': ManagedObjectName(None, 'phys-%s'),
         'l3extDomP': ManagedObjectName(None, 'l3dom-%s'),
@@ -203,8 +211,17 @@ class ManagedObjectClass(object):
         'fvnsMcastAddrBlk': ManagedObjectName('fvnsMcastAddrInstP',
                                               'fromaddr-[%s]-toaddr-[%s]'),
         'vmmRsAcc': ManagedObjectName('vmmCtrlrP', 'rsacc'),
+        # Generic tag as a reference for rn_fmt
+        'tagInst': ManagedObjectName(None, 'tag-%s', False),
     }
 
+    intermediate_mos = set(['vzRsFiltAtt__In', 'vzRsFiltAtt__Out'])
+
+    supported_tags = {
+        'tagInst__%s' % x: ManagedObjectName(x, 'tag-%s')
+        for x in supported_mos}
+
+    supported_mos.update(supported_tags)
     # The ManagedObjects specified below will not be scoped whenever
     # The input parameters match the specified argument
     scope_exceptions = {
@@ -216,10 +233,13 @@ class ManagedObjectClass(object):
     }
 
     prefix_to_mos = {
-        (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt): y
+        (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt):
+            _to_klass_name(y)
         for y, x in supported_mos.items()
     }
     prefix_to_mos['fault'] = 'faultInst'
+    prefix_to_mos['health'] = 'healthInst'
+    prefix_to_mos['tag'] = 'tagInst'
 
     mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
 
@@ -238,9 +258,7 @@ class ManagedObjectClass(object):
 
     def __init__(self, mo_class):
         self.klass = mo_class
-        self.klass_name = mo_class.split('__')[0]
-        if (self.klass_name[-1:] == '2'):
-            self.klass_name = self.klass_name[:-1]
+        self.klass_name = _to_klass_name(mo_class)
         mo = self.supported_mos[mo_class]
         self.container = mo.container
         if mo.name_fmt:
@@ -388,7 +406,7 @@ class ApicSession(object):
     def _check_session(self):
         """Check that we are logged in and ensure the session is active."""
         if self._is_cert_auth():
-            return      # Certificate based authentication is session-less
+            return  # Certificate based authentication is session-less
         if not self.authentication:
             raise cexc.ApicSessionNotLoggedIn
         if time.time() > self.session_deadline:
@@ -631,7 +649,7 @@ class ApicSession(object):
     def refresh(self):
         """Called when a session has timed out or almost timed out."""
         if self._is_cert_auth():
-            return          # Certificate-based calls are session-less
+            return  # Certificate-based calls are session-less
         url = self._api_url('aaaRefresh')
         response = self._do_request(self.session.get, url,
                                     cookies=self.cookie)
@@ -726,16 +744,18 @@ class ManagedObjectAccess(object):
 class Transaction(object):
     """API consistent with RestClient class to operate Transactions."""
 
-    def __init__(self, session):
+    def __init__(self, session, top_send=False):
         self.root = None
         self.root_params = []
         self.root_mo = None
         self.session = session
+        self.top_send = top_send
 
     def __getattr__(self, mo_class):
         if mo_class not in ManagedObjectClass.supported_mos:
             raise cexc.ApicManagedObjectNotSupported(mo_class=mo_class)
-        self.__dict__[mo_class] = TransactionBuilder(self, mo_class)
+        self.__dict__[mo_class] = TransactionBuilder(self, mo_class,
+                                                     self.top_send)
         return self.__dict__[mo_class]
 
     def init_root(self, mo, *params, **data):
@@ -784,22 +804,84 @@ class Transaction(object):
         # Mo is child of this node
         return self._append_child(parent, mo, *params)
 
+    def get_top_level_roots(self):
+        """
+
+        :return: list of nodes and their params
+        """
+
+        def is_intermediate_object(node):
+            # intmnl is an example of intermediate node
+            fmt = ManagedObjectClass.supported_mos[node.mo_class].rn_fmt
+            return '-' not in fmt and not fmt.startswith('rs')
+
+        result = []
+        to_visit = collections.OrderedDict()
+        to_visit['uni'] = [self.root]
+        # Verify if root is part of the solution
+        if self.root.attributes.get('apicapi_top'):
+            result.append(('uni' + '/' + self.root.mo_rn, self.root))
+        while to_visit:
+            partial_dn, nodes = to_visit.popitem(last=False)
+            for node in nodes:
+                dummy = not node.attributes.pop('apicapi_top', False)
+                # Look at the node's children
+                good_children = []
+                parent_dn = partial_dn + '/' + node.mo_rn
+                while node.children:
+                    # If child is not top node, pop it from the list
+                    child = node.children.pop()
+                    # Append the node for visit
+                    to_visit.setdefault(parent_dn, []).append(
+                        child)
+                    # If the current node is Dummy, put non-dummy nodes in the
+                    # result
+                    if child.attributes.get('apicapi_top'):
+                        if dummy:
+                            result.append((parent_dn + '/' + child.mo_rn,
+                                           child))
+                        else:
+                            # If current node is not dummy put it in the good
+                            # children list
+                            good_children.append(child)
+                    elif is_intermediate_object(child):
+                        # Put it in the good children if node is not dummy
+                        if not dummy:
+                            child.attributes['apicapi_top'] = True
+                            good_children.append(child)
+                # Restore node's children with good children
+                for child in good_children:
+                    node.children.append(child)
+        return result
+
     def commit(self):
-        return self.session.post_body(
-            self.root_mo, json.dumps(self.root),
-            *self.root_params)
+        if self.top_send:
+            roots = self.get_top_level_roots()
+            for root in roots:
+                mo_class = root[1].mo_class
+                params = DNManager().aci_decompose_dn_guess(root[0], mo_class)
+                mo = ManagedObjectClass(params[0])
+                self.session.post_body(mo, json.dumps(root[1]),
+                                       *[x[1] for x in params[1]])
+        else:
+            return self.session.post_body(self.root_mo, json.dumps(self.root),
+                                          *self.root_params)
 
 
 class TransactionBuilder(object):
     """Creates a ManagedObject subtree starting from a root."""
 
-    def __init__(self, transaction, mo_class):
+    def __init__(self, transaction, mo_class, top_send=False):
         self.trs = transaction
+        self.top_send = top_send
         self.mo = ManagedObjectClass(mo_class)
 
     def add(self, *args, **kwargs):
         node = self.trs.create_branch(self.mo, *args)
         node.update_attributes(**kwargs)
+        if self.top_send:
+            # Mark top level object:
+            node.update_attributes(apicapi_top=True)
 
     def remove(self, *args):
         node = self.trs.create_branch(self.mo, *args)
@@ -876,9 +958,9 @@ class RestClient(ApicSession):
         return False
 
     @contextlib.contextmanager
-    def transaction(self, transaction=None, ph=None):
+    def transaction(self, transaction=None, ph=None, top_send=False):
         if not transaction:
-            transaction = Transaction(self)
+            transaction = Transaction(self, top_send=top_send)
             yield transaction
             if transaction.root:
                 result = transaction.commit()
@@ -954,7 +1036,9 @@ class DNManager(object):
 
         match = re.match(dn_fmt, dn)
         if not match:
-            raise DNManager.InvalidNameFormat()
+            raise DNManager.InvalidNameFormat(
+                "Invalid name format for"
+                "DN %s and mo %s" % (dn, mo.rn_fmt))
         rn_values = list(match.groups())
 
         mo_types = []
@@ -970,16 +1054,17 @@ class DNManager(object):
     def _aci_decompose(self, dn, ugly):
         # Special case for Faults since the can have multiple type of
         # parents
-        if ugly == 'faultInst':
+        if ugly in MULTI_PARENT:
             # Find out the parent's type
-            split = dn.split('/')
+            split = re.split(r"/+(?=[^\[\]]*(?:\[|$))", dn)
             prefix_to_mos = ManagedObjectClass.prefix_to_mos
             parent_type = prefix_to_mos.get(
                 split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
             if parent_type not in ManagedObjectClass.supported_mos:
                 raise cexc.ApicManagedObjectNotSupported(mo_class=parent_type)
-            mo_types, rn_values = self._aci_decompose('/'.join(split[:-1]),
-                                                      parent_type)
+            _, mos_and_rns = self.aci_decompose_dn_guess('/'.join(split[:-1]),
+                                                         parent_type)
+            mo_types, rn_values = map(list, zip(*mos_and_rns))
             mo_types.append(ugly)
             rn_values.append(split[-1][split[-1].find('-') + 1:])
             return mo_types, rn_values
@@ -992,3 +1077,35 @@ class DNManager(object):
     def aci_decompose_with_type(self, dn, ugly):
         mo_types, rn_values = self._aci_decompose(dn, ugly)
         return list(zip(mo_types, rn_values))
+
+    def aci_decompose_dn_guess(self, dn, mo_type_hint):
+        """
+        Decompose DN when input ACI ManagedObject type may not be exact.
+        If DN decomposition is successful, returns a tuple with the following
+        items:
+        * ManagedObject type that matches the DN
+        * List of (ManagedObject type, RN value) pairs for each DN
+          component
+        """
+        try:
+            return mo_type_hint, self.aci_decompose_with_type(dn, mo_type_hint)
+        except DNManager.InvalidNameFormat:
+            # check if DN fits another MO
+            other_mos = [m for m in ManagedObjectClass.supported_mos
+                         if ManagedObjectClass(m).klass_name == mo_type_hint]
+            for mo in other_mos:
+                try:
+                    return mo, self.aci_decompose_with_type(dn, mo)
+                except DNManager.InvalidNameFormat:
+                    pass
+        raise DNManager.InvalidNameFormat()
+
+    def build(self, mos_and_rns):
+        """
+        Build a DN string from a list of (ManagedObject type, RN value) pairs.
+        """
+        rns = ['uni']
+        for p in mos_and_rns:
+            mo = ManagedObjectClass(p[0])
+            rns.append(mo.rn(p[1]) if mo.rn_param_count else mo.rn())
+        return '/'.join(rns)
