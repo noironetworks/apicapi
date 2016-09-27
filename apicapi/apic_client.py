@@ -213,6 +213,10 @@ class ManagedObjectClass(object):
         'vmmRsAcc': ManagedObjectName('vmmCtrlrP', 'rsacc'),
         # Generic tag as a reference for rn_fmt
         'tagInst': ManagedObjectName(None, 'tag-%s', False),
+        'hostprotPol': ManagedObjectName('fvTenant', 'pol-%s'),
+        'hostprotSubj': ManagedObjectName('hostprotPol', 'subj-%s'),
+        'hostprotRule': ManagedObjectName('hostprotSubj', 'rule-%s'),
+        'hostprotRemoteIp': ManagedObjectName('hostprotRule', 'ip-[%s]'),
     }
 
     intermediate_mos = set(['vzRsFiltAtt__In', 'vzRsFiltAtt__Out'])
