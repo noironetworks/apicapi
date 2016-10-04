@@ -927,7 +927,7 @@ class APICManager(object):
         # add static hostlinks in config
         for switch in self.switch_dict:
             for module_port in self.switch_dict[switch]:
-                module, port = module_port.split('/')
+                module, port = module_port.split('/', 1)
                 hosts = self.switch_dict[switch][module_port]
                 for host in hosts:
                     self.add_hostlink(host, 'static', None, switch, module,
