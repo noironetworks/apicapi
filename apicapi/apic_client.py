@@ -219,6 +219,9 @@ class ManagedObjectClass(object):
         'hostprotRemoteIp': ManagedObjectName('hostprotRule', 'ip-[%s]'),
     }
 
+    same_rn_types = {'hostprotSubj': ['vzSubj'],
+                     'vzSubj': ['hostprotSubj']}
+
     intermediate_mos = set(['vzRsFiltAtt__In', 'vzRsFiltAtt__Out'])
 
     supported_tags = {
@@ -244,6 +247,7 @@ class ManagedObjectClass(object):
     prefix_to_mos['fault'] = 'faultInst'
     prefix_to_mos['health'] = 'healthInst'
     prefix_to_mos['tag'] = 'tagInst'
+    prefix_to_mos['vzSubj'] = 'subj'
 
     mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
 
@@ -1079,7 +1083,20 @@ class DNManager(object):
         return rn_values
 
     def aci_decompose_with_type(self, dn, ugly):
-        mo_types, rn_values = self._aci_decompose(dn, ugly)
+        try:
+            mo_types, rn_values = self._aci_decompose(dn, ugly)
+        except DNManager.InvalidNameFormat:
+            if ugly in ManagedObjectClass.same_rn_types:
+                for type in ManagedObjectClass.same_rn_types[ugly]:
+                    try:
+                        mo_types, rn_values = self._aci_decompose(dn, type)
+                        break
+                    except DNManager.InvalidNameFormat:
+                        pass
+                else:
+                    raise
+            else:
+                raise
         return list(zip(mo_types, rn_values))
 
     def aci_decompose_dn_guess(self, dn, mo_type_hint):
