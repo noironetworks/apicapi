@@ -39,6 +39,7 @@ class ShellWrapper(shell.NeutronShell):
 
 def get_neutron_client(*args, **kwargs):
     n_shell = ShellWrapper(NEUTRON_API_VERSION, **kwargs)
+    n_shell.options.os_project_id = ''
     n_shell.api_version = {'network': n_shell.api_version}
     try:
         n_shell.authenticate_user()

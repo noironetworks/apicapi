@@ -79,8 +79,8 @@ def os_options(f):
                           'or network.',
                      default='network', envvar='OS_NETWORK_SERVICE_TYPE')(f)
     f = click.option('--os-endpoint-type', envvar='OS_ENDPOINT_TYPE',
-                     default='publicURL',
-                     help='Defaults to env[OS_ENDPOINT_TYPE] or publicURL.')(f)
+                     default='public',
+                     help='Defaults to env[OS_ENDPOINT_TYPE] or public.')(f)
     f = click.option('--os-tenant-name', envvar='OS_TENANT_NAME',
                      help='Authentication tenant name, defaults to'
                           'env[OS_TENANT_NAME].')(f)
@@ -89,7 +89,7 @@ def os_options(f):
                           'This option is mutually exclusive with '
                           '--os-tenant-name. '
                           'Defaults to env[OS_PROJECT_NAME].')(f)
-    f = click.option('--os-tenant-id', envvar='OS_TENANT_ID',
+    f = click.option('--os-tenant-id', envvar='OS_TENANT_ID', default='',
                      help='Authentication tenant ID, defaults to '
                           'env[OS_TENANT_ID].')(f)
     f = click.option('--insecure', default=False,
@@ -99,25 +99,25 @@ def os_options(f):
                           "certificate will not be verified against any "
                           "certificate authorities. This option should be "
                           "used with caution.")(f)
-    f = click.option('--os-token', envvar='OS_TOKEN',
+    f = click.option('--os-token', envvar='OS_TOKEN', default='',
                      help='Authentication token, defaults to '
                           'env[OS_TOKEN].')(f)
-    f = click.option('--os-url', envvar='OS_URL',
+    f = click.option('--os-url', envvar='OS_URL', default='',
                      help='Defaults to env[OS_URL].')(f)
-    f = click.option('--os-key', envvar='OS_KEY',
+    f = click.option('--os-key', envvar='OS_KEY', default='',
                      help="Path of client key to use in SSL "
                           "connection. This option is not necessary "
                           "if your key is prepended to your certificate "
                           "file. Defaults to env[OS_KEY].")(f)
     f = click.option('--os-project-domain-id',
-                     envvar='OS_PROJECT_DOMAIN_ID',
+                     envvar='OS_PROJECT_DOMAIN_ID', default='',
                      help='Defaults to env[OS_PROJECT_DOMAIN_ID].')(f)
 
     f = click.option('--os-project-domain-name',
-                     envvar='OS_PROJECT_DOMAIN_NAME',
+                     envvar='OS_PROJECT_DOMAIN_NAME', default='',
                      help='Defaults to env[OS_PROJECT_DOMAIN_NAME].')(f)
 
-    f = click.option('--os-cert', envvar='OS_CERT',
+    f = click.option('--os-cert', envvar='OS_CERT', default='',
                      help="Path of certificate file to use in SSL "
                           "connection. This file can optionally be "
                           "prepended with the private key. Defaults "
@@ -128,18 +128,22 @@ def os_options(f):
                           "verifying a TLS (https) server certificate. "
                           "Defaults to env[OS_CACERT].")(f)
     f = click.option('--os-user-domain-name', envvar='OS_USER_DOMAIN_NAME',
+                     default='',
                      help='OpenStack user domain name. '
                           'Defaults to env[OS_USER_DOMAIN_NAME].')(f)
     f = click.option('--os-user-domain-id', envvar='OS_USER_DOMAIN_ID',
+                     default='',
                      help='OpenStack user domain ID. '
                           'Defaults to env[OS_USER_DOMAIN_ID].')(f)
-    f = click.option('--os-user-id', envvar='OS_USER_ID',
+    f = click.option('--os-user-id', envvar='OS_USER_ID', default='',
                      help='Authentication user ID (Env: OS_USER_ID)')(f)
     f = click.option('--http-timeout', envvar='OS_NETWORK_TIMEOUT',
                      default=None, type=click.FLOAT,
                      help='Timeout in seconds to wait for an HTTP response. '
                           'Defaults to env[OS_NETWORK_TIMEOUT] or None if not '
                           'specified.')(f)
+    f = click.option('--os-cloud', envvar='OS_CLOUD', default=None,
+                     help='Defaults to env[OS_CLOUD].')(f)
     return f
 
 
