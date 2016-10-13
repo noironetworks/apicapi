@@ -53,7 +53,7 @@ apic_opts = [
                help=("Name for the multicast namespace to be used for "
                      "Openstack")),
     cfg.StrOpt('apic_switch_pg_name',
-               #default='${apic_system_id}_sw_pg',
+               # default='${apic_system_id}_sw_pg',
                default='openstack_sw_pg',
                help=("Name for the switch policy group to be used for "
                      "Openstack")),
@@ -380,14 +380,9 @@ def create_switch_dictionary():
     return switch_dict
 
 
-def create_vpc_dictionary():
+def create_vpc_dictionary(apic_config):
     vpc_dict = {}
-    try:
-        pairs = cfg.CONF.ml2_cisco_apic.apic_vpc_pairs
-    except Exception:
-        pairs = cfg.CONF.apic.apic_vpc_pairs
-
-    for pair in pairs:
+    for pair in apic_config.apic_vpc_pairs:
         pair_tuple = pair.split(':')
         if (len(pair_tuple) != 2 or
                 any(map(lambda x: not x.isdigit(), pair_tuple))):
