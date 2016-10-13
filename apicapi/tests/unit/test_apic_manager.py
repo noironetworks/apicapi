@@ -46,7 +46,7 @@ class TestCiscoApicManager(base.BaseTestCase,
         self._initialize_manager()
 
     def _initialize_manager(self, vmm=False, phys_domains=None,
-                            vmm_domains=None):
+                            vmm_domains=None, set_network_config=True):
         mocked.ControllerMixin.set_up_mocks(self)
         mocked.ConfigMixin.set_up_mocks(self)
         mocked.DbModelMixin.set_up_mocks(self)
@@ -77,14 +77,16 @@ class TestCiscoApicManager(base.BaseTestCase,
                 config.create_physdom_dictionary = mock.Mock(
                     return_value=domain)
 
+        network_config = {
+            'vlan_ranges': self.vlan_ranges,
+            'switch_dict': self.switch_dict,
+            'vpc_dict': self.vpc_dict,
+            'external_network_dict': self.external_network_dict,
+        } if set_network_config else {}
         self.mgr = apic_manager.APICManager(
             apic_config=self.apic_config,
-            network_config= {
-                'vlan_ranges': self.vlan_ranges,
-                'switch_dict': self.switch_dict,
-                'vpc_dict': self.vpc_dict,
-                'external_network_dict': self.external_network_dict,
-            }, apic_system_id=mocked.APIC_SYSTEM_ID,
+            network_config=network_config,
+            apic_system_id=mocked.APIC_SYSTEM_ID,
             log=self.log, db=apic_model.ApicDbModel())
         self.mgr.apic.infraAccNodePGrp.get = mock.Mock(return_value='not-None')
         self.mgr.app_profile_name = mocked.APIC_AP
@@ -833,6 +835,13 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def test_encap_mode_vxlan(self):
         self._test_encap_mode('vxlan')
+
+    def test_vpc_dict(self):
+        self.override_config('apic_vpc_pairs', ['3:4', '20:30'],
+                             self.config_group)
+        self._initialize_manager(set_network_config=False)
+        self.assertEqual({'3': '4', '4': '3', '20': '30', '30': '20'},
+                         self.mgr.vpc_dict)
 
 
 class TestCiscoApicManagerNewConf(TestCiscoApicManager):

@@ -95,7 +95,6 @@ class APICManager(object):
         # instead.
         network_config.setdefault('switch_dict',
                                   config.create_switch_dictionary())
-        network_config.setdefault('vpc_dict', config.create_vpc_dictionary())
         network_config.setdefault('external_network_dict',
                                   config.create_external_network_dictionary())
         ext_config = apic_config
@@ -109,6 +108,8 @@ class APICManager(object):
         self.apic_config = self._build_config(ext_config)
         # Config pre validation
         config.ConfigValidator(log).validate(self.apic_config)
+        network_config.setdefault(
+            'vpc_dict', config.create_vpc_dictionary(self.apic_config))
 
         self.aci_routing_enabled = self.apic_config.enable_aci_routing
         self.enable_optimized_dhcp = self.apic_config.enable_optimized_dhcp
@@ -527,7 +528,7 @@ class APICManager(object):
         # multiple users. Ideally the drivers should avoid running this method,
         # but since those fixes need to go upstream is ok for now to just make
         # this a noop.
-        #with self.apic.transaction(transaction) as trs:
+        # with self.apic.transaction(transaction) as trs:
         #    self.apic.bgpInstPol.create(bgp_pol_name, transaction=trs)
         #    if not self.apic.bgpRRP.get_subtree(bgp_pol_name):
         #        for node in self.apic.fabricNode.list_all(role='spine'):
