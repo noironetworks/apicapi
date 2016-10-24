@@ -131,8 +131,9 @@ class APICManager(object):
 
         self.vlan_ranges = self.apic_config.vlan_ranges
         if not self.vlan_ranges and network_config.get('vlan_ranges'):
-            self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
-                                network_config.get('vlan_ranges')]
+            self.vlan_ranges = [':'.join(x.split(':')[-2:])
+                                for x in network_config.get('vlan_ranges')
+                                if len(x.split(':')) == 3]
 
         self.switch_dict = network_config.get('switch_dict', {})
         self.vpc_dict = network_config.get('vpc_dict', {})
