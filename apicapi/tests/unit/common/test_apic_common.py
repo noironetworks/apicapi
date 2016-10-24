@@ -306,7 +306,7 @@ class ConfigMixin(object):
                 'preexisting': 'true',
             },
         }
-        self.vlan_ranges = ['physnet1:100:199']
+        self.vlan_ranges = ['physnet0', 'physnet1:100:199']
         self.mocked_parser = mock.patch.object(
             cfg, 'MultiConfigParser').start()
         self.mocked_parser.return_value.read.return_value = [apic_mock_cfg]
