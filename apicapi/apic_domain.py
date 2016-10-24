@@ -38,8 +38,9 @@ class ApicDomain(object):
         self.vlan_ranges = self.conf.vlan_ranges
         self.vlan_ns_name = self.conf.apic_vlan_ns_name
         if not self.vlan_ranges and network_config.get('vlan_ranges'):
-            self.vlan_ranges = [':'.join(x.split(':')[-2:]) for x in
-                                network_config.get('vlan_ranges')]
+            self.vlan_ranges = [':'.join(x.split(':')[-2:])
+                                for x in network_config.get('vlan_ranges')
+                                if len(x.split(':')) == 3]
 
         self.encap_mode = self.conf.encap_mode
         if not self.encap_mode:     # guess from other options

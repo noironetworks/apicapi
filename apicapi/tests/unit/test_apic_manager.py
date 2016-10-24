@@ -658,7 +658,7 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.override_config('vlan_ranges', [], self.config_group)
         self._initialize_manager()
         self.assertEqual(self.mgr.vlan_ranges,
-                         [':'.join(self.vlan_ranges[0].split(':')[-2:])])
+                         [':'.join(self.vlan_ranges[1].split(':')[-2:])])
 
     def test_auth_url(self):
         mapper = self.mgr._apic_mapper
