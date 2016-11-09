@@ -324,20 +324,46 @@ class TestCiscoApicManager(base.BaseTestCase,
             vmm_domains={mocked.APIC_DOMAIN + '1': {
                             'apic_vmm_type': 'OpenStack'},
                          mocked.APIC_DOMAIN + '2': {
-                             'apic_vmm_type': 'VMware'}})
+                            'apic_vmm_type': 'VMware'}})
         self.mgr.provision_infra = False
-        self.mgr.ensure_entity_profile_created_on_apic = mock.Mock()
+        self.mgr.apic.infraAttEntityP.create = mock.Mock()
+        self.mgr.apic.infraProvAcc.create = mock.Mock()
+
         with mock.patch(
             'apicapi.apic_domain.VmDomain._ensure_vmm_domain_created_on_apic'):
             self.mock_response_for_get('vmmDomP', dn="/uni/vmware")
+            self.mock_response_for_get('infraAttEntityP')
             self.mock_db_query_filterby_distinct_return([('switch', 'ifname')])
 
             self.mgr.ensure_infra_created_on_apic()
             advd = apic_domain.VmDomain
             self.assertEqual(1,
                 advd._ensure_vmm_domain_created_on_apic.call_count)
-            self.assertFalse(
-                self.mgr.ensure_entity_profile_created_on_apic.called)
+            self.assertFalse(self.mgr.apic.infraAttEntityP.create.called)
+            self.assertFalse(self.mgr.apic.infraProvAcc.create.called)
+
+    def test_no_provision_infra_setup_aep_for_domains(self):
+        self._initialize_manager(
+            vmm_domains={mocked.APIC_DOMAIN: {
+                            'apic_vmm_type': 'OpenStack'}})
+        self.mgr.provision_infra = False
+        self.mgr.apic.infraRsDomP.create = mock.Mock()
+        with mock.patch(
+            'apicapi.apic_domain.VmDomain._ensure_vmm_domain_created_on_apic'):
+            self.mock_db_query_filterby_distinct_return([('switch', 'ifname')])
+
+            self.mock_response_for_get('infraAttEntityP', name="good_aep")
+            self.mgr.ensure_infra_created_on_apic()
+            self.mgr.apic.infraRsDomP.create.assert_called_once_with(
+                mocked.APIC_ATT_ENT_PROF,
+                self.mgr.apic.vmmDomP.mo.dn('OpenStack', mocked.APIC_DOMAIN),
+                transaction=mock.ANY)
+
+            # try again but this time AEP doesn't exist
+            self.mgr.apic.infraRsDomP.create.reset_mock()
+            self.mock_response_for_get('infraAttEntityP')
+            self.mgr.ensure_infra_created_on_apic()
+            self.assertFalse(self.mgr.apic.infraRsDomP.create.called)
 
     def test_ensure_context_enforced_new_ctx(self):
         self.mock_response_for_post(self.get_top_container(
