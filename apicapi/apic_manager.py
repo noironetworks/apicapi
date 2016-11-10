@@ -228,14 +228,14 @@ class APICManager(object):
                     isinstance(domain, apic_domain.VmDomain)):
                 domain.create()
 
+        # Create entity profile
+        ent_name = self.apic_config.apic_entity_profile
+        self.ensure_entity_profile_created_on_apic(ent_name)
+
         if not self.provision_infra:
             self.clear_staticlinks()
             self.add_staticlinks()
             return
-
-        # Create entity profile
-        ent_name = self.apic_config.apic_entity_profile
-        self.ensure_entity_profile_created_on_apic(ent_name)
 
         # Create lacp profile
         lacp_name = self.lacp_profile
@@ -301,14 +301,21 @@ class APICManager(object):
             self, name, domain_dn=None, enable_infra_vlan=True,
             incl_vmware_vmm=True, transaction=None):
         """Create the infrastructure entity profile."""
-        if not self.provision_infra:
+
+        # Always attach domain(s) to entity profile if AEP does exist
+        # even when provision_infra is false
+        if (not self.provision_infra and
+            self.apic.infraAttEntityP.get(name) is None):
+            LOG.info("AEP '%s' does not exist, skip setting AEP for the "
+                     "vmm domains." % name)
             return
 
         with self.apic.transaction(transaction) as trs:
-            self.apic.infraAttEntityP.create(name, transaction=trs)
-            if enable_infra_vlan:
-                self.apic.infraProvAcc.create(name, transaction=trs)
-            # Attach domain(s) to entity profile
+            if self.provision_infra:
+                self.apic.infraAttEntityP.create(name, transaction=trs)
+                if enable_infra_vlan:
+                    self.apic.infraProvAcc.create(name, transaction=trs)
+
             if domain_dn:
                 self.apic.infraRsDomP.create(name, domain_dn, transaction=trs)
             else:
