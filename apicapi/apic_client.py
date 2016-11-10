@@ -1039,6 +1039,7 @@ class DNManager(object):
         dn_fmt = '/'.join('(%s)' % x if (x != 'uni' and '-' not in x) else x
                           for x in mo.dn_fmt.split('/'))
         dn_fmt = (dn_fmt.replace('__', '')
+                  .replace('==', '')
                   .replace('[%s]', '\[([^\]]+)\]')
                   .replace('%s', '([^\/]+)') + '$')
 
@@ -1049,15 +1050,29 @@ class DNManager(object):
                 "DN %s and mo %s" % (dn, mo.rn_fmt))
         rn_values = list(match.groups())
 
-        mo_types = []
+        mo_types_and_card = []
+        total_card = 0
         while mo:
-            mo_types.append(mo.klass_name)
+            card = mo.rn_param_count
+            card = 1 if card <= 1 else card
+            total_card += card
+            mo_types_and_card.append((mo.klass_name, card))
             mo = ManagedObjectClass(mo.container) if mo.container else None
-        mo_types.reverse()
+        mo_types_and_card.reverse()
 
-        if len(mo_types) != len(rn_values):
+        if len(rn_values) != total_card:
             raise DNManager.InvalidNameFormat()
-        return (mo_types, rn_values)
+
+        mo_types = []
+        rn_results = []
+        start = 0
+        for mo_type, card in mo_types_and_card:
+            mo_types.append(mo_type)
+            rn_results.append(','.join(rn_values[start:(start + card)])
+                              if card > 1 else rn_values[start])
+            start += card
+
+        return mo_types, rn_results
 
     def _aci_decompose(self, dn, ugly):
         # Special case for Faults since the can have multiple type of
@@ -1081,6 +1096,13 @@ class DNManager(object):
     def aci_decompose(self, dn, ugly):
         _, rn_values = self._aci_decompose(dn, ugly)
         return rn_values
+
+    def aci_decompose_split(self, dn, ugly):
+        rn_values = self.aci_decompose(dn, ugly)
+        result = []
+        for x in rn_values:
+            result.extend(x.split(','))
+        return result
 
     def aci_decompose_with_type(self, dn, ugly):
         try:
@@ -1128,5 +1150,6 @@ class DNManager(object):
         rns = ['uni']
         for p in mos_and_rns:
             mo = ManagedObjectClass(p[0])
-            rns.append(mo.rn(p[1]) if mo.rn_param_count else mo.rn())
+            rns.append(mo.rn(*p[1].split(',')) if mo.rn_param_count else
+                       mo.rn())
         return '/'.join(rns)

@@ -462,6 +462,63 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                           ('l3extInstP', 'extnet'),
                           ('fvRsProv', 'default')], res[1])
 
+        old_scope = apic.ManagedObjectClass.scope
+        apic.ManagedObjectClass.scope = ''
+        res = manager.aci_decompose_dn_guess('uni/infra/nprof-test',
+                                             'infraNodeP')
+        self.assertEqual('infraNodeP', res[0])
+        self.assertEqual([('infraInfra', 'infra'),
+                          ('infraNodeP', 'test')], res[1])
+        self.assertEqual('uni/infra/nprof-test', manager.build(res[1]))
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/infra/nprof-test/leaves-201-typ-range',
+            'infraLeafS')
+        self.assertEqual('infraLeafS', res[0])
+        self.assertEqual([('infraInfra', 'infra'),
+                          ('infraNodeP', 'test'),
+                          ('infraLeafS', '201,range')], res[1])
+        self.assertEqual('uni/infra/nprof-test/leaves-201-typ-range',
+                         manager.build(res[1]))
+        self.assertEqual(
+            ['infra', 'test', '201', 'range'],
+            manager.aci_decompose_split(
+                'uni/infra/nprof-test/leaves-201-typ-range', 'infraLeafS'))
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/infra/nprof-test/rsaccPortP-[uni/infra/accportprof-test]',
+            'infraRsAccPortP')
+        self.assertEqual('infraRsAccPortP', res[0])
+        self.assertEqual([('infraInfra', 'infra'),
+                          ('infraNodeP', 'test'),
+                          ('infraRsAccPortP', 'uni/infra/accportprof-test')],
+                         res[1])
+        self.assertEqual(
+            'uni/infra/nprof-test/rsaccPortP-[uni/infra/accportprof-test]',
+            manager.build(res[1]))
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/infra/accportprof-test', 'infraAccPortP')
+        self.assertEqual('infraAccPortP', res[0])
+        self.assertEqual([('infraInfra', 'infra'),
+                          ('infraAccPortP', 'test')],
+                         res[1])
+        self.assertEqual(
+            'uni/infra/accportprof-test', manager.build(res[1]))
+
+        res = manager.aci_decompose_dn_guess(
+            'uni/infra/accportprof-test/hports-test-typ-test', 'infraHPortS')
+        self.assertEqual('infraHPortS', res[0])
+        self.assertEqual([('infraInfra', 'infra'),
+                          ('infraAccPortP', 'test'),
+                          ('infraHPortS', 'test,test')],
+                         res[1])
+        self.assertEqual(
+            'uni/infra/accportprof-test/hports-test-typ-test',
+            manager.build(res[1]))
+
+        apic.ManagedObjectClass.scope = old_scope
+
     def test_aci_decompose_fault_dn(self):
         manager = self.apic.dn_manager
         res = manager.aci_decompose('uni/tn-amit1/brc-c/fault-F1228',
