@@ -1438,3 +1438,12 @@ class APICManager(object):
             return apic_client.ManagedObjectClass.scope + configured
         else:
             return configured
+
+    # this API really can be used to update any MO field but is currently only
+    # used for updating the nameAlias field
+    def update_name_alias(self, mo, *args, **kwargs):
+        try:
+            mo.update(*args, **kwargs)
+        except cexc.ApicResponseNotOk as ex:
+            # Ignore as older APIC versions will not support nameAlias
+            LOG.info("Expected failure for APIC 2.1 and below: %s", ex)
