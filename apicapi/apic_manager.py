@@ -117,6 +117,7 @@ class APICManager(object):
             self.apic_config.enable_optimized_metadata)
         self.default_l2_unknown_unicast = (
             self.apic_config.default_l2_unknown_unicast)
+        self.default_unicast_routing = self.apic_config.default_unicast_routing
         self.default_arp_flooding = self.apic_config.default_arp_flooding
         self.default_ep_move_detect = self.apic_config.default_ep_move_detect
         self.default_enforce_subnet_check = (
@@ -575,7 +576,7 @@ class APICManager(object):
                 unkMacUcastAct=FLOOD_PROXY[
                     self.default_l2_unknown_unicast == 'flood' or
                     allow_broadcast],
-                unicastRoute=YES_NO[unicast_route],
+                unicastRoute=YES_NO[self.default_unicast_routing],
                 epMoveDetectMode=self.default_ep_move_detect,
                 limitIpLearnToSubnets=YES_NO[
                     enforce_subnet_check if enforce_subnet_check is not None
