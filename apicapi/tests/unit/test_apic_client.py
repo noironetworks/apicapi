@@ -563,3 +563,13 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                                         ('vzSubj', 's2'),
                                         ('vzInTerm', 'intmnl'),
                                         ('vzRsFiltAtt', 'f')]))
+
+    def test_aci_decompose_dn_nested_parens(self):
+        manager = self.apic.dn_manager
+        res = manager.aci_decompose(
+            'uni/tn-tenant1/ap-lab/epg-web/rspathAtt-'
+            '[topology/pod-1/paths-101/pathep-[eth1/2]]',
+            'fvRsPathAtt')
+        self.assertEqual(['tenant1', 'lab', 'web',
+                          'topology/pod-1/paths-101/pathep-[eth1/2]'],
+                         res)
