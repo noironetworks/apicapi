@@ -1038,8 +1038,13 @@ class DNManager(object):
         # surrounding them with parenthesis.
         dn_fmt = '/'.join('(%s)' % x if (x != 'uni' and '-' not in x) else x
                           for x in mo.dn_fmt.split('/'))
+        # this matches upto 1 level of nesting of square brackets
+        # e.g. [foobar] -> OK, matches 'foobar'
+        #      [foo[bar]rr] -> OK, matches 'foo[bar]rr'
+        #      [fo[oo]ba[ar]rr] -> Fails, matches only 'fo[oo]ba[ar'
+        nested_paren_re = '\[([^\[\]]+(?:\[[^\]]+\])*[^\]]*)\]'
         dn_fmt = (dn_fmt.replace('__', '')
-                  .replace('[%s]', '\[([^\]]+)\]')
+                  .replace('[%s]', nested_paren_re)
                   .replace('%s', '([^\/]+)') + '$')
 
         match = re.match(dn_fmt, dn)
