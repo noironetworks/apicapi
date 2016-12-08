@@ -194,8 +194,7 @@ class APICNameMapper(object):
             LOG.debug("Ran out of ID characters.")
         return result
 
-    @mapper(NAME_TYPE_TENANT)
-    def tenant(self, context, tenant_id):
+    def get_tenant_name(self, tenant_id, require_keystone_session=False):
         tenant_name = None
         if tenant_id in self.tenants:
             tenant_name = self.tenants.get(tenant_id)
@@ -205,7 +204,10 @@ class APICNameMapper(object):
                     self.keystone = self._get_keystone()
                 except Exception as ex:
                     LOG.exception(ex)
-                    return tenant_id
+                    if require_keystone_session:
+                        return None
+                    else:
+                        return tenant_id
             try:
                 # v2 API
                 LOG.debug("Calling tenant API")
@@ -221,6 +223,36 @@ class APICNameMapper(object):
                 if tenant.id == tenant_id:
                     tenant_name = tenant.name
         return tenant_name
+
+    def update_tenant_name(self, tenant_id):
+        if self.keystone is None:
+            try:
+                self.keystone = self._get_keystone()
+            except Exception as ex:
+                LOG.exception(ex)
+        if self.keystone:
+            try:
+                # v2 API
+                LOG.debug("Calling tenant API")
+                tenant = self.keystone.tenants.get(tenant_id)
+            except AttributeError:
+                # v3 API
+                LOG.debug("Calling project API")
+                tenant = self.keystone.projects.get(tenant_id)
+            # only return tenant name when there is a change
+            if tenant and self.tenants.get(tenant_id) != tenant.name:
+                self.tenants[tenant.id] = tenant.name
+                return tenant.name
+        return None
+
+    def is_tenant_in_apic(self, tenant_id):
+        if self.db.get_apic_name(tenant_id, NAME_TYPE_TENANT):
+            return True
+        return False
+
+    @mapper(NAME_TYPE_TENANT)
+    def tenant(self, context, tenant_id):
+        return self.get_tenant_name(tenant_id)
 
     @mapper(NAME_TYPE_NETWORK)
     def network(self, context, network_id):
