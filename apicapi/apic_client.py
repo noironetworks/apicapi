@@ -108,7 +108,7 @@ class ManagedObjectClass(object):
         'l3extOut': ManagedObjectName('fvTenant', 'out-%(name)s',
                                       name_fmt='__%s'),
         'l3extRsEctx': ManagedObjectName('l3extOut', 'rsectx'),
-        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'rsL3DomAtt'),
+        'l3extRsL3DomAtt': ManagedObjectName('l3extOut', 'rsl3DomAtt'),
         'l3extLNodeP': ManagedObjectName('l3extOut', 'lnodep-%s'),
         'l3extRsNodeL3OutAtt': ManagedObjectName('l3extLNodeP',
                                                  'rsnodeL3OutAtt-[%s]'),
