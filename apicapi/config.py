@@ -114,6 +114,14 @@ apic_opts = [
     cfg.BoolOpt('per_tenant_nat_epg', default=False,
                 help=('Whether NAT-ed endpoints should be segregated by '
                       'tenants')),
+    cfg.StrOpt('keystone_notification_exchange',
+               default='keystone',
+               help=("The exchange used to subscribe to Keystone "
+                     "notifications")),
+    cfg.StrOpt('keystone_notification_topic',
+               default='notifications',
+               help=("The topic used to subscribe to Keystone "
+                     "notifications")),
 ]
 
 
