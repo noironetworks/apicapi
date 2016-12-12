@@ -123,6 +123,10 @@ class APICManager(object):
             self.apic_config.default_enforce_subnet_check)
         self.default_subnet_scope = self.apic_config.default_subnet_scope
         self.per_tenant_nat_epg = self.apic_config.per_tenant_nat_epg
+        self.keystone_notification_exchange = (self.apic_config.
+                                               keystone_notification_exchange)
+        self.keystone_notification_topic = (self.apic_config.
+                                            keystone_notification_topic)
 
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
