@@ -83,15 +83,25 @@ class APICNameMapper(object):
         LOG = log.getLogger(__name__)
 
     @staticmethod
+    def get_key_password_params_ext(keystone_conf, suffix=''):
+        (auth_url, user, pw, tenant) = \
+            APICNameMapper.get_key_password_params(keystone_conf, suffix)
+        prj_domain = (keystone_conf.get('project_domain_name') or
+                      'Default')
+        usr_domain = (keystone_conf.get('user_domain_name') or
+                      'Default')
+        return auth_url, user, pw, tenant, prj_domain, usr_domain
+
+    @staticmethod
     def get_key_password_params(keystone_conf, suffix=''):
         auth_url = APICNameMapper.get_keystone_url(keystone_conf,
                                                    suffix=suffix)
-        user = (keystone_conf.get('admin_user') or
-                keystone_conf.username)
-        pw = (keystone_conf.get('admin_password') or
-              keystone_conf.password)
-        tenant = (keystone_conf.get('admin_tenant_name') or
-                  keystone_conf.project_name)
+        user = (keystone_conf.get('username') or
+                keystone_conf.get('admin_user'))
+        pw = (keystone_conf.get('password') or
+              keystone_conf.get('admin_password'))
+        tenant = (keystone_conf.get('project_name') or
+                  keystone_conf.get('admin_tenant_name'))
         return auth_url, user, pw, tenant
 
     @staticmethod
