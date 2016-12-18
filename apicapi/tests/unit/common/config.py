@@ -118,6 +118,7 @@ def create_switch_dictionary():
         switch_dict[switch_id] = switch_dict.get(switch_id, {})
         for host_list, port in conf[switch_id]:
             hosts = host_list.split(',')
+            hosts = map(lambda a: a.decode('string_escape'), hosts)
             port = port[0]
             switch_dict[switch_id][port] = (
                 switch_dict[switch_id].get(port, []) + hosts)
