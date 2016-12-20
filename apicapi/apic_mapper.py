@@ -66,6 +66,16 @@ def truncate(string, max_length):
     return string[:max_length] if len(string) > max_length else string
 
 
+def _get_conf(conf, name):
+    ret = None
+    try:
+        ret = conf.get(name)
+    except AttributeError:
+        # ignore if option is not registered
+        pass
+    return ret
+
+
 class APICNameMapper(object):
 
     def __init__(self, db, log, keyclient, keystone_authtoken,
@@ -86,9 +96,9 @@ class APICNameMapper(object):
     def get_key_password_params_ext(keystone_conf, suffix=''):
         (auth_url, user, pw, tenant) = \
             APICNameMapper.get_key_password_params(keystone_conf, suffix)
-        prj_domain = (keystone_conf.get('project_domain_name') or
+        prj_domain = (_get_conf(keystone_conf, 'project_domain_name') or
                       'Default')
-        usr_domain = (keystone_conf.get('user_domain_name') or
+        usr_domain = (_get_conf(keystone_conf, 'user_domain_name') or
                       'Default')
         return auth_url, user, pw, tenant, prj_domain, usr_domain
 
@@ -96,12 +106,12 @@ class APICNameMapper(object):
     def get_key_password_params(keystone_conf, suffix=''):
         auth_url = APICNameMapper.get_keystone_url(keystone_conf,
                                                    suffix=suffix)
-        user = (keystone_conf.get('username') or
-                keystone_conf.get('admin_user'))
-        pw = (keystone_conf.get('password') or
-              keystone_conf.get('admin_password'))
-        tenant = (keystone_conf.get('project_name') or
-                  keystone_conf.get('admin_tenant_name'))
+        user = (_get_conf(keystone_conf, 'username') or
+                _get_conf(keystone_conf, 'admin_user'))
+        pw = (_get_conf(keystone_conf, 'password') or
+              _get_conf(keystone_conf, 'admin_password'))
+        tenant = (_get_conf(keystone_conf, 'project_name') or
+                  _get_conf(keystone_conf, 'admin_tenant_name'))
         return auth_url, user, pw, tenant
 
     @staticmethod
