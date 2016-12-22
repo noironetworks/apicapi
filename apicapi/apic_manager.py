@@ -182,8 +182,12 @@ class APICManager(object):
             self.db, log, keyclient, keystone_authtoken,
             name_mapping, min_suffix=min_suffix, keysession=keysession)
         self.apic_system_id = apic_system_id
-        self.app_profile_name = self.apic_mapper.app_profile(
-            None, self.apic_config.apic_app_profile_name)
+        try:
+            self.app_profile_name = self.apic_mapper.app_profile(
+                None, self.apic_config.apic_app_profile_name)
+        except AttributeError:
+            LOG.warn("DB manager doesn't support apic name handling")
+            self.app_profile_name = None
 
         self.function_profile = self.apic_config.apic_function_profile
         self.lacp_profile = self.apic_config.apic_lacp_profile
@@ -973,8 +977,8 @@ class APICManager(object):
                 LOG.exception(e)
 
         # provision the link
-        self.db.add_hostlink(host, ifname, ifmac,
-                             switch, module, port)
+        self._db_add_hostlink(host, ifname, ifmac,
+                              switch, module, port)
         if self.provision_hostlinks:
             self.ensure_infra_created_for_switch(switch)
         return
@@ -1011,8 +1015,8 @@ class APICManager(object):
             vpcport = ''
             if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
-            self.db.add_hostlink(host, ifname, ifmac,
-                                 switch, vpcmodule, vpcport)
+            self._db_add_hostlink(host, ifname, ifmac,
+                                  switch, vpcmodule, vpcport)
         else:
             vpcmodule2 = link2[1]
             (vpcstr, module2, port2) = vpcmodule2.split('-')
@@ -1023,8 +1027,8 @@ class APICManager(object):
                 vpcport = oport
             if ifname == 'static':
                 ifname = 'static-vpc-%s' % switch
-            self.db.add_hostlink(host, ifname, ifmac,
-                                 switch, vpcmodule, vpcport)
+            self._db_add_hostlink(host, ifname, ifmac,
+                                  switch, vpcmodule, vpcport)
             self.update_hostlink_port(host, switch2, vpcmodule2, vpcport)
             if self.provision_hostlinks:
                 self.ensure_infra_created_for_switch(switch)
@@ -1451,3 +1455,11 @@ class APICManager(object):
         except cexc.ApicResponseNotOk as ex:
             # Ignore as older APIC versions will not support nameAlias
             LOG.info("Expected failure for APIC 2.1 and below: %s", ex)
+
+    def _db_add_hostlink(self, host, ifname, ifmac, switch, module, port):
+        try:
+            path = self.get_static_binding_pdn(switch, module, port)
+            self.db.add_hostlink(host, ifname, ifmac, switch, module, port,
+                                 path)
+        except TypeError:
+            self.db.add_hostlink(host, ifname, ifmac, switch, module, port)
