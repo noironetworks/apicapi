@@ -522,6 +522,9 @@ class ApicSession(object):
         url = self._mo_url(mo, *params)
         return self._send(self.session.post, url, data=data)
 
+    def post_body_dict(self, mo, data_dict, *params):
+        return self.post_body(mo, json.dumps(data_dict), params)
+
     def delete_mo(self, mo, *params):
         self._check_session()
         url = self._mo_url(mo, *params)
@@ -869,11 +872,11 @@ class Transaction(object):
                 mo_class = root[1].mo_class
                 params = DNManager().aci_decompose_dn_guess(root[0], mo_class)
                 mo = ManagedObjectClass(params[0])
-                self.session.post_body(mo, json.dumps(root[1]),
-                                       *[x[1] for x in params[1]])
+                self.session.post_body_dict(mo, root[1],
+                                            *[x[1] for x in params[1]])
         else:
-            return self.session.post_body(self.root_mo, json.dumps(self.root),
-                                          *self.root_params)
+            return self.session.post_body_dict(self.root_mo, self.root,
+                                               *self.root_params)
 
 
 class TransactionBuilder(object):
