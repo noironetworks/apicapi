@@ -523,7 +523,7 @@ class ApicSession(object):
         return self._send(self.session.post, url, data=data)
 
     def post_body_dict(self, mo, data_dict, *params):
-        return self.post_body(mo, json.dumps(data_dict), params)
+        return self.post_body(mo, json.dumps(data_dict), *params)
 
     def delete_mo(self, mo, *params):
         self._check_session()
