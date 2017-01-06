@@ -420,8 +420,12 @@ def _create_apic_dom_dictionary(prefix):
         dom_dict.setdefault(dom, {})
         for key, value in conf[dom]:
             if value:
-                dom_dict[dom][key] = value[0]
-
+                if isinstance(
+                        cfg.CONF._groups['apic']._opts.get(key, {}).get('opt'),
+                        cfg.ListOpt):
+                    dom_dict[dom][key] = value[0].split(',')
+                else:
+                    dom_dict[dom][key] = value[0]
     return dom_dict
 
 
