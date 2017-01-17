@@ -122,6 +122,9 @@ apic_opts = [
                default='notifications',
                help=("The topic used to subscribe to Keystone "
                      "notifications")),
+    cfg.IntOpt('apic_optimized_dhcp_lease_time', default=0,
+               help=("Number of seconds for the optimized DHCP lease time. "
+                     "Default is 0 which means disabled.")),
 ]
 
 
