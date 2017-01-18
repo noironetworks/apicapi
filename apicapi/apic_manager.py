@@ -127,6 +127,8 @@ class APICManager(object):
                                                keystone_notification_exchange)
         self.keystone_notification_topic = (self.apic_config.
                                             keystone_notification_topic)
+        self.apic_optimized_dhcp_lease_time = (
+            self.apic_config.apic_optimized_dhcp_lease_time)
 
         self.provision_infra = self.apic_config.apic_provision_infra
         self.provision_hostlinks = self.apic_config.apic_provision_hostlinks
