@@ -124,7 +124,8 @@ apic_opts = [
                      "notifications")),
     cfg.IntOpt('apic_optimized_dhcp_lease_time', default=0,
                help=("Number of seconds for the optimized DHCP lease time. "
-                     "Default is 0 which means disabled.")),
+                     "Default is 0 which means using opflex agent's default "
+                     "value.")),
 ]
 
 
