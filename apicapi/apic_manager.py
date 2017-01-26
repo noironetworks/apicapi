@@ -1456,7 +1456,7 @@ class APICManager(object):
             mo.update(*args, **kwargs)
         except cexc.ApicResponseNotOk as ex:
             # Ignore as older APIC versions will not support nameAlias
-            LOG.info("Expected failure for APIC 2.1 and below: %s", ex)
+            LOG.debug("Expected failure for APIC 2.1 and below: %s", ex)
 
     def _db_add_hostlink(self, host, ifname, ifmac, switch, module, port):
         try:
