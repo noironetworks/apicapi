@@ -17,6 +17,7 @@ import click
 
 from apicapi.tools.cli import common
 from apicapi.tools import host_report
+from neutronclient.common import exceptions as n_exc
 
 
 @click.group()
@@ -36,6 +37,11 @@ def neutron_sync(neutron, *args, **kwargs):
     except Exception as e:
         if message in e.message:
             click.echo("Synchronization complete.")
+        elif (isinstance(e, n_exc.NeutronClientException) and
+              e.status_code == 504):
+            click.echo("Request timed out before the synchronization could "
+                       "complete. Please use --http-timeout parameter to "
+                       "specify a bigger time-out value in seconds.")
         else:
             raise
 
