@@ -857,7 +857,7 @@ class APICManager(object):
 
             # Get attached switch and port for this host
             host_config = self.db.get_switch_and_port_for_host(host_id)
-            if not host_config or not host_config.count():
+            if not host_config or not self._get_collection_count(host_config):
                 raise cexc.ApicHostNotConfigured(host=host_id)
 
             for switch, module, port in host_config:
@@ -896,7 +896,7 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             host_config = host_config or self.db.get_switch_and_port_for_host(
                 host_id)
-            if not host_config or not host_config.count():
+            if not host_config or not self._get_collection_count(host_config):
                 LOG.warn("The switch and port for host '%s' "
                          "are not configured" % host_id)
                 return
@@ -920,7 +920,7 @@ class APICManager(object):
         with self.apic.transaction(transaction) as trs:
             # Get attached switch and port for this host
             host_config = self.db.get_switch_and_port_for_host(host_id)
-            if not host_config or not host_config.count():
+            if not host_config or not self._get_collection_count(host_config):
                 raise cexc.ApicHostNotConfigured(host=host_id)
 
             encap = self.get_static_binding_encap(encap)
@@ -1465,3 +1465,9 @@ class APICManager(object):
                                  path)
         except TypeError:
             self.db.add_hostlink(host, ifname, ifmac, switch, module, port)
+
+    def _get_collection_count(self, collection):
+        try:
+            return collection.count()
+        except (TypeError, AttributeError):
+            return len(collection)
