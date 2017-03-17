@@ -42,6 +42,7 @@ SCOPE = 'openstack_scope'
 MULTI_PARENT = ['faultInst', 'tagInst']
 DN_BASE = 'uni/'
 
+
 # Info about a Managed Object's relative name (RN) and container.
 class ManagedObjectName(collections.namedtuple('MoPath',
                                                ['container', 'rn_fmt',
