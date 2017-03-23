@@ -573,3 +573,21 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self.assertEqual(['tenant1', 'lab', 'web',
                           'topology/pod-1/paths-101/pathep-[eth1/2]'],
                          res)
+
+    def test_filter_rns(self):
+        manager = self.apic.dn_manager
+        res = manager.filter_rns([('fvTenant', 'amit1'),
+                                  ('vzBrCP', 'c'),
+                                  ('vzSubj', 's2'),
+                                  ('vzInTerm', 'intmnl'),
+                                  ('vzRsFiltAtt', 'f')])
+        self.assertEqual(['amit1', 'c', 's2', 'f'], res)
+
+        res = manager.filter_rns([('fvTenant', 'amit1'),
+                                  ('vnsSvcCont', 'svcCont'),
+                                  ('vnsSvcRedirectPol', 'r1')])
+        self.assertEqual(['amit1', 'r1'], res)
+
+        res = manager.filter_rns([('fvTenant', 't1'),
+                                  ('vnsLDevCtx', 'contract1,graph1,N1')])
+        self.assertEqual(['t1', 'contract1', 'graph1', 'N1'], res)
