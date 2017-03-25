@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import re
 import sys
 
@@ -365,11 +366,29 @@ class ConfigValidator(object):
 
 # With apic specific config split from apic_ml2, creating the switch
 # dictionaries should be done by apicapi itself
+def _get_config_files():
+    cfiles = []
+    cfiles += cfg.CONF.config_file
+
+    cdir = None
+    try:
+        cdir = cfg.CONF.config_dir
+    except AttributeError:
+        pass
+    if cdir:
+        for root, dirs, files in os.walk(cfg.CONF.config_dir):
+            for f in files:
+                if f.endswith('.conf'):
+                    cfiles.append(os.path.join(root, f))
+    return cfiles
+
+
 def _get_specific_config(prefix):
     """retrieve config in the format [<prefix>:<value>]."""
     conf_dict = {}
+    conf_files = _get_config_files()
     multi_parser = cfg.MultiConfigParser()
-    multi_parser.read(cfg.CONF.config_file)
+    multi_parser.read(conf_files)
     for parsed_file in multi_parser.parsed:
         for parsed_item in parsed_file.keys():
             if parsed_item.startswith(prefix):
