@@ -370,16 +370,16 @@ def _get_config_files():
     cfiles = []
     cfiles += cfg.CONF.config_file
 
+    cdir = None
     try:
         cdir = cfg.CONF.config_dir
-        if cdir:
-            for root, dirs, files in os.walk(cfg.CONF.config_dir):
-                for f in files:
-                 if f.endswith('.conf'):
-                     cfiles.append(os.path.join(root, f))
-    except AttributeError:
-        # ignore attribute error
+    except:
         pass
+    if cdir:
+        for root, dirs, files in os.walk(cfg.CONF.config_dir):
+            for f in files:
+                if f.endswith('.conf'):
+                    cfiles.append(os.path.join(root, f))
     return cfiles
 
 
