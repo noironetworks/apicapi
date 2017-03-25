@@ -244,6 +244,7 @@ class ConfigMixin(object):
         # Configure global option apic_system_id
         cfg.CONF.set_override('apic_system_id', APIC_SYSTEM_ID)
         cfg.CONF.set_override('config_file', 'etc/conf_sample.ini')
+        cfg.CONF.set_override('config_file', [])
 
         # Configure the Cisco APIC mechanism driver
         apic_test_config = {
