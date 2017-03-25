@@ -373,7 +373,7 @@ def _get_config_files():
     cdir = None
     try:
         cdir = cfg.CONF.config_dir
-    except:
+    except AttributeError:
         pass
     if cdir:
         for root, dirs, files in os.walk(cfg.CONF.config_dir):
