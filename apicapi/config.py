@@ -370,13 +370,21 @@ def _get_config_files():
     cfiles = []
     cfiles += cfg.CONF.config_file
 
-    cdir = None
+    cdir = []
     try:
-        cdir = cfg.CONF.config_dir
+        cdir_param = cfg.CONF.config_dir
+        # Docs say, and logical expectation is, that it shoukd be a list
+        # but on libery I see a single string with last config_dir
+        # So, handling both cases here
+        if not isinstance(cdir_param, list):
+            cdir.append(cdir_param)
+        else:
+            cdir.extend(cdir_param)
     except AttributeError:
         pass
-    if cdir:
-        for root, dirs, files in os.walk(cfg.CONF.config_dir):
+
+    for cdir_item in cdir:
+        for root, dirs, files in os.walk(cdir_item):
             for f in files:
                 if f.endswith('.conf'):
                     cfiles.append(os.path.join(root, f))
