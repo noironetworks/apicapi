@@ -368,7 +368,8 @@ class ConfigValidator(object):
 # dictionaries should be done by apicapi itself
 def _get_config_files():
     cfiles = []
-    cfiles += cfg.CONF.config_file
+    if cfg.CONF.config_file:
+        cfiles += cfg.CONF.config_file
 
     cdir = []
     try:
@@ -376,10 +377,11 @@ def _get_config_files():
         # Docs say, and logical expectation is, that it shoukd be a list
         # but on libery I see a single string with last config_dir
         # So, handling both cases here
-        if not isinstance(cdir_param, list):
-            cdir.append(cdir_param)
-        else:
-            cdir.extend(cdir_param)
+        if cdir_param:
+            if not isinstance(cdir_param, list):
+                cdir.append(cdir_param)
+            else:
+                cdir.extend(cdir_param)
     except AttributeError:
         pass
 
