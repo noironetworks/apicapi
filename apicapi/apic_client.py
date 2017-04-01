@@ -97,6 +97,7 @@ class ManagedObjectClass(object):
         'vzSubj': ManagedObjectName('vzBrCP', 'subj-%s'),
         'vzFilter': ManagedObjectName('fvTenant', 'flt-%s'),
         'vzRsFiltAtt': ManagedObjectName('vzSubj', 'rsfiltAtt-%s'),
+        'vzRsSubjGraphAtt': ManagedObjectName('vzSubj', 'rsSubjGraphAtt'),
         'vzEntry': ManagedObjectName('vzFilter', 'e-%s'),
         'vzInTerm': ManagedObjectName('vzSubj', 'intmnl'),
         'vzRsFiltAtt__In': ManagedObjectName('vzInTerm', 'rsfiltAtt-%s'),
@@ -218,6 +219,62 @@ class ManagedObjectClass(object):
         'hostprotSubj': ManagedObjectName('hostprotPol', 'subj-%s'),
         'hostprotRule': ManagedObjectName('hostprotSubj', 'rule-%s'),
         'hostprotRemoteIp': ManagedObjectName('hostprotRule', 'ip-[%s]'),
+
+        # redirect-policy objects for service-graph
+        'vnsSvcCont': ManagedObjectName('fvTenant', 'svcCont'),
+        'vnsSvcRedirectPol': ManagedObjectName('vnsSvcCont',
+                                               'svcRedirectPol-%s'),
+        'vnsRedirectDest': ManagedObjectName('vnsSvcRedirectPol',
+                                             'RedirectDest_ip-[%s]'),
+
+        # device-cluster objects for service-graph
+        'vnsLDevVip': ManagedObjectName('fvTenant', 'lDevVip-%s'),
+        'vnsRsALDevToPhysDomP': ManagedObjectName('vnsLDevVip',
+                                                  'rsALDevToPhysDomP'),
+        'vnsLIf': ManagedObjectName('vnsLDevVip', 'lIf-%s'),
+        'vnsRsCIfAtt': ManagedObjectName('vnsLIf',
+                                         'rscIfAtt-[%s]'),
+        'vnsCDev': ManagedObjectName('vnsLDevVip', 'cDev-%s'),
+        'vnsCIf': ManagedObjectName('vnsCDev', 'cIf-[%s]'),
+        'vnsRsCIfPathAtt': ManagedObjectName('vnsCIf', 'rsCIfPathAtt'),
+
+        # service-graph objects
+        'vnsAbsGraph': ManagedObjectName('fvTenant', 'AbsGraph-%s'),
+        'vnsAbsTermConn': ManagedObjectName('vnsAbsGraph', 'AbsTConn'),
+        'vnsInTerm': ManagedObjectName('vnsAbsGraph', 'intmnl'),
+        'vnsOutTerm': ManagedObjectName('vnsAbsGraph', 'outtmnl'),
+        'vnsAbsTermNodeCon': ManagedObjectName('vnsAbsGraph',
+                                               'AbsTermNodeCon-%s'),
+        'vnsAbsTermConn__Con': ManagedObjectName('vnsAbsTermNodeCon',
+                                                 'AbsTConn'),
+        'vnsInTerm__Con': ManagedObjectName('vnsAbsTermNodeCon', 'intmnl'),
+        'vnsOutTerm__Con': ManagedObjectName('vnsAbsTermNodeCon', 'outtmnl'),
+
+        'vnsAbsTermNodeProv': ManagedObjectName('vnsAbsGraph',
+                                                'AbsTermNodeProv-%s'),
+        'vnsAbsTermConn__Prov': ManagedObjectName('vnsAbsTermNodeProv',
+                                                  'AbsTConn'),
+        'vnsInTerm__Prov': ManagedObjectName('vnsAbsTermNodeProv', 'intmnl'),
+        'vnsOutTerm__Prov': ManagedObjectName('vnsAbsTermNodeProv', 'outtmnl'),
+
+        'vnsAbsConnection': ManagedObjectName('vnsAbsGraph',
+                                              'AbsConnection-%s'),
+        'vnsRsAbsConnectionConns':
+        ManagedObjectName('vnsAbsConnection', 'rsabsConnectionConns-[%s]'),
+
+        'vnsAbsNode': ManagedObjectName('vnsAbsGraph', 'AbsNode-%s'),
+        'vnsAbsFuncConn': ManagedObjectName('vnsAbsNode', 'AbsFConn-%s'),
+        'vnsRsNodeToLDev': ManagedObjectName('vnsAbsNode', 'rsNodeToLDev'),
+
+        # device-cluster-context objects for service-graph
+        'vnsLDevCtx': ManagedObjectName('fvTenant', 'ldevCtx-c-%s-g-%s-n-%s'),
+        'vnsRsLDevCtxToLDev': ManagedObjectName('vnsLDevCtx',
+                                                'rsLDevCtxToLDev'),
+        'vnsLIfCtx': ManagedObjectName('vnsLDevCtx', 'lIfCtx-c-%s'),
+        'vnsRsLIfCtxToSvcRedirectPol':
+        ManagedObjectName('vnsLIfCtx', 'rsLIfCtxToSvcRedirectPol'),
+        'vnsRsLIfCtxToBD': ManagedObjectName('vnsLIfCtx', 'rsLIfCtxToBD'),
+        'vnsRsLIfCtxToLIf': ManagedObjectName('vnsLIfCtx', 'rsLIfCtxToLIf'),
     }
 
     same_rn_types = {'hostprotSubj': ['vzSubj'],
@@ -871,10 +928,11 @@ class Transaction(object):
             roots = self.get_top_level_roots()
             for root in roots:
                 mo_class = root[1].mo_class
-                params = DNManager().aci_decompose_dn_guess(root[0], mo_class)
+                dn_mgr = DNManager()
+                params = dn_mgr.aci_decompose_dn_guess(root[0], mo_class)
                 mo = ManagedObjectClass(params[0])
-                self.session.post_body_dict(mo, root[1],
-                                            *[x[1] for x in params[1]])
+                rns = dn_mgr.filter_rns(params[1])
+                self.session.post_body_dict(mo, root[1], *rns)
         else:
             return self.session.post_body_dict(self.root_mo, self.root,
                                                *self.root_params)
@@ -1151,6 +1209,19 @@ class DNManager(object):
                 except DNManager.InvalidNameFormat:
                     pass
         raise DNManager.InvalidNameFormat()
+
+    def filter_rns(self, mos_and_rns):
+        """
+        From a list of (ManagedObject type, RN value) pairs, remove those
+        pairs where the RN is fixed and return the RN. Also split multi-valued
+        RNs. Returns a list of RN values.
+        """
+        rns = []
+        for p in mos_and_rns:
+            if (p[0] not in ManagedObjectClass.supported_mos or
+                ManagedObjectClass(p[0]).rn_param_count):
+                    rns.extend(p[1].split(','))
+        return rns
 
     def build(self, mos_and_rns):
         """
