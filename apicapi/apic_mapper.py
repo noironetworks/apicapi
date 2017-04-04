@@ -80,13 +80,14 @@ class APICNameMapper(object):
 
     def __init__(self, db, log, keyclient, keystone_authtoken,
                  strategy=NAMING_STRATEGY_UUID, min_suffix=None,
-                 keysession=None):
+                 keysession=None, keystoneclientv3=None):
         self.db = db
         self.strategy = strategy
         self.keystone = None
         self.keyclient = keyclient
         self.keysession = keysession
         self.keystone_authtoken = keystone_authtoken
+        self.keystoneclientv3 = keystoneclientv3
         self.tenants = {}
         self.min_suffix = min_suffix if min_suffix is not None else 5
         global LOG
@@ -377,6 +378,9 @@ class APICNameMapper(object):
         return name_type in NAME_TYPES
 
     def _get_keystone(self):
+        if self.keystoneclientv3:
+            return self.keystoneclientv3
+
         keystone_conf = self.keystone_authtoken
         if not self.keysession:
             # This assumes v2
