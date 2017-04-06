@@ -413,6 +413,16 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                           manager.aci_decompose,
                           'uni/tn-ivar-wstest/BD-test', 'fvTenant')
 
+        res = manager.aci_decompose_with_type(
+            'topology/pod-1/node-301/sys/br-[eth1/33]/odev-167776320',
+            'opflexODev')
+        self.assertEqual([('fabricTopology', 'topology'),
+                          ('fabricPod', '1'),
+                          ('fabricNode', '301'),
+                          ('topSystem', 'sys'),
+                          ('l2BrIf', 'eth1/33'),
+                          ('opflexODev', '167776320')], res)
+
     def test_aci_decompose_dn_guess(self):
         manager = self.apic.dn_manager
         res = manager.aci_decompose_dn_guess(
@@ -563,6 +573,14 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
                                         ('vzSubj', 's2'),
                                         ('vzInTerm', 'intmnl'),
                                         ('vzRsFiltAtt', 'f')]))
+        self.assertEqual(
+            'topology/pod-1/node-301/sys/br-[eth1/33]/odev-167776320',
+            manager.build([('fabricTopology', 'topology'),
+                          ('fabricPod', '1'),
+                          ('fabricNode', '301'),
+                          ('topSystem', 'sys'),
+                          ('l2BrIf', 'eth1/33'),
+                          ('opflexODev', '167776320')]))
 
     def test_aci_decompose_dn_nested_parens(self):
         manager = self.apic.dn_manager
