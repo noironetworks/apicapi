@@ -1229,8 +1229,8 @@ class DNManager(object):
         rns = []
         for p in mos_and_rns:
             if (p[0] not in ManagedObjectClass.supported_mos or
-                ManagedObjectClass(p[0]).rn_param_count):
-                    rns.extend(p[1].split(','))
+                    ManagedObjectClass(p[0]).rn_param_count):
+                rns.extend(p[1].split(','))
         return rns
 
     def build(self, mos_and_rns):
@@ -1247,3 +1247,12 @@ class DNManager(object):
             ManagedObjectClass(mos_and_rns[0][0]).container == 'polUni'):
                 prefix = 'uni/'
         return prefix + '/'.join(rns)
+
+    def get_rn_base(self, rn):
+        prefix = rn.split('-')[0]
+        mo_type = ManagedObjectClass.prefix_to_mos[prefix]
+        mo = ManagedObjectClass(mo_type)
+        # go to base object
+        while mo.container:
+            mo = ManagedObjectClass(mo.container)
+        return mo.rn_fmt

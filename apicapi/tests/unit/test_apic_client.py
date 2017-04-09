@@ -609,3 +609,8 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         res = manager.filter_rns([('fvTenant', 't1'),
                                   ('vnsLDevCtx', 'contract1,graph1,N1')])
         self.assertEqual(['t1', 'contract1', 'graph1', 'N1'], res)
+
+    def test_rn_base(self):
+        manager = self.apic.dn_manager
+        self.assertEqual('uni', manager.get_rn_base('tn-test'))
+        self.assertEqual('topology', manager.get_rn_base('pod-test'))
