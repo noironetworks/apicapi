@@ -393,6 +393,15 @@ class ManagedObjectClass(object):
         """Return the name for a managed object."""
         return self._scope(self.name_fmt, *params)
 
+    def base(self):
+        if self.container:
+            container_mo = ManagedObjectClass(self.container)
+            while container_mo.container:
+                container_mo = ManagedObjectClass(container_mo.container)
+            return container_mo.rn_fmt
+        else:
+            return self.rn_fmt
+
 
 class ApicSession(object):
 
@@ -835,7 +844,8 @@ class Transaction(object):
 
     def init_root(self, mo, *params, **data):
         self.session.renew(mo, *params)
-        self.root = TransactionNode(mo.klass_name, mo.rn(*params), **data)
+        self.root = TransactionNode(mo.klass_name, mo.rn(*params), mo.base(),
+                                    **data)
         self.root_params = params
         self.root_mo = mo
 
@@ -858,7 +868,7 @@ class Transaction(object):
         if self.session.renew(mo, *params):
             # Re calculate RN for current MO
             mo_rn = mo.rn(*params[offset:]) if offset else mo.rn_fmt
-        curr = TransactionNode(mo.klass_name, mo_rn, **kwargs)
+        curr = TransactionNode(mo.klass_name, mo_rn, mo.base(), **kwargs)
         level.append(curr)
         return curr
 
@@ -866,7 +876,7 @@ class Transaction(object):
         """Recursively create all container nodes."""
         offset = 0 - mo.rn_param_count
         rn = mo.rn(*params[offset:]) if offset else mo.rn_fmt
-        if not mo.container or mo.container == 'polUni':
+        if not mo.container or mo.container in ['polUni', 'fabricTopology']:
             # Tail of recursion
             if not self.root:
                 self.init_root(mo, *params)
@@ -892,10 +902,11 @@ class Transaction(object):
 
         result = []
         to_visit = collections.OrderedDict()
-        to_visit['uni'] = [self.root]
+        to_visit[self.root.mo_base] = [self.root]
         # Verify if root is part of the solution
         if self.root.attributes.get('apicapi_top'):
-            result.append(('uni' + '/' + self.root.mo_rn, self.root))
+            result.append((self.root.mo_base + '/' + self.root.mo_rn,
+                           self.root))
         while to_visit:
             partial_dn, nodes = to_visit.popitem(last=False)
             for node in nodes:
@@ -966,10 +977,11 @@ class TransactionBuilder(object):
 
 class TransactionNode(dict):
 
-    def __init__(self, mo_class, mo_rn, **kwargs):
+    def __init__(self, mo_class, mo_rn, mo_base, **kwargs):
         dict.__init__(self)
         self.mo_class = mo_class
         self.mo_rn = mo_rn
+        self.mo_base = mo_base
         self.attributes = {"rn": mo_rn}
         self.children = []
         self.update_attributes(**kwargs)
@@ -1243,9 +1255,10 @@ class DNManager(object):
             rns.append(mo.rn(*p[1].split(',')) if mo.rn_param_count else
                        mo.rn())
         prefix = ''
-        if (mos_and_rns and
-            ManagedObjectClass(mos_and_rns[0][0]).container == 'polUni'):
-                prefix = 'uni/'
+        if mos_and_rns:
+            base = ManagedObjectClass(mos_and_rns[0][0]).base()
+            if base != mos_and_rns[0][1]:
+                prefix = base + '/'
         return prefix + '/'.join(rns)
 
     def get_rn_base(self, rn):
