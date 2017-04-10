@@ -73,7 +73,9 @@ class ManagedObjectClass(object):
     """
     scope = ''
     supported_mos = {
-        'fvTenant': ManagedObjectName(None, 'tn-%(name)s', name_fmt='__%s'),
+        'polUni': ManagedObjectName(None, 'uni', False),
+        'fvTenant': ManagedObjectName('polUni', 'tn-%(name)s',
+                                      name_fmt='__%s'),
         'fvBD': ManagedObjectName('fvTenant', 'BD-%(name)s', name_fmt='%s'),
         'fvRsBDToOut': ManagedObjectName('fvBD', 'rsBDToOut-%(name)s',
                                          name_fmt='__%s'),
@@ -128,10 +130,10 @@ class ManagedObjectClass(object):
         'l3extRsInstPToNatMappingEPg':
             ManagedObjectName('l3extInstP', 'rsInstPToNatMappingEPg'),
 
-        'physDomP': ManagedObjectName(None, 'phys-%s'),
-        'l3extDomP': ManagedObjectName(None, 'l3dom-%s'),
+        'physDomP': ManagedObjectName('polUni', 'phys-%s'),
+        'l3extDomP': ManagedObjectName('polUni', 'l3dom-%s'),
 
-        'infraInfra': ManagedObjectName(None, 'infra'),
+        'infraInfra': ManagedObjectName('polUni', 'infra'),
         'infraNodeP': ManagedObjectName('infraInfra', 'nprof-%(name)s',
                                         name_fmt='==%s'),
         'infraLeafS': ManagedObjectName('infraNodeP', 'leaves-%s-typ-%s'),
@@ -179,7 +181,7 @@ class ManagedObjectClass(object):
                                                 'from-%s-to-%s'),
 
         # Fabric
-        'fabricInst': ManagedObjectName(None, 'fabric', False),
+        'fabricInst': ManagedObjectName('polUni', 'fabric', False),
         'bgpInstPol': ManagedObjectName('fabricInst', 'bgpInstP-%(name)s',
                                         name_fmt='%s'),
         'bgpRRP': ManagedObjectName('bgpInstPol', 'rr'),
@@ -196,13 +198,17 @@ class ManagedObjectClass(object):
         'fabricRsPodPGrp': ManagedObjectName('fabricPodS__ALL', 'rspodPGrp'),
 
         # Read-only
+        'topSystem': ManagedObjectName(None, 'sys', False),
         'fabricTopology': ManagedObjectName(None, 'topology', False),
         'fabricPod': ManagedObjectName('fabricTopology', 'pod-%s', False),
         'fabricPathEpCont': ManagedObjectName('fabricPod', 'paths-%s', False),
         'fabricPathEp': ManagedObjectName('fabricPathEpCont', 'pathep-%s',
                                           False),
         'fabricNode': ManagedObjectName('fabricPod', 'node-%s', False),
-        'vmmProvP': ManagedObjectName(None, 'vmmp-%s', False),
+        'topSystem__NODE': ManagedObjectName('fabricNode', 'sys', False),
+        'l2BrIf': ManagedObjectName('topSystem__NODE', 'br-[%s]', False),
+        'opflexODev': ManagedObjectName('l2BrIf', 'odev-%s', False),
+        'vmmProvP': ManagedObjectName('polUni', 'vmmp-%s', False),
         'vmmDomP': ManagedObjectName('vmmProvP', 'dom-%s'),
         'vmmUsrAccP': ManagedObjectName('vmmDomP', 'usracc-%s'),
         'vmmCtrlrP': ManagedObjectName('vmmDomP', 'ctrlr-%s'),
@@ -351,7 +357,7 @@ class ManagedObjectClass(object):
             dn_fmt = '%s/%s' % (container.dn_fmt, self.rn_fmt)
             params = container.params + param
             return dn_fmt, params
-        return 'uni/%s' % self.rn_fmt, param
+        return '%s' % self.rn_fmt, param
 
     def _scope(self, fmt, *params):
         res = self._fmt_replace(
@@ -373,7 +379,7 @@ class ManagedObjectClass(object):
 
     def dn(self, *params):
         """Return the distinguished name for a managed object."""
-        dn = ['uni']
+        dn = []
         for part in self.params:
             dn.append(part.rn(*params[:part.rn_param_count]))
             params = params[part.rn_param_count:]
@@ -860,7 +866,7 @@ class Transaction(object):
         """Recursively create all container nodes."""
         offset = 0 - mo.rn_param_count
         rn = mo.rn(*params[offset:]) if offset else mo.rn_fmt
-        if not mo.container:
+        if not mo.container or mo.container == 'polUni':
             # Tail of recursion
             if not self.root:
                 self.init_root(mo, *params)
@@ -1074,7 +1080,7 @@ class DNManager(object):
         param = re.findall(fmt, split[-1])
         if (not param or len(param) != mo.rn_param_count) and param != [fmt]:
             raise DNManager.InvalidNameFormat()
-        if mo.container:
+        if mo.container and mo.container != 'polUni':
             return self._decompose(
                 dn[:-(len(split[-1]) + 1)],
                 ManagedObjectClass(mo.container)) + param
@@ -1098,7 +1104,7 @@ class DNManager(object):
         # RN components that don't have a variable part need to copied
         # as is to the output. Hence make them a RE matching group by
         # surrounding them with parenthesis.
-        dn_fmt = '/'.join('(%s)' % x if (x != 'uni' and '-' not in x) else x
+        dn_fmt = '/'.join('(%s)' % x if ('-' not in x) else x
                           for x in mo.dn_fmt.split('/'))
         # this matches upto 1 level of nesting of square brackets
         # e.g. [foobar] -> OK, matches 'foobar'
@@ -1138,6 +1144,10 @@ class DNManager(object):
             rn_results.append(','.join(rn_values[start:(start + card)])
                               if card > 1 else rn_values[start])
             start += card
+
+        if mo_types and mo_types[0] == 'polUni':
+            mo_types = mo_types[1:]
+            rn_results = rn_results[1:]
 
         return mo_types, rn_results
 
@@ -1227,9 +1237,13 @@ class DNManager(object):
         """
         Build a DN string from a list of (ManagedObject type, RN value) pairs.
         """
-        rns = ['uni']
+        rns = []
         for p in mos_and_rns:
             mo = ManagedObjectClass(p[0])
             rns.append(mo.rn(*p[1].split(',')) if mo.rn_param_count else
                        mo.rn())
-        return '/'.join(rns)
+        prefix = ''
+        if (mos_and_rns and
+            ManagedObjectClass(mos_and_rns[0][0]).container == 'polUni'):
+                prefix = 'uni/'
+        return prefix + '/'.join(rns)
