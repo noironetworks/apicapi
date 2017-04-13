@@ -244,6 +244,8 @@ class ManagedObjectClass(object):
         'vnsLIf': ManagedObjectName('vnsLDevVip', 'lIf-%s'),
         'vnsRsCIfAtt': ManagedObjectName('vnsLIf',
                                          'rscIfAtt-[%s]'),
+        'vnsRsCIfAttN': ManagedObjectName('vnsLIf',
+                                          'rscIfAttN-[%s]'),
         'vnsCDev': ManagedObjectName('vnsLDevVip', 'cDev-%s'),
         'vnsCIf': ManagedObjectName('vnsCDev', 'cIf-[%s]'),
         'vnsRsCIfPathAtt': ManagedObjectName('vnsCIf', 'rsCIfPathAtt'),
