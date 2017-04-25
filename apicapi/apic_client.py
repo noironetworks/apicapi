@@ -173,6 +173,7 @@ class ManagedObjectClass(object):
                                              name_fmt='==%s'),
         'infraProvAcc': ManagedObjectName('infraAttEntityP', 'provacc'),
         'infraRsDomP': ManagedObjectName('infraAttEntityP', 'rsdomP-[%s]'),
+        'infraRsVlanNs': ManagedObjectName('physDomP', 'rsvlanNs'),
         'infraRsVlanNs__phys': ManagedObjectName('physDomP', 'rsvlanNs'),
         'infraRsVlanNs__vmm': ManagedObjectName('vmmDomP', 'rsvlanNs'),
         'infraAccBndlGrp': ManagedObjectName('infraFuncP', 'accbundle-%s'),
@@ -295,6 +296,8 @@ class ManagedObjectClass(object):
         'vmmInjectedDepl': ManagedObjectName('vmmInjectedNs', 'depl-[%s]'),
         'vmmInjectedReplSet': ManagedObjectName('vmmInjectedDepl', 'rs-[%s]'),
         'vmmInjectedSvc': ManagedObjectName('vmmInjectedNs', 'svc-[%s]'),
+        'vmmInjectedSvcPort': ManagedObjectName('vmmInjectedSvc',
+                                                'p-%s-prot-%s-t-%s'),
         'vmmInjectedGrp': ManagedObjectName('vmmInjectedNs', 'grp-[%s]'),
     }
 
