@@ -294,11 +294,11 @@ class ManagedObjectClass(object):
         'vmmInjectedHost': ManagedObjectName('vmmInjectedCont', 'host-[%s]'),
         'vmmInjectedNs': ManagedObjectName('vmmInjectedCont', 'ns-[%s]'),
         'vmmInjectedDepl': ManagedObjectName('vmmInjectedNs', 'depl-[%s]'),
-        'vmmInjectedReplSet': ManagedObjectName('vmmInjectedDepl', 'rs-[%s]'),
+        'vmmInjectedReplSet': ManagedObjectName('vmmInjectedNs', 'rs-[%s]'),
         'vmmInjectedSvc': ManagedObjectName('vmmInjectedNs', 'svc-[%s]'),
         'vmmInjectedSvcPort': ManagedObjectName('vmmInjectedSvc',
                                                 'p-%s-prot-%s-t-%s'),
-        'vmmInjectedGrp': ManagedObjectName('vmmInjectedNs', 'grp-[%s]'),
+        'vmmInjectedContGrp': ManagedObjectName('vmmInjectedNs', 'grp-[%s]'),
     }
 
     same_rn_types = {'hostprotSubj': ['vzSubj'],
