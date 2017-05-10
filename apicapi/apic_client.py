@@ -39,7 +39,7 @@ SLEEP_ON_FULL_QUEUE = 1
 
 REFRESH_CODES = [APIC_CODE_FORBIDDEN, ]
 SCOPE = 'openstack_scope'
-MULTI_PARENT = ['faultInst', 'tagInst']
+MULTI_PARENT = ['faultInst', 'tagInst', 'vnsConfIssue']
 DN_BASE = 'uni/'
 
 
@@ -330,6 +330,7 @@ class ManagedObjectClass(object):
     prefix_to_mos['health'] = 'healthInst'
     prefix_to_mos['tag'] = 'tagInst'
     prefix_to_mos['vzSubj'] = 'subj'
+    prefix_to_mos['vnsConfIssue'] = 'vnsConfIssue'
 
     mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
 
@@ -1190,8 +1191,6 @@ class DNManager(object):
             prefix_to_mos = ManagedObjectClass.prefix_to_mos
             parent_type = prefix_to_mos.get(
                 split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
-            if parent_type not in ManagedObjectClass.supported_mos:
-                raise cexc.ApicManagedObjectNotSupported(mo_class=parent_type)
             _, mos_and_rns = self.aci_decompose_dn_guess('/'.join(split[:-1]),
                                                          parent_type)
             mo_types, rn_values = map(list, zip(*mos_and_rns))
