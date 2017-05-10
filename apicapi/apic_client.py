@@ -1191,6 +1191,8 @@ class DNManager(object):
             prefix_to_mos = ManagedObjectClass.prefix_to_mos
             parent_type = prefix_to_mos.get(
                 split[-2], prefix_to_mos.get(split[-2][:split[-2].find('-')]))
+            if not parent_type:
+                raise DNManager.InvalidNameFormat()
             _, mos_and_rns = self.aci_decompose_dn_guess('/'.join(split[:-1]),
                                                          parent_type)
             mo_types, rn_values = map(list, zip(*mos_and_rns))
