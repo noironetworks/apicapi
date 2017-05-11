@@ -298,6 +298,7 @@ class ManagedObjectClass(object):
         'vmmInjectedSvc': ManagedObjectName('vmmInjectedNs', 'svc-[%s]'),
         'vmmInjectedSvcPort': ManagedObjectName('vmmInjectedSvc',
                                                 'p-%s-prot-%s-t-%s'),
+        'vmmInjectedSvcEp': ManagedObjectName('vmmInjectedSvc', 'ep-%s'),
         'vmmInjectedContGrp': ManagedObjectName('vmmInjectedNs', 'grp-[%s]'),
     }
 
