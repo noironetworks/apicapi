@@ -39,7 +39,7 @@ SLEEP_ON_FULL_QUEUE = 1
 
 REFRESH_CODES = [APIC_CODE_FORBIDDEN, ]
 SCOPE = 'openstack_scope'
-MULTI_PARENT = ['faultInst', 'tagInst', 'vnsConfIssue']
+MULTI_PARENT = ['faultInst', 'tagInst']
 DN_BASE = 'uni/'
 
 
@@ -331,7 +331,6 @@ class ManagedObjectClass(object):
     prefix_to_mos['health'] = 'healthInst'
     prefix_to_mos['tag'] = 'tagInst'
     prefix_to_mos['vzSubj'] = 'subj'
-    prefix_to_mos['vnsConfIssue'] = 'vnsConfIssue'
 
     mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
 

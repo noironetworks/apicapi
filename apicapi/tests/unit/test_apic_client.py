@@ -550,12 +550,6 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             'faultInst')
         self.assertEqual(['amit1', 'c', 's2', 'h', 'F1111'], res)
 
-        res = manager.aci_decompose(
-            'uni/tn-common/lDevVip-service__kubernetes/'
-            'vnsConfIssue-missing-cdev/fault-F1690', 'faultInst')
-        self.assertEqual(['common', 'service__kubernetes', 'missing-cdev',
-                          'F1690'], res)
-
     def test_prefix_mos(self):
         prefix_mos = apic.ManagedObjectClass.prefix_to_mos
         self.assertEqual('fvBD', prefix_mos['BD'])
