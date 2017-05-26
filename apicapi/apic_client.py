@@ -138,6 +138,7 @@ class ManagedObjectClass(object):
         'l3extDomP': ManagedObjectName('polUni', 'l3dom-%s'),
 
         'infraInfra': ManagedObjectName('polUni', 'infra'),
+        'infraSetPol': ManagedObjectName('infraInfra', 'settings'),
         'infraNodeP': ManagedObjectName('infraInfra', 'nprof-%(name)s',
                                         name_fmt='==%s'),
         'infraLeafS': ManagedObjectName('infraNodeP', 'leaves-%s-typ-%s'),

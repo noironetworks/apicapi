@@ -436,6 +436,15 @@ class APICManager(object):
                                           toPort=str(port),
                                           transaction=trs)
 
+    def ensure_opflex_client_cert_validation_disabled(self):
+        if not self.provision_infra:
+            return
+        try:
+            self.apic.infraSetPol.create(opflexpAuthenticateClients=False)
+        except cexc.ApicResponseNotOk as ex:
+            # Ignore as older APIC versions will not support infraSetPol
+            LOG.debug("Expected failure for APIC 2.2 and below: %s", ex)
+
     def get_function_profile(self, switch, module, port, transaction=None):
         fpdn = self.apic.infraAccPortGrp.dn(self.function_profile)
         with self.apic.transaction(transaction) as trs:
