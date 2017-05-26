@@ -31,7 +31,6 @@ setuptools.setup(
         'console_scripts': [
             'apic = apicapi.tools.cli.shell:run',
             'apic-bond-watch = apicapi.tools.bondwatch:main',
-            'apic-cleanup = apicapi.tools.cleanup:main',
         ]
     }
 )
