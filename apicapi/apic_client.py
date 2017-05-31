@@ -290,8 +290,11 @@ class ManagedObjectClass(object):
         'vnsRsLIfCtxToBD': ManagedObjectName('vnsLIfCtx', 'rsLIfCtxToBD'),
         'vnsRsLIfCtxToLIf': ManagedObjectName('vnsLIfCtx', 'rsLIfCtxToLIf'),
 
-        # VMM injected container objects
-        'vmmInjectedCont': ManagedObjectName('vmmCtrlrP', 'injcont'),
+        # injected container objects
+        'compUni': ManagedObjectName(None, 'comp', False),
+        'compProv': ManagedObjectName('compUni', 'prov-%s'),
+        'compCtrlr': ManagedObjectName('compProv', 'ctrlr-[%s]-%s'),
+        'vmmInjectedCont': ManagedObjectName('compCtrlr', 'injcont'),
         'vmmInjectedHost': ManagedObjectName('vmmInjectedCont', 'host-[%s]'),
         'vmmInjectedNs': ManagedObjectName('vmmInjectedCont', 'ns-[%s]'),
         'vmmInjectedDepl': ManagedObjectName('vmmInjectedNs', 'depl-[%s]'),
