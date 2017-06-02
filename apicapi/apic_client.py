@@ -899,7 +899,9 @@ class Transaction(object):
         """Recursively create all container nodes."""
         offset = 0 - mo.rn_param_count
         rn = mo.rn(*params[offset:]) if offset else mo.rn_fmt
-        if not mo.container or mo.container in ['polUni', 'fabricTopology']:
+        if not mo.container or mo.container in ['polUni',
+                                                'fabricTopology',
+                                                'compUni']:
             # Tail of recursion
             if not self.root:
                 self.init_root(mo, *params)
