@@ -1197,6 +1197,15 @@ class APICManager(object):
                 owner, ext_out_id, EXT_NODE, NODE_DN_PATH % switch, subnet,
                 next_hop, transaction=trs)
 
+    def ensure_external_epg_no_subnet_created(self, ext_out_id,
+                                              owner=TENANT_COMMON,
+                                              external_epg=EXT_EPG,
+                                              transaction=None):
+        """Add EPG to existing External Routed Network."""
+        with self.apic.transaction(transaction) as trs:
+            self.apic.l3extInstP.create(owner, ext_out_id, external_epg,
+                                        transaction=trs)
+
     def ensure_external_epg_created(self, ext_out_id, subnet=None,
                                     owner=TENANT_COMMON,
                                     external_epg=EXT_EPG, transaction=None):
