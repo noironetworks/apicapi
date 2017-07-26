@@ -83,7 +83,8 @@ mkdir etc
   cp /etc/sysctl.conf .
   for i in sysconfig default neutron \
       group-based-policy servicechain \
-      opflex-agent-ovs openvswitch lldpd.d
+      opflex-agent-ovs openvswitch lldpd.d \
+      aim dhcp
   do
     cp -r /etc/$i $i
   done
