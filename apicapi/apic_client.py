@@ -91,6 +91,7 @@ class ManagedObjectClass(object):
         'fvRsConsIf': ManagedObjectName('fvAEPg', 'rsconsif-%s'),
         'fvRsDomAtt': ManagedObjectName('fvAEPg', 'rsdomAtt-[%s]'),
         'fvRsPathAtt': ManagedObjectName('fvAEPg', 'rspathAtt-[%s]'),
+        'fvRsSecInherited': ManagedObjectName('fvAEPg', 'rssecInherited-[%s]'),
 
         'vzAny': ManagedObjectName('fvCtx', 'any'),
         'vzRsAnyToCons': ManagedObjectName('vzAny', 'rsanyToCons-%s'),
