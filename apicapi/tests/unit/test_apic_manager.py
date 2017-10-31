@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import mock
 from webob import exc as wexc
 
@@ -101,17 +102,15 @@ class TestCiscoApicManager(base.BaseTestCase,
                     if x.get('switch')])
 
     def _check_call_list(self, expected, observed, check_all=True):
-        observed_copy = list(observed)
         for call in expected:
             self.assertTrue(call in observed,
                             msg='Call not found, expected:\n%s\nobserved:'
                                 '\n%s' % (str(call), str(observed)))
-            observed_copy.remove(call)
+            observed.remove(call)
         if check_all:
             self.assertFalse(
-                len(observed_copy),
-                msg='There are more calls than expected: %s' %
-                    str(observed_copy))
+                len(observed),
+                msg='There are more calls than expected: %s' % str(observed))
 
     def test_mgr_session_login(self):
         login = self.mgr.apic.authentication
@@ -213,20 +212,90 @@ class TestCiscoApicManager(base.BaseTestCase,
             am + '.ensure_port_profile_created_for_switch').start()
         return np_create_for_switch, pp_create_for_switch
 
+    def test_ensure_host_links_created_vpc(self):
+        np_create_for_switch, pp_create_for_switch = (
+            self._ensure_infra_created_seq1_setup())
+
+        self.mgr.provision_hostlinks = False
+        self.mgr.switch_dict = {
+            '201': {'vpc-1-34/bundle-201-1-34-and-202-1-34': ['ubuntu1|eth1'],
+                    'vpc-1-33/bundle-201-1-33-and-202-1-33': ['ubuntu2|eth2'],
+                    'pod_id': '3'},
+            '202': {'vpc-1-34/bundle-201-1-34-and-202-1-34': ['ubuntu1|eth3'],
+                    'vpc-1-33/bundle-201-1-33-and-202-1-33': ['ubuntu2|eth4'],
+                    'pod_id': '3'}
+        }
+        self.mgr.db.add_hostlink = mock.Mock()
+        self.mgr.ensure_infra_created_on_apic()
+        self.assert_responses_drained()
+        exp_calls = [
+            mock.call(
+                'ubuntu1', 'eth1', None, '201', 'vpc-1-34',
+                'bundle-201-1-34-and-202-1-34',
+                'topology/pod-3/protpaths-201-202/pathep-'
+                '[bundle-201-1-34-and-202-1-34]',
+                '3', from_config=True),
+            mock.call(
+                'ubuntu2', 'eth2', None, '201', 'vpc-1-33',
+                'bundle-201-1-33-and-202-1-33',
+                'topology/pod-3/protpaths-201-202/pathep-'
+                '[bundle-201-1-33-and-202-1-33]',
+                '3', from_config=True),
+            mock.call(
+                'ubuntu1', 'eth3', None, '202', 'vpc-1-34',
+                'bundle-201-1-34-and-202-1-34',
+                'topology/pod-3/protpaths-201-202/pathep-'
+                '[bundle-201-1-34-and-202-1-34]',
+                '3', from_config=True),
+            mock.call(
+                'ubuntu2', 'eth4', None, '202', 'vpc-1-33',
+                'bundle-201-1-33-and-202-1-33',
+                'topology/pod-3/protpaths-201-202/pathep-'
+                '[bundle-201-1-33-and-202-1-33]',
+                '3', from_config=True)]
+        self._check_call_list(exp_calls,
+            self.mgr.db.add_hostlink.call_args_list)
+
     def test_ensure_infra_created_seq1(self):
         np_create_for_switch, pp_create_for_switch = (
             self._ensure_infra_created_seq1_setup())
+
+        switch_dict_copy = copy.deepcopy(self.mgr.switch_dict)
+        for value in switch_dict_copy.values():
+            for key in value.keys():
+                if key == 'pod_id':
+                    del value[key]
+
         num_links = sum([len(j)
-                        for i in self.mgr.switch_dict.values()
+                        for i in switch_dict_copy.values()
                         for j in i.values()])
         num_ext_switch = len(self._get_ext_switches_to_provision())
 
+        self.mgr.db.add_hostlink = mock.Mock()
         self.mgr.ensure_infra_created_on_apic()
         self.assert_responses_drained()
         self.assertEqual(np_create_for_switch.call_count,
             num_links + num_ext_switch)
         self.assertEqual(pp_create_for_switch.call_count,
             num_links + num_ext_switch)
+        exp_calls = [
+            mock.call('ubuntu1', 'static', None, '101', '3', '11',
+                      'topology/pod-1/paths-101/pathep-[eth3/11]', '1',
+                      from_config=True),
+            mock.call('ubuntu2', 'static', None, '101', '3', '11',
+                      'topology/pod-1/paths-101/pathep-[eth3/11]', '1',
+                      from_config=True),
+            mock.call('rhel01', 'eth1', None, '102', '4', '21',
+                      'topology/pod-2/paths-102/pathep-[eth4/21]', '2',
+                      from_config=True),
+            mock.call('rhel02', 'eth2', None, '102', '4', '21',
+                      'topology/pod-2/paths-102/pathep-[eth4/21]', '2',
+                      from_config=True),
+            mock.call('rhel03', 'eth3', None, '102', '1', '4/22',
+                      'topology/pod-2/paths-102/pathep-[eth1/4/22]', '2',
+                      from_config=True)]
+        self._check_call_list(exp_calls,
+            self.mgr.db.add_hostlink.call_args_list)
 
     def test_ensure_infra_created_seq1_exc(self):
         self.mock_error_post_response(wexc.HTTPBadRequest)
@@ -255,8 +324,14 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.mgr.ensure_infra_created_on_apic()
         self.assert_responses_drained()
 
+        switch_dict_copy = copy.deepcopy(self.mgr.switch_dict)
+        for value in switch_dict_copy.values():
+            for key in value.keys():
+                if key == 'pod_id':
+                    del value[key]
+
         num_links = sum([len(j)
-                        for i in self.mgr.switch_dict.values()
+                        for i in switch_dict_copy.values()
                         for j in i.values()])
         num_ext_switch = len(self._get_ext_switches_to_provision())
         self.assertEqual(np_create_for_switch.call_count,
@@ -522,7 +597,7 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.mgr.ensure_path_deleted_for_port('tenant', 'network', 'ubuntu2')
         self.mgr.apic.fvRsPathAtt.delete.assert_called_once_with(
             'tenant', self.mgr.app_profile_name, 'network',
-            apic_manager.PORT_DN_PATH % ('swid', 'mod', 'port'),
+            apic_manager.PORT_DN_PATH % ('1', 'swid', 'mod', 'port'),
             transaction=mock.ANY)
 
     def test_ensure_path_deleted_for_port_host_config(self):
@@ -532,7 +607,7 @@ class TestCiscoApicManager(base.BaseTestCase,
             host_config=mocked.FakeQuery(('switch', 'module', 'port')))
         self.mgr.apic.fvRsPathAtt.delete.assert_called_once_with(
             'tenant', self.mgr.app_profile_name, 'network',
-            apic_manager.PORT_DN_PATH % ('switch', 'module', 'port'),
+            apic_manager.PORT_DN_PATH % ('1', 'switch', 'module', 'port'),
             transaction=mock.ANY)
 
     def test_ensure_path_created_for_port(self):

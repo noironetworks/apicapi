@@ -32,12 +32,12 @@ FLOOD_PROXY = {True: 'flood', False: 'proxy'}
 CONTEXT_SHARED = apic_mapper.ApicName('shared', 'shared', None, None, None)
 
 DN_KEY = 'dn'
-PORT_DN_PATH = 'topology/pod-1/paths-%s/pathep-[eth%s/%s]'
+PORT_DN_PATH = 'topology/pod-%s/paths-%s/pathep-[eth%s/%s]'
 NODE_DN_PATH = 'topology/pod-1/node-%s'
 ENCAP_VLAN = 'vlan-%s'
 POD_POLICY_GROUP_DN_PATH = 'uni/fabric/funcprof/podpgrp-%s'
 CP_PATH_DN = 'uni/tn-%s/brc-%s'
-VPCPORT_DN_PATH = 'topology/pod-1/protpaths-%s-%s/pathep-[%s]'
+VPCPORT_DN_PATH = 'topology/pod-%s/protpaths-%s-%s/pathep-[%s]'
 VPCBUNDLE_NAME = 'bundle-%s-%s-%s-and-%s-%s-%s'
 VPCMODULE_NAME = 'vpc-%s-%s'
 SCOPE_GLOBAL = 'global'
@@ -459,7 +459,7 @@ class APICManager(object):
                     host = hostlinks[0]['host']
                     links = self.db.get_switch_and_port_for_host(host)
                     for link in links:
-                        switch2, module2, port2 = link
+                        switch2, module2, port2 = link[0:3]
                         if switch2 == self.vpc_dict[switch]:
                             if self.get_vpc_module_port(module2):
                                 (module2, port2) = \
@@ -875,12 +875,12 @@ class APICManager(object):
                     tenant_id, eid, encap, switch, module, port,
                     transaction=trs, app_profile_name=app_profile_name)
 
-    def get_static_binding_pdn(self, switch, module, port):
-        pdn = PORT_DN_PATH % (switch, module, port)
+    def get_static_binding_pdn(self, switch, module, port, pod_id='1'):
+        pdn = PORT_DN_PATH % (pod_id, switch, module, port)
         if switch in self.vpc_dict and self.get_vpc_module_port(module):
             switch1 = min(switch, self.vpc_dict[switch])
             switch2 = max(switch, self.vpc_dict[switch])
-            pdn = VPCPORT_DN_PATH % (switch1, switch2, port)
+            pdn = VPCPORT_DN_PATH % (pod_id, switch1, switch2, port)
         return pdn
 
     def get_static_binding_encap(self, encap):
@@ -955,30 +955,46 @@ class APICManager(object):
     def add_staticlinks(self):
         # add static hostlinks in config
         for switch in self.switch_dict:
+            pod_id = self.switch_dict[switch].get('pod_id', '1')
             for module_port in self.switch_dict[switch]:
+                if module_port == 'pod_id':
+                    continue
                 module, port = module_port.split('/', 1)
                 hosts = self.switch_dict[switch][module_port]
                 for host in hosts:
-                    self.add_hostlink(host, 'static', None, switch, module,
-                                      port)
+                    try:
+                        host, interface = host.split('|', 1)
+                    except ValueError:
+                        interface = 'static'
+                    self.add_hostlink(host, interface, None, switch, module,
+                                      port, pod_id=pod_id)
 
     def add_hostlink(self, host, ifname, ifmac, switch, module, port,
-                     transaction=None):
+                     pod_id, transaction=None):
         if switch in self.vpc_dict:
             self.add_vpclink(host, ifname, ifmac, switch, module, port,
-                             transaction=None)
+                             pod_id, transaction=None)
             return
 
         # detect old link (say, if changing port on switch)
         hostlinks = []
         for hlink in self.db.get_switch_and_port_for_host(host):
             if hlink[0] == switch:
-                if hlink == (switch, module, port):
-                    # add is no-op, it already exists in DB
-                    return
-                else:
-                    # any other link to the same switch is old
-                    hostlinks.append(hlink)
+                try:
+                    if hlink == (switch, module, port):
+                        # add is no-op, it already exists in DB
+                        return
+                    else:
+                        # any other link to the same switch is old
+                        hostlinks.append(hlink)
+                except ValueError:
+                    if hlink == (switch, module, port, ifname, pod_id):
+                        return
+
+        # The deletion here only makes sense when there is only one
+        # hostLink entry per host. This was the case before for the
+        # config file option but not anymore. With multiple HostLinks
+        # support now, user can still do aimctl CLI to clean those up.
         if hostlinks:
             LOG.warn("Deleting unexpected link: %r" % hostlinks)
             try:
@@ -990,13 +1006,13 @@ class APICManager(object):
 
         # provision the link
         self._db_add_hostlink(host, ifname, ifmac,
-                              switch, module, port)
+                              switch, module, port, pod_id)
         if self.provision_hostlinks:
             self.ensure_infra_created_for_switch(switch)
         return
 
     def add_vpclink(self, host, ifname, ifmac, switch, module, port,
-                    transaction=None):
+                    pod_id, transaction=None):
         if switch not in self.vpc_dict:
             return
 
@@ -1010,25 +1026,38 @@ class APICManager(object):
         module2 = None
         port2 = None
 
+        if ifname == 'static':
+            ifname = 'static-vpc-%s' % switch
+
         # Get the other link connected to this host
         link2 = None
         for hlink in self.db.get_switch_and_port_for_host(host):
-            if hlink[0] == switch and hlink[1] == vpcmodule:
-                # add is no-op, it already exists in DB
-                return
-            if hlink[0] == switch2:
-                link2 = hlink
-                break
+            try:
+                hl_switch, hl_module, hl_port = hlink
+                if hl_switch == switch and hl_module == vpcmodule:
+                    # add is no-op, it already exists in DB
+                    return
+                if hl_switch == switch2:
+                    link2 = hlink
+                    break
+            except ValueError:
+                hl_switch, hl_module, hl_port, hl_if, hl_pod_id = hlink
+                if (hl_switch == switch and hl_module == vpcmodule and
+                    hl_port == oport and hl_pod_id == pod_id and
+                    hl_if == ifname):
+                    # add is no-op, it already exists in DB
+                    return
+                if hl_switch == switch2 and hl_port == oport:
+                    link2 = hlink
+                    break
 
         if link2 is None:
             # not enough information to do provisioning
-            if ifname == 'static':
-                ifname = 'static-vpc-%s' % switch
             vpcport = ''
             if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
             self._db_add_hostlink(host, ifname, ifmac,
-                                  switch, vpcmodule, vpcport)
+                                  switch, vpcmodule, vpcport, pod_id)
         else:
             vpcmodule2 = link2[1]
             (vpcstr, module2, port2) = vpcmodule2.split('-')
@@ -1037,10 +1066,9 @@ class APICManager(object):
                 switch, module, port, switch2, module2, port2)
             if not self.provision_hostlinks and oport is not None:
                 vpcport = oport
-            if ifname == 'static':
-                ifname = 'static-vpc-%s' % switch
+
             self._db_add_hostlink(host, ifname, ifmac,
-                                  switch, vpcmodule, vpcport)
+                                  switch, vpcmodule, vpcport, pod_id)
             self.update_hostlink_port(host, switch2, vpcmodule2, vpcport)
             if self.provision_hostlinks:
                 self.ensure_infra_created_for_switch(switch)
@@ -1477,11 +1505,12 @@ class APICManager(object):
             # Ignore as older APIC versions will not support nameAlias
             LOG.debug("Expected failure for APIC 2.1 and below: %s", ex)
 
-    def _db_add_hostlink(self, host, ifname, ifmac, switch, module, port):
+    def _db_add_hostlink(self, host, ifname, ifmac, switch, module,
+                         port, pod_id):
         try:
-            path = self.get_static_binding_pdn(switch, module, port)
+            path = self.get_static_binding_pdn(switch, module, port, pod_id)
             self.db.add_hostlink(host, ifname, ifmac, switch, module, port,
-                                 path)
+                                 path, pod_id, from_config=True)
         except TypeError:
             self.db.add_hostlink(host, ifname, ifmac, switch, module, port)
 
