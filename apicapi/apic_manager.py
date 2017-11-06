@@ -970,7 +970,7 @@ class APICManager(object):
                                       port, pod_id=pod_id)
 
     def add_hostlink(self, host, ifname, ifmac, switch, module, port,
-                     pod_id, transaction=None):
+                     pod_id='1', transaction=None):
         if switch in self.vpc_dict:
             self.add_vpclink(host, ifname, ifmac, switch, module, port,
                              pod_id, transaction=None)
