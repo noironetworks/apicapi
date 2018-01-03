@@ -250,6 +250,7 @@ class ManagedObjectClass(object):
         'vnsLDevVip': ManagedObjectName('fvTenant', 'lDevVip-%s'),
         'vnsRsALDevToPhysDomP': ManagedObjectName('vnsLDevVip',
                                                   'rsALDevToPhysDomP'),
+        'vnsRsALDevToDomP': ManagedObjectName('vnsLDevVip', 'rsALDevToDomP'),
         'vnsLIf': ManagedObjectName('vnsLDevVip', 'lIf-%s'),
         'vnsRsCIfAtt': ManagedObjectName('vnsLIf',
                                          'rscIfAtt-[%s]'),
