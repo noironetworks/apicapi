@@ -134,7 +134,7 @@ class ManagedObjectClass(object):
                                              'addr-[%s]'),
         'l3extInstP': ManagedObjectName('l3extOut', 'instP-%(name)s',
                                         name_fmt='__%s'),
-        'bgpExtP' : ManagedObjectName('l3extOut', 'bgpExtP'),
+        'bgpExtP': ManagedObjectName('l3extOut', 'bgpExtP'),
         'bgpPeerP': ManagedObjectName('l3extRsPathL3OutAtt', 'peerP-[%s]'),
         'bgpAsP__Peer': ManagedObjectName('bgpPeerP', 'as'),
         'bgpLocalAsnP': ManagedObjectName('bgpPeerP', 'localasn'),
