@@ -976,33 +976,15 @@ class APICManager(object):
                              pod_id, transaction=None)
             return
 
-        # detect old link (say, if changing port on switch)
-        hostlinks = []
         for hlink in self.db.get_switch_and_port_for_host(host):
             if hlink[0] == switch:
                 try:
                     if hlink == (switch, module, port):
                         # add is no-op, it already exists in DB
                         return
-                    else:
-                        # any other link to the same switch is old
-                        hostlinks.append(hlink)
                 except ValueError:
                     if hlink == (switch, module, port, ifname, pod_id):
                         return
-
-        # The deletion here only makes sense when there is only one
-        # hostLink entry per host. This was the case before for the
-        # config file option but not anymore. With multiple HostLinks
-        # support now, user can still do aimctl CLI to clean those up.
-        if hostlinks:
-            LOG.warn("Deleting unexpected link: %r" % hostlinks)
-            try:
-                self.db.delete_hostlink(
-                    host,
-                    self.db.get_hostlinks_for_host(host)[0]['ifname'])
-            except Exception as e:
-                LOG.exception(e)
 
         # provision the link
         self._db_add_hostlink(host, ifname, ifmac,
