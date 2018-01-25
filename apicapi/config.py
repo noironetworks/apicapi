@@ -414,6 +414,9 @@ def create_switch_dictionary():
     for switch_id in conf:
         switch_dict[switch_id] = switch_dict.get(switch_id, {})
         for host_list, port in conf[switch_id]:
+            if host_list == 'pod_id':
+                switch_dict[switch_id]['pod_id'] = port[0]
+                continue
             hosts = host_list.split(',')
             hosts = map(lambda a: a.decode('string_escape'), hosts)
             port = port[0]

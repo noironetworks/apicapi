@@ -264,8 +264,9 @@ class ConfigMixin(object):
         # Configure switch topology
         apic_mock_cfg = {
             'apic_switch:101': {'ubuntu1,ubuntu2': ['3/11']},
-            'apic_switch:102': {'rhel01,rhel02': ['4/21'],
-                                'rhel03': ['1/4/22']},
+            'apic_switch:102': {'rhel01|eth1,rhel02|eth2': ['4/21'],
+                                'rhel03|eth3': ['1/4/22'],
+                                'pod_id': '2'},
             'apic_physical_network:rack1': {
                 'hosts': ['host1, host2, host3 '],
                 'segment_type': ['vlan'],
@@ -279,8 +280,9 @@ class ConfigMixin(object):
                 '3/11': ['ubuntu1', 'ubuntu2'],
             },
             '102': {
-                '4/21': ['rhel01', 'rhel02'],
-                '1/4/22': ['rhel03'],
+                '4/21': ['rhel01|eth1', 'rhel02|eth2'],
+                '1/4/22': ['rhel03|eth3'],
+                'pod_id': '2'
             },
         }
         self.vpc_dict = {
