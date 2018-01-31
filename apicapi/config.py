@@ -32,6 +32,7 @@ apic_opts = [
     cfg.BoolOpt('enable_optimized_dhcp', default=True),
     cfg.BoolOpt('enable_optimized_metadata', default=False),
     cfg.StrOpt('default_l2_unknown_unicast', default='proxy'),
+    cfg.BoolOpt('default_unicast_routing', default=True),
     cfg.BoolOpt('default_arp_flooding', default=True),
     cfg.StrOpt('default_ep_move_detect', default='garp'),
     cfg.BoolOpt('default_enforce_subnet_check', default=False),
