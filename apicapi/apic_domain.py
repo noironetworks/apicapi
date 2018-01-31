@@ -59,18 +59,17 @@ class ApicDomain(object):
         pass
 
     def _create_vlan_namespace(self):
-        # Create VLAN namespace
+        # Create VLAN namespaces
         vlan_ns_dn = None
-        if self.vlan_ranges:
+        for vlan_range in self.vlan_ranges:
             vlan_ns_name = self.vlan_ns_name
-            vlan_range = self.vlan_ranges[0]
             (vlan_min, vlan_max) = vlan_range.split(':')
             vlan_ns_dn = self._ensure_vlan_ns_created_on_apic(
                 vlan_ns_name, vlan_min, vlan_max)
         return vlan_ns_dn
 
     def _ensure_vlan_ns_created_on_apic(self, name, vlan_min, vlan_max,
-                                       scope='static', transaction=None):
+                                        scope='static', transaction=None):
         """Creates a static VLAN namespace with the given vlan range."""
 
         ns_args = (name, scope)
