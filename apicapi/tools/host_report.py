@@ -131,6 +131,7 @@ mkdir -p var/log
   journalctl --no-pager -n 10000 -l > journalctl-all
   journalctl --no-pager -n 10000 -l -u agent-ovs.service > journalctl-agent-ovs
   ( find /var/log -type f -not -name \*\[0123456789z\] -print |
+    xargs file | grep ASCII | cut -d: -f1 |
     while read name
     do
       filename=`echo $name | cut -c10- | tr '/' '-'`
