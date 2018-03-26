@@ -1378,8 +1378,9 @@ class APICManager(object):
     def update_hostlink_port(self, host, switch, module, port):
         HostLink = self.get_hostlink_class()
         if HostLink:
-            with self.db.session.begin(subtransactions=True):
-                self.db.session.query(HostLink).filter_by(
+            session = self.db.get_session()
+            with session.begin(subtransactions=True):
+                session.query(HostLink).filter_by(
                     host=host,
                     swid=switch,
                     module=module).update({'port': port})
@@ -1387,17 +1388,19 @@ class APICManager(object):
     def get_hostlink_for_switch_module(self, swid, module):
         HostLink = self.get_hostlink_class()
         if HostLink:
-            with self.db.session.begin(subtransactions=True):
-                return self.db.session.query(HostLink).filter_by(
+            session = self.db.get_session()
+            with session.begin(subtransactions=True):
+                return session.query(HostLink).filter_by(
                     swid=swid, module=module).all()
 
     def clear_all_hostlinks(self):
         from sqlalchemy import orm
         HostLink = self.get_hostlink_class()
         if HostLink:
-            with self.db.session.begin(subtransactions=True):
+            session = self.db.get_session()
+            with session.begin(subtransactions=True):
                 try:
-                    self.db.session.query(HostLink).delete()
+                    session.query(HostLink).delete()
                 except orm.exc.NoResultFound:
                     return
 
@@ -1405,9 +1408,10 @@ class APICManager(object):
         from sqlalchemy import orm
         HostLink = self.get_hostlink_class()
         if HostLink:
-            with self.db.session.begin(subtransactions=True):
+            session = self.db.get_session()
+            with session.begin(subtransactions=True):
                 try:
-                    self.db.session.query(HostLink).\
+                    session.query(HostLink).\
                             filter(HostLink.ifname.like('static%')).\
                             delete(synchronize_session=False)
                 except orm.exc.NoResultFound:
