@@ -170,3 +170,22 @@ class TestCiscoApicNewConf(TestCiscoApicConfig):
     def setUp(self):
         # Switch to new-style APIC config
         super(TestCiscoApicNewConf, self).setUp(config_group='apic')
+
+
+class TestConfigParse(base.BaseTestCase):
+
+    def setUp(self):
+        super(TestConfigParse, self).setUp()
+        self.test_conf_files = [base.etcdir('apicapi.conf.test'),
+                                base.etcdir('apicapi.conf.test.2')]
+        self.mocked_get_config_files = mock.patch.object(
+            config, '_get_config_files').start()
+        self.mocked_get_config_files.return_value = self.test_conf_files
+        self.addCleanup(self.mocked_get_config_files.stop)
+
+    def test_parse_file(self):
+        parsed = config._parse_files()
+        # From file 1
+        self.assertTrue('apic_physdom:phys' in parsed[0])
+        # From file 2
+        self.assertTrue('apic_physdom:phys3' in parsed[0])
