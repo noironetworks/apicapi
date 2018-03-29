@@ -27,6 +27,7 @@ except ImportError:
 
 from apicapi import apic_client as apic
 from apicapi import apic_mapper as apic_mapper
+from apicapi import config as apic_cfg
 from apicapi.tests.unit.common import config  # noqa
 
 
@@ -309,10 +310,14 @@ class ConfigMixin(object):
             },
         }
         self.vlan_ranges = ['physnet0', 'physnet1:100:199']
+        self.old_parser = apic_cfg._parse_files
         self.mocked_parser = mock.patch.object(
-            cfg, 'MultiConfigParser').start()
-        self.mocked_parser.return_value.read.return_value = [apic_mock_cfg]
-        self.mocked_parser.return_value.parsed = [apic_mock_cfg]
+            apic_cfg, '_parse_files').start()
+        self.mocked_parser.return_value = [apic_mock_cfg]
+        self.addCleanup(self.restore_parser)
+
+    def restore_parser(self):
+        apic_cfg._parse_files = self.old_parser
 
     def override_config(self, opt, val, group=None):
         cfg.CONF.set_override(opt, val, group)

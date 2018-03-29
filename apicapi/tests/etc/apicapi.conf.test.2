@@ -1,0 +1,21 @@
+[database]
+connection = 'sqlite://'
+
+
+[apic]
+# Hostname:port list of APIC controllers
+apic_hosts = 1.1.1.4,1.1.1.5,1.1.1.6
+
+# Username for the APIC controller
+apic_username = admin2
+
+# Password for the APIC controller
+apic_password = password2
+
+# Whether use SSl for connecting to the APIC controller or not
+apic_use_ssl = False
+
+verify_ssl_certificate = False
+scope_names = False
+
+[apic_physdom:phys3]

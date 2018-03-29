@@ -10,7 +10,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import os
 import testtools
+
+from oslo_config import cfg
+
+CONF = cfg.CONF
+ROOTDIR = os.path.dirname(__file__)
+ETCDIR = os.path.join(ROOTDIR, 'etc')
+
+
+def etcdir(*p):
+    return os.path.join(ETCDIR, *p)
 
 
 class BaseTestCase(testtools.TestCase):

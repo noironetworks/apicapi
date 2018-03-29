@@ -393,13 +393,29 @@ def _get_config_files():
     return cfiles
 
 
+def _parse_files():
+    conf_files = _get_config_files()
+    try:
+        multi_parser = cfg.MultiConfigParser()
+        multi_parser.read(conf_files)
+        return multi_parser.parsed
+    except AttributeError:
+        # Oslo 6.0.0+
+        sections = {}
+        for filename in conf_files:
+            parser = cfg.ConfigParser(filename, sections)
+            try:
+                parser.parse()
+            except IOError:
+                continue
+        return [sections]
+
+
 def _get_specific_config(prefix):
     """retrieve config in the format [<prefix>:<value>]."""
     conf_dict = {}
-    conf_files = _get_config_files()
-    multi_parser = cfg.MultiConfigParser()
-    multi_parser.read(conf_files)
-    for parsed_file in multi_parser.parsed:
+    parsed = _parse_files()
+    for parsed_file in parsed:
         for parsed_item in parsed_file.keys():
             if parsed_item.startswith(prefix):
                 found_prefix, value = parsed_item.split(':')
