@@ -249,6 +249,12 @@ class ManagedObjectClass(object):
                                                'svcRedirectPol-%s'),
         'vnsRedirectDest': ManagedObjectName('vnsSvcRedirectPol',
                                              'RedirectDest_ip-[%s]'),
+        'vnsRsRedirectHealthGroup': ManagedObjectName('vnsRedirectDest',
+                                                      'rsRedirectHealthGroup'),
+        'vnsRsIPSLAMonitoringPol': ManagedObjectName('vnsSvcRedirectPol',
+                                                     'rsIPSLAMonitoringPol'),
+        'vnsRedirectHealthGroup': ManagedObjectName('vnsSvcCont',
+                                                    'redirectHealthGroup-%s'),
 
         # device-cluster objects for service-graph
         'vnsLDevVip': ManagedObjectName('fvTenant', 'lDevVip-%s'),
@@ -316,6 +322,10 @@ class ManagedObjectClass(object):
                                                 'p-%s-prot-%s-t-%s'),
         'vmmInjectedSvcEp': ManagedObjectName('vmmInjectedSvc', 'ep-%s'),
         'vmmInjectedContGrp': ManagedObjectName('vmmInjectedNs', 'grp-[%s]'),
+
+        'fvIPSLAMonitoringPol': ManagedObjectName('fvTenant',
+                                                  'ipslaMonitoringPol-%s'),
+
     }
 
     same_rn_types = {'hostprotSubj': ['vzSubj'],
