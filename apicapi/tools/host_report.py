@@ -117,11 +117,15 @@ mkdir opflex
   cp -r /var/lib/neutron neutron
   gbp_inspect -fpr -t dump -q DmtreeRoot > dmtree-root
   ovs-vsctl show > ovs-show
+  ovs-dpctl show > ovs-ports-dp
   ovs-ofctl dump-ports-desc br-int > ovs-ports
   ovs-ofctl dump-ports br-int > ovs-ports-stats
   ovs-ofctl -OOpenFlow13 dump-flows br-int > ovs-flows
-  ovs-dpctl show > ovs-ports-dp
   ovs-appctl dpif/tnl/igmp-dump br-int 8472 > ovs-igmp
+  ovs-ofctl dump-ports-desc br-fabric > ovs-ports
+  ovs-ofctl dump-ports br-fabric > ovs-ports-stats
+  ovs-ofctl -OOpenFlow13 dump-flows br-fabric > ovs-flows
+  ovs-appctl dpif/tnl/igmp-dump br-fabric 8472 > ovs-igmp
 
 prn "  Collecting log data (this can take some time) ..."
 cd $report_dir
