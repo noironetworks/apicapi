@@ -30,7 +30,7 @@ class ApicException(Exception):
             super(ApicException, self).__init__(self.message)
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return str(self.msg, 'utf-8')
 
 
 class InvalidConfig(ApicException):
