@@ -28,6 +28,9 @@ rm -f requirements.txt
 # Install other supporting files (like bash_completions)
 install -p -D -m 644 etc/apic.bash_completion \
     %{buildroot}%{_sysconfdir}/bash_completion.d/apic.bash_completion
+install -p -D -m 0644 \
+    rpm/bondwatch.service \
+    $RPM_BUILD_ROOT%{_unitdir}/bondwatch.service
 
 # Remove unused files
 rm -rf %{buildroot}%{python2_sitelib}/apicapi/tests
