@@ -1,10 +1,12 @@
 [Unit]
 Description=Bond watcher for UCS B Series bondedinterface
+After=network.target
 
 [Service]
+Type=simple
 ExecStart=/usr/bin/apic-bond-watch
+KillMode=process
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
-
