@@ -133,7 +133,7 @@ mkdir -p var/log
   date > date-reports
   cd var/log
   journalctl --no-pager -n 10000 -l > journalctl-all
-  journalctl --no-pager -n 10000 -l -u agent-ovs.service > journalctl-agent-ovs
+  journalctl --no-pager -n 10000 -l -u opflex-agent.service > journalctl-opflex-agent
   ( find /var/log -type f -not -name \*\[0123456789z\] -print |
     xargs file | grep ASCII | cut -d: -f1 |
     while read name
