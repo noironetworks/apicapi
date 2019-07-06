@@ -7,6 +7,7 @@ Type=simple
 ExecStart=/usr/bin/apic-bond-watch
 KillMode=process
 Restart=always
+EnvironmentFile=-/etc/environment
 
 [Install]
 WantedBy=multi-user.target

@@ -11,9 +11,12 @@ import sys
 import time
 
 
+# Get bond interface from environment, else use default
+bondif = os.environ['opflex_bondif'] if os.environ.get(
+    'opflex_bondif') else 'bond0'
 # Default config. First 2 params can be set by command-line args
 config = {
-    'bond-name': 'bond0',
+    'bond-name': bondif,
     'retry-interval': 1,
     'valid-uuid': 0,
     'proc-bond-path': '/proc/net/bonding',
