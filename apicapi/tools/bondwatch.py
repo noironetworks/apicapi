@@ -91,6 +91,7 @@ def main():
         err('Not a valid user. Exiting')
         return
 
+    logging.warn ("Apic bond watch service started for interface: %s", bondif)
     currmaster = None
     while True:
         try:
