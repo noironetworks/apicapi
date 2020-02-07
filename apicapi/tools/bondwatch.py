@@ -31,7 +31,7 @@ logging.basicConfig(
 def err(msg):
     e = sys.exc_info()[1]
     if e is not None:
-        logging.error(':'.join([msg, e.message]))
+        logging.error(':'.join([msg, e]))
     else:
         logging.error(msg)
 

@@ -192,7 +192,7 @@ def valid_path(key, value, **kwargs):
         __import__(value)
         sys.modules[value].HostLink
     except Exception as e:
-        ConfigValidator.RaiseUtils(value, key).re(reason=e.message)
+        ConfigValidator.RaiseUtils(value, key).re(reason=e)
 
 
 def not_null(key, value, **kwargs):
@@ -233,7 +233,7 @@ def valid_ip(key, value, **kwargs):
     try:
         netaddr.IPAddress(value, version=4)
     except netaddr.AddrFormatError as e:
-        util.re(reason=e.message)
+        util.re(reason=e)
 
 
 def valid_ip_range(key, value, **kwargs):

@@ -494,7 +494,7 @@ class ApicSession(object):
                                timeout=self.request_timeout, **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
                 LOG.info(('%s, falling back to a '
-                          'new address'), ex.message)
+                          'new address'), ex)
                 self.api_base.rotate(-1)
                 LOG.info(('New controller address: %s '), self.api_base[0])
         return request(self.api_base[0] + url, verify=self.verify, **kwargs)
@@ -1089,7 +1089,7 @@ class RestClient(ApicSession):
                             map(lambda y: y.renew(), renewable)
                             return True
                         except Exception as e:
-                            LOG.error(e.message)
+                            LOG.error(e)
         return False
 
     @contextlib.contextmanager

@@ -52,7 +52,7 @@ def pass_apic_client(f):
         except apic_client.rexc.SSLError as e:
             raise click.UsageError(
                 "Command failed with error: %s \nTry using option "
-                "'--no-secure' to skip certificate validation" % e.message)
+                "'--no-secure' to skip certificate validation" % e)
         return f(apic, *args, **kwargs)
     return inner
 
