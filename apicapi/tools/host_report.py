@@ -117,6 +117,7 @@ mkdir opflex
   cp -r /var/lib/neutron neutron
   gbp_inspect -fpr -t dump -q DmtreeRoot > dmtree-root
   gbp_inspect -urq DmtreeRoot > unresolved-policy
+  gbp_inspect -v > agent-version-githash
   ovs-vsctl show > ovs-show
   ovs-dpctl show > ovs-ports-dp
   ovs-ofctl dump-ports-desc br-int > ovs-ports
