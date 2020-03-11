@@ -15,6 +15,8 @@
 
 """Exceptions used by Cisco APIC ML2 mechanism driver."""
 
+import six
+
 
 class ApicException(Exception):
     message = ("An unknown exception occurred.")
@@ -30,7 +32,7 @@ class ApicException(Exception):
             super(ApicException, self).__init__(self.message)
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return six.text_type(self.msg)
 
 
 class InvalidConfig(ApicException):

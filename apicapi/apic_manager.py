@@ -264,7 +264,7 @@ class APICManager(object):
 
         # get configuration of ports connected to external networks
         ext_ports = set()
-        for _, ext_info in self.ext_net_dict.iteritems():
+        for _, ext_info in self.ext_net_dict.items():
             pre = ext_info.get('preexisting', 'false')
             pre = pre.lower() in ['true', 'yes', '1']
             switch = ext_info.get('switch')

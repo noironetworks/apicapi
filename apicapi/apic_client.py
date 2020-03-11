@@ -358,7 +358,7 @@ class ManagedObjectClass(object):
     prefix_to_mos['tag'] = 'tagInst'
     prefix_to_mos['vzSubj'] = 'subj'
 
-    mos_to_prefix = {v: k for k, v in prefix_to_mos.iteritems()}
+    mos_to_prefix = {v: k for k, v in prefix_to_mos.items()}
 
     # Note(Henry): The use of a mutable default argument _inst_cache is
     # intentional. It persists for the life of MoClass to cache instances.
@@ -494,7 +494,7 @@ class ApicSession(object):
                                timeout=self.request_timeout, **kwargs)
             except FALLBACK_EXCEPTIONS as ex:
                 LOG.info(('%s, falling back to a '
-                          'new address'), ex.message)
+                          'new address'), str(ex))
                 self.api_base.rotate(-1)
                 LOG.info(('New controller address: %s '), self.api_base[0])
         return request(self.api_base[0] + url, verify=self.verify, **kwargs)
@@ -545,7 +545,7 @@ class ApicSession(object):
         try:
             time.sleep((self.sleep + sleep_offset) -
                        (curr_call - self.last_call))
-        except IOError:
+        except (IOError, ValueError):
             # Negative sleep value
             pass
         if data is None:
@@ -601,7 +601,7 @@ class ApicSession(object):
         url = self._api_url(request)
         if kwargs:
             url += '?' + '&'.join(['%s=%s' % (k.replace('_', '-'), v)
-                                   for k, v in kwargs.iteritems()])
+                                   for k, v in kwargs.items()])
         return self._send(self.session.get, url)
 
     def get_mo(self, mo, *args):
@@ -855,7 +855,8 @@ class ManagedObjectAccess(object):
 
     def list_all(self, **data):
         imdata = self.session.list_mo(self.mo, **data)
-        return filter(None, [self._mo_attributes(obj) for obj in imdata])
+        return [_f for _f in [self._mo_attributes(obj) for obj in imdata]
+            if _f]
 
     def list_names(self, **data):
         return [obj['name'] for obj in self.list_all(**data)]
@@ -1086,10 +1087,11 @@ class RestClient(ApicSession):
                     current = self.get_mo(mo, *params)
                     if not current:
                         try:
-                            map(lambda y: y.renew(), renewable)
+                            for item in renewable:
+                                item.renew()
                             return True
                         except Exception as e:
-                            LOG.error(e.message)
+                            LOG.error(str(e))
         return False
 
     @contextlib.contextmanager
@@ -1223,7 +1225,7 @@ class DNManager(object):
                 raise DNManager.InvalidNameFormat()
             _, mos_and_rns = self.aci_decompose_dn_guess('/'.join(split[:-1]),
                                                          parent_type)
-            mo_types, rn_values = map(list, zip(*mos_and_rns))
+            mo_types, rn_values = [list(item) for item in zip(*mos_and_rns)]
             mo_types.append(ugly)
             rn_values.append(split[-1][split[-1].find('-') + 1:])
             return mo_types, rn_values

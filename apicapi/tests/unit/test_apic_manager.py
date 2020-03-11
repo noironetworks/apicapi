@@ -98,8 +98,8 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.addCleanup(mock.patch.stopall)
 
     def _get_ext_switches_to_provision(self):
-        return set([x['switch'] for x in self.external_network_dict.values()
-                    if x.get('switch')])
+        return set([x['switch'] for x in
+            self.external_network_dict.values() if x.get('switch')])
 
     def _check_call_list(self, expected, observed, check_all=True):
         for call in expected:
@@ -262,7 +262,7 @@ class TestCiscoApicManager(base.BaseTestCase,
 
         switch_dict_copy = copy.deepcopy(self.mgr.switch_dict)
         for value in switch_dict_copy.values():
-            for key in value.keys():
+            for key in list(value.keys()):
                 if key == 'pod_id':
                     del value[key]
 
@@ -326,7 +326,7 @@ class TestCiscoApicManager(base.BaseTestCase,
 
         switch_dict_copy = copy.deepcopy(self.mgr.switch_dict)
         for value in switch_dict_copy.values():
-            for key in value.keys():
+            for key in list(value.keys()):
                 if key == 'pod_id':
                     del value[key]
 
