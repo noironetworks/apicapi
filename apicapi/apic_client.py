@@ -31,13 +31,14 @@ LOG = None
 
 APIC_CODE_FORBIDDEN = str(requests.codes.forbidden)
 APIC_CODE_SSL_ERROR = str(requests.codes.gateway_timeout)
+APIC_CODE_UNAUTHORIZED = str(requests.codes.unauthorized)
 
 FALLBACK_EXCEPTIONS = (rexc.ConnectionError, rexc.Timeout,
                        rexc.TooManyRedirects, rexc.InvalidURL)
 SLEEP_TIME = 0.03
 SLEEP_ON_FULL_QUEUE = 1
 
-REFRESH_CODES = [APIC_CODE_FORBIDDEN, ]
+REFRESH_CODES = (APIC_CODE_FORBIDDEN, APIC_CODE_UNAUTHORIZED, )
 SCOPE = 'openstack_scope'
 MULTI_PARENT = ['faultInst', 'tagInst']
 DN_BASE = 'uni/'
