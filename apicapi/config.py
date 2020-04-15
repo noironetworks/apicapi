@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import codecs
 import os
 import re
 import sys
@@ -192,7 +193,7 @@ def valid_path(key, value, **kwargs):
         __import__(value)
         sys.modules[value].HostLink
     except Exception as e:
-        ConfigValidator.RaiseUtils(value, key).re(reason=e.message)
+        ConfigValidator.RaiseUtils(value, key).re(reason=str(e))
 
 
 def not_null(key, value, **kwargs):
@@ -233,7 +234,7 @@ def valid_ip(key, value, **kwargs):
     try:
         netaddr.IPAddress(value, version=4)
     except netaddr.AddrFormatError as e:
-        util.re(reason=e.message)
+        util.re(reason=str(e))
 
 
 def valid_ip_range(key, value, **kwargs):
@@ -434,7 +435,7 @@ def create_switch_dictionary():
                 switch_dict[switch_id]['pod_id'] = port[0]
                 continue
             hosts = host_list.split(',')
-            hosts = map(lambda a: a.decode('string_escape'), hosts)
+            hosts = [codecs.getdecoder('unicode_escape')(a)[0] for a in hosts]
             port = port[0]
             switch_dict[switch_id][port] = (
                 switch_dict[switch_id].get(port, []) + hosts)
@@ -446,7 +447,7 @@ def create_vpc_dictionary(apic_config):
     for pair in apic_config.apic_vpc_pairs:
         pair_tuple = pair.split(':')
         if (len(pair_tuple) != 2 or
-                any(map(lambda x: not x.isdigit(), pair_tuple))):
+                any([not x.isdigit() for x in pair_tuple])):
             # Validation error, ignore this item
             continue
         vpc_dict[pair_tuple[0]] = pair_tuple[1]
