@@ -1097,16 +1097,19 @@ class RestClient(ApicSession):
 
     @contextlib.contextmanager
     def transaction(self, transaction=None, ph=None, top_send=False):
-        if not transaction:
-            transaction = Transaction(self, top_send=top_send)
-            yield transaction
-            if transaction.root:
-                result = transaction.commit()
-                if ph is not None:
-                    ph.append(result)
-        else:
-            # Only the top owner will commit the transaction
-            yield transaction
+        try:
+            if not transaction:
+                transaction = Transaction(self, top_send=top_send)
+                yield transaction
+                if transaction.root:
+                    result = transaction.commit()
+                    if ph is not None:
+                        ph.append(result)
+            else:
+                # Only the top owner will commit the transaction
+                yield transaction
+        except StopIteration:
+            return
 
 
 class DNManager(object):
