@@ -327,10 +327,12 @@ class ManagedObjectClass(object):
         'fvIPSLAMonitoringPol': ManagedObjectName('fvTenant',
                                                   'ipslaMonitoringPol-%s'),
         # netflow
-        'vmmVSwitchPolicyCont': ManagedObjectName('vmmDomP', 'vsswitchpolcont'),
+        'vmmVSwitchPolicyCont': ManagedObjectName('vmmDomP',
+                                                  'vsswitchpolcont'),
         'vmmRsVswitchExporterPol':
-        ManagedObjectName('vmmVSwitchPolicyCont',
-                          'rsvswitchExporterPol-[uni/infra/vmmexporterpol-%s]'),
+        ManagedObjectName(
+                'vmmVSwitchPolicyCont',
+                'rsvswitchExporterPol-[uni/infra/vmmexporterpol-%s]'),
         'netflowVmmExporterPol': ManagedObjectName('infraInfra',
                                                    'vmmexporterpol-%s'),
     }
