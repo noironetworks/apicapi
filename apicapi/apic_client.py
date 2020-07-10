@@ -326,7 +326,10 @@ class ManagedObjectClass(object):
 
         'fvIPSLAMonitoringPol': ManagedObjectName('fvTenant',
                                                   'ipslaMonitoringPol-%s'),
-
+       #netflow
+       'vmmVSwitchPolicyCont': ManagedObjectName('vmmDomP', 'vsswitchpolcont'),
+       'vmmRsVswitchExporterPol': ManagedObjectName('vmmVSwitchPolicyCont', 'rsvswitchExporterPol-[uni/infra/vmmexporterpol-%s]'),
+       'netflowVmmExporterPol': ManagedObjectName('infraInfra', 'vmmexporterpol-%s'),
     }
 
     same_rn_types = {'hostprotSubj': ['vzSubj'],
