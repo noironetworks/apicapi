@@ -335,6 +335,27 @@ class ManagedObjectClass(object):
                 'rsvswitchExporterPol-[uni/infra/vmmexporterpol-%s]'),
         'netflowVmmExporterPol': ManagedObjectName('infraInfra',
                                                    'vmmexporterpol-%s'),
+
+        # ERSPAN
+        'spanVSrcGrp': ManagedObjectName('infraInfra', 'vsrcgrp-%s'),
+        'spanVSrcGrp__tn': ManagedObjectName('fvTenant', 'vsrcgrp-%s'),
+        'spanSpanLbl': ManagedObjectName('spanVSrcGrp', 'spanlbl-%s'),
+        'spanVSrc': ManagedObjectName('spanVSrcGrp', 'vsrc-%s'),
+        'spanRsSrcToVPort':
+        ManagedObjectName(
+                'spanVSrc',
+                'rssrcToVPort-[uni/tn-%(name)s/ap-%s/epg-%s/cep-%s]'),
+        'fvCEp': ManagedObjectName('fvAEPg', 'cep-%s'),
+        'spanVDestGrp': ManagedObjectName('infraInfra', 'vdestgrp-%s'),
+        'spanVDestGrp__tn': ManagedObjectName('fvTenant', 'vdestgrp-%s'),
+        'spanVDest': ManagedObjectName('spanVDestGrp', 'vdest-%s'),
+        'spanVEpgSummary': ManagedObjectName('spanVDest', 'vepgsummary'),
+        'infraRsSpanVDestGrp':
+        ManagedObjectName(
+                'infraAccBndlGrp', 'rsspanVDestGrp-%(tnSpanVDestGrpName)s'),
+        'infraRsSpanVSrcGrp':
+        ManagedObjectName(
+                'infraAccBndlGrp', 'rsspanVSrcGrp-%(tnSpanVSrcGrpName)s'),
     }
 
     same_rn_types = {'hostprotSubj': ['vzSubj'],
