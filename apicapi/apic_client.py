@@ -354,21 +354,18 @@ class ManagedObjectClass(object):
         'spanVSrcGrp__tn': ManagedObjectName('fvTenant', 'vsrcgrp-%s'),
         'spanSpanLbl': ManagedObjectName('spanVSrcGrp', 'spanlbl-%s'),
         'spanVSrc': ManagedObjectName('spanVSrcGrp', 'vsrc-%s'),
-        'spanRsSrcToVPort':
-        ManagedObjectName(
-                'spanVSrc',
-                'rssrcToVPort-[uni/tn-%(name)s/ap-%s/epg-%s/cep-%s]'),
-        'fvCEp': ManagedObjectName('fvAEPg', 'cep-%s'),
+        'spanRsSrcToVPort': ManagedObjectName('spanVSrc', 'rssrcToVPort-[%s]'),
         'spanVDestGrp': ManagedObjectName('infraInfra', 'vdestgrp-%s'),
         'spanVDestGrp__tn': ManagedObjectName('fvTenant', 'vdestgrp-%s'),
         'spanVDest': ManagedObjectName('spanVDestGrp', 'vdest-%s'),
         'spanVEpgSummary': ManagedObjectName('spanVDest', 'vepgsummary'),
-        'infraRsSpanVDestGrp':
-        ManagedObjectName(
-                'infraAccBndlGrp', 'rsspanVDestGrp-%(tnSpanVDestGrpName)s'),
-        'infraRsSpanVSrcGrp':
-        ManagedObjectName(
-                'infraAccBndlGrp', 'rsspanVSrcGrp-%(tnSpanVSrcGrpName)s'),
+        'infraRsSpanVSrcGrp': ManagedObjectName('infraAccBndlGrp',
+                                                'rsspanVSrcGrp-%(name)s',
+                                                name_fmt='__%s'),
+        'infraRsSpanVSrcGrp__ap': ManagedObjectName('infraAccPortGrp',
+                                                    'rsspanVSrcGrp-%(name)s',
+                                                    name_fmt='__%s'),
+
     }
 
     same_rn_types = {'hostprotSubj': ['vzSubj'],
