@@ -352,6 +352,12 @@ class ManagedObjectClass(object):
         'infraRsSpanVSrcGrp__ap': ManagedObjectName('infraAccPortGrp',
                                                     'rsspanVSrcGrp-%(name)s',
                                                     name_fmt='__%s'),
+        'infraRsSpanVDestGrp': ManagedObjectName('infraAccBndlGrp',
+                                                'rsspanVDestGrp-%(name)s',
+                                                name_fmt='__%s'),
+        'infraRsSpanVDestGrp__ap': ManagedObjectName('infraAccPortGrp',
+                                                    'rsspanVDestGrp-%(name)s',
+                                                    name_fmt='__%s'),
 
     }
 
