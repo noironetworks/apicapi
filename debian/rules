@@ -6,13 +6,13 @@ DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/default.mk
 
 %:
-	dh $@ --with python2 --buildsystem=python_distutils
+	dh $@ --with python2 --buildsystem=pybuild
 
 override_dh_auto_clean:
 	dh_clean
 
 override_dh_auto_install:
-	dh_auto_install --  -O1 --install-data /
+	dh_auto_install
 
 ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
