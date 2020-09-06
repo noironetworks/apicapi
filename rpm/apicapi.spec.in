@@ -7,9 +7,9 @@ URL:		http://github.com/noironetworks/apicapi
 Source:		apicapi-%{version}.tar.gz
 BuildArch:	noarch
 BuildRequires:	python2-devel
-BuildRequires:	python-pbr
-BuildRequires:	python-setuptools
-Requires:	python-oslo-config >= 1.4.0
+BuildRequires:	python2-pbr
+BuildRequires:	python2-setuptools
+Requires:	python2-oslo-config >= 1.4.0
 Requires:	python-click >= 3.3
 
 %description
