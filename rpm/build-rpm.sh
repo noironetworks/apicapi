@@ -18,6 +18,7 @@ rm -rf rpmbuild
 # Prepare build scripts for python3
 cp rpm/apicapi.spec.in .
 
+sed -i "s/python-/python3-/g" rpm/apicapi.spec.in
 sed -i "s/python2/python3/g" rpm/apicapi.spec.in
 sed -i "s/Name:           %{srcname}/Name:           python3-%{srcname}/g" rpm/apicapi.spec.in
 
