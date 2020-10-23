@@ -44,6 +44,6 @@ def get_neutron_client(*args, **kwargs):
     try:
         n_shell.authenticate_user()
     except exc.CommandError as e:
-        raise click.BadParameter(e.message)
+        raise click.BadParameter(str(e))
 
     return n_shell.client_manager.neutron

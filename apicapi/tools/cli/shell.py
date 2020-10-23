@@ -35,7 +35,7 @@ def neutron_sync(neutron, *args, **kwargs):
     try:
         neutron.create_network({'network': {'name': 'apic-sync-network'}})
     except Exception as e:
-        if message in e.message:
+        if message in str(e):
             click.echo("Synchronization complete.")
         elif (isinstance(e, n_exc.NeutronClientException) and
               e.status_code == 504):

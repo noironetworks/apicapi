@@ -376,7 +376,7 @@ class APICManager(object):
         except cexc.ApicResponseNotOk as ex:
             # Ignore for conflicting profiles
             # TODO(ivar): check err_code in the exception
-            LOG.warn(ex.message)
+            LOG.warn(str(ex))
 
         with self.apic.transaction(transaction) as trs:
             self.ensure_port_profile_created_for_switch(
@@ -1381,7 +1381,7 @@ class APICManager(object):
             __import__(self.apic_model)
             return sys.modules[self.apic_model].HostLink
         except Exception as e:
-            LOG.warn("Couldn't load HostLink class: %s", e.message)
+            LOG.warn("Couldn't load HostLink class: %s", str(e))
         return None
 
     def update_hostlink_port(self, host, switch, module, port):
