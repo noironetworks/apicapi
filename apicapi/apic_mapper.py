@@ -158,7 +158,7 @@ class APICNameMapper(object):
                     name = func(inst, context, resource_id)
                 except Exception as e:
                     LOG.warn(("Exception in looking up name %s"), name_type)
-                    LOG.error(e.message)
+                    LOG.error(str(e))
 
                 purged_id = re.sub(r"-+", "-", resource_id)
                 result = purged_id[:inst.min_suffix]
