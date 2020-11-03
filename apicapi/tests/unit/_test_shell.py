@@ -38,6 +38,10 @@ class TestShell(base.BaseTestCase):
             '--apic-username', 'admin',
             '--apic-password', 'mydirtylittlesecret',
         ]
+        self.apic_erspan_command_options = [
+            '--neutron_port', '8363df37-1e3d-4848-8dac-c72724ed5019',
+            '--dest_ip', '1.2.3.4',
+            '--flow_id', '1']
         self.neutron = mock.patch(
             'neutronclient.common.clientmanager.ClientManager.neutron').start()
 
@@ -64,3 +68,8 @@ class TestShell(base.BaseTestCase):
         self.assertIsNotNone(result.exception)
         self.assertTrue("'--no-secure' to skip certificate validation" in
                         result.output)
+
+    def test_erspan_create(self):
+        result = self.invoke(shell.apicapi, [
+            'erspan-create'] + self.apic_erspan_command_options)
+        self.assertFalse(result.exception)
