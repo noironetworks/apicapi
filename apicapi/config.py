@@ -417,11 +417,12 @@ def _get_specific_config(prefix):
     conf_dict = {}
     parsed = _parse_files()
     for parsed_file in parsed:
-        for parsed_item in parsed_file.keys():
+        for parsed_item in list(parsed_file.keys()):
             if parsed_item.startswith(prefix):
                 found_prefix, value = parsed_item.split(':')
                 if found_prefix.lower() == prefix.lower():
-                    conf_dict[value.strip()] = parsed_file[parsed_item].items()
+                    conf_dict[value.strip()] = list(
+                            parsed_file[parsed_item].items())
     return conf_dict
 
 

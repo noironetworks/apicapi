@@ -99,7 +99,7 @@ class TestCiscoApicManager(base.BaseTestCase,
 
     def _get_ext_switches_to_provision(self):
         return set([x['switch'] for x in
-            self.external_network_dict.values() if x.get('switch')])
+            list(self.external_network_dict.values()) if x.get('switch')])
 
     def _check_call_list(self, expected, observed, check_all=True):
         for call in expected:
@@ -261,14 +261,14 @@ class TestCiscoApicManager(base.BaseTestCase,
             self._ensure_infra_created_seq1_setup())
 
         switch_dict_copy = copy.deepcopy(self.mgr.switch_dict)
-        for value in switch_dict_copy.values():
+        for value in list(switch_dict_copy.values()):
             for key in list(value.keys()):
                 if key == 'pod_id':
                     del value[key]
 
         num_links = sum([len(j)
-                        for i in switch_dict_copy.values()
-                        for j in i.values()])
+                        for i in list(switch_dict_copy.values())
+                        for j in list(i.values())])
         num_ext_switch = len(self._get_ext_switches_to_provision())
 
         self.mgr.db.add_hostlink = mock.Mock()
@@ -325,14 +325,14 @@ class TestCiscoApicManager(base.BaseTestCase,
         self.assert_responses_drained()
 
         switch_dict_copy = copy.deepcopy(self.mgr.switch_dict)
-        for value in switch_dict_copy.values():
+        for value in list(switch_dict_copy.values()):
             for key in list(value.keys()):
                 if key == 'pod_id':
                     del value[key]
 
         num_links = sum([len(j)
-                        for i in switch_dict_copy.values()
-                        for j in i.values()])
+                        for i in list(switch_dict_copy.values())
+                        for j in list(i.values())])
         num_ext_switch = len(self._get_ext_switches_to_provision())
         self.assertEqual(np_create_for_switch.call_count,
                          num_links + num_ext_switch)
@@ -473,7 +473,7 @@ class TestCiscoApicManager(base.BaseTestCase,
             self.mock_response_for_post(self.get_top_container(
                 self.mgr.apic.infraAttEntityP.mo))
         else:
-            self.mock_error_post_response(exc, code='103', text=u'Fail')
+            self.mock_error_post_response(exc, code='103', text='Fail')
 
     def test_ensure_entity_profile_created_new(self):
         self._mock_phys_dom_prereq(mocked.APIC_DOMAIN)

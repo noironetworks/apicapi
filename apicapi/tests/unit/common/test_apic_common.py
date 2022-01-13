@@ -258,7 +258,7 @@ class ConfigMixin(object):
             'apic_entity_profile': APIC_ATT_ENT_PROF,
             'apic_function_profile': APIC_FUNC_PROF,
         }
-        for opt, val in apic_test_config.items():
+        for opt, val in list(apic_test_config.items()):
             self.override_config(opt, val, self.config_group)
         self.apic_config = cfg.CONF.ml2_cisco_apic
 

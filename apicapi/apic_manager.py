@@ -264,7 +264,7 @@ class APICManager(object):
 
         # get configuration of ports connected to external networks
         ext_ports = set()
-        for _, ext_info in self.ext_net_dict.items():
+        for _, ext_info in list(self.ext_net_dict.items()):
             pre = ext_info.get('preexisting', 'false')
             pre = pre.lower() in ['true', 'yes', '1']
             switch = ext_info.get('switch')
@@ -1443,11 +1443,11 @@ class APICManager(object):
     def retrieve_domains(self, log, network_config):
         domains = []
         if cfg.CONF.apic.apic_username is not None:
-            for name, conf in config.create_physdom_dictionary().items():
+            for name, conf in list(config.create_physdom_dictionary().items()):
                 domains.append(apic_domain.PhysDom(
                     self.apic_system_id, self.apic, log, self.apic_config,
                     name, conf, network_config))
-            for name, conf in config.create_vmdom_dictionary().items():
+            for name, conf in list(config.create_vmdom_dictionary().items()):
                 domains.append(apic_domain.VmDomain(
                     self.apic_system_id, self.apic, log, self.apic_config,
                     name, conf, network_config))

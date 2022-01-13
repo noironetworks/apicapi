@@ -103,11 +103,12 @@ def _get_specific_config(prefix):
     multi_parser = cfg.MultiConfigParser()
     multi_parser.read(cfg.CONF.config_file)
     for parsed_file in multi_parser.parsed:
-        for parsed_item in parsed_file.keys():
+        for parsed_item in list(parsed_file.keys()):
             if parsed_item.startswith(prefix):
                 switch, switch_id = parsed_item.split(':')
                 if switch.lower() == prefix:
-                    conf_dict[switch_id] = parsed_file[parsed_item].items()
+                    conf_dict[switch_id] = list(
+                            parsed_file[parsed_item].items())
     return conf_dict
 
 
@@ -118,7 +119,7 @@ def create_switch_dictionary():
         switch_dict[switch_id] = switch_dict.get(switch_id, {})
         for host_list, port in conf[switch_id]:
             hosts = host_list.split(',')
-            hosts = map(lambda a: a.decode('string_escape'), hosts)
+            hosts = [a.decode('string_escape') for a in hosts]
             port = port[0]
             switch_dict[switch_id][port] = (
                 switch_dict[switch_id].get(port, []) + hosts)
@@ -130,7 +131,7 @@ def create_vpc_dictionary():
     for pair in cfg.CONF.ml2_cisco_apic.apic_vpc_pairs:
         pair_tuple = pair.split(':')
         if (len(pair_tuple) != 2 or
-                any(map(lambda x: not x.isdigit(), pair_tuple))):
+                any([not x.isdigit() for x in pair_tuple])):
             # Validation error, ignore this item
             continue
         vpc_dict[pair_tuple[0]] = pair_tuple[1]
