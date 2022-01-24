@@ -31,7 +31,7 @@ class ShellWrapper(shell.NeutronShell):
 
     def __init__(self, apiversion, **kwargs):
         self.options = Options()
-        for k, v in kwargs.iteritems():
+        for k, v in list(kwargs.items()):
             setattr(self.options, k, v)
         self.auth_client = None
         self.api_version = apiversion

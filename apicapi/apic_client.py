@@ -397,14 +397,14 @@ class ManagedObjectClass(object):
     prefix_to_mos = {
         (x.rn_fmt[:x.rn_fmt.find('-')] if '-' in x.rn_fmt else x.rn_fmt):
             _to_klass_name(y)
-        for y, x in supported_mos.items()
+        for y, x in list(supported_mos.items())
     }
     prefix_to_mos['fault'] = 'faultInst'
     prefix_to_mos['health'] = 'healthInst'
     prefix_to_mos['tag'] = 'tagInst'
     prefix_to_mos['vzSubj'] = 'subj'
 
-    mos_to_prefix = {v: k for k, v in prefix_to_mos.items()}
+    mos_to_prefix = {v: k for k, v in list(prefix_to_mos.items())}
 
     # Note(Henry): The use of a mutable default argument _inst_cache is
     # intentional. It persists for the life of MoClass to cache instances.
@@ -647,7 +647,7 @@ class ApicSession(object):
         url = self._api_url(request)
         if kwargs:
             url += '?' + '&'.join(['%s=%s' % (k.replace('_', '-'), v)
-                                   for k, v in kwargs.items()])
+                                   for k, v in list(kwargs.items())])
         return self._send(self.session.get, url)
 
     def get_mo(self, mo, *args):
@@ -720,7 +720,10 @@ class ApicSession(object):
         if response.status_code == requests.codes.ok:
             attributes = imdata[0]['aaaLogin']['attributes']
             try:
-                self.cookie = {'APIC-Cookie': attributes['token']}
+                cookie = attributes['token']
+                if hasattr('decode', cookie):
+                    cookie = cookie.decode('utf-8')
+                self.cookie = {'APIC-Cookie': cookie}
             except KeyError:
                 raise cexc.ApicResponseNoCookie(request=request)
             timeout = int(attributes['refreshTimeoutSeconds'])
@@ -749,7 +752,7 @@ class ApicSession(object):
         url = url.replace('//', '/')
         payLoad = req + '/api' + url + kwargs.get('data', '')
         signedDigest = crypto.sign(self.private_key, payLoad, self.sign_hash)
-        signature = base64.b64encode(signedDigest)
+        signature = base64.b64encode(signedDigest).decode('utf-8')
         kwargs['cookies'] = {
             'APIC-Request-Signature': signature,
             'APIC-Certificate-Algorithm': self.sign_algo,

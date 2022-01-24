@@ -76,7 +76,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
     def test_client_session_login_fail(self):
         self.mock_error_post_response(requests.codes.unauthorized,
                                       code='599',
-                                      text=u'Fake error')
+                                      text='Fake error')
         self.assertRaises(cexc.ApicResponseNotOk, self.apic.login,
                           mocked.APIC_USR, mocked.APIC_PWD)
 
@@ -162,7 +162,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
     def test_session_timeout_refresh_error(self):
         self._mock_authenticate(timeout=-1)
         self.mock_error_get_response(requests.codes.timeout,
-                                     code='503', text=u'timed out')
+                                     code='503', text='timed out')
         self.assertRaises(cexc.ApicResponseNotOk,
                           self.apic.fvTenant.get, mocked.APIC_TENANT)
 
@@ -171,7 +171,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         # Client will try to get refresh, we fake a refresh error.
         self.mock_error_get_response(requests.codes.bad_request,
                                      code='403',
-                                     text=u'Token was invalid. Expired.')
+                                     text='Token was invalid. Expired.')
         # Client will then try to re-login.
         self.mock_apic_manager_login_responses()
         # Finally the client will try to get the tenant.
@@ -185,7 +185,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
             # For each initial get request we mock a bad token.
             self.mock_error_get_response(requests.codes.bad_request,
                                          code=http_response,
-                                         text=u'Token was invalid. Expired.')
+                                         text='Token was invalid. Expired.')
             # Client will then try to re-login.
             self.mock_apic_manager_login_responses()
             # Then the client will retry to get the tenant.
@@ -252,7 +252,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self._mock_authenticate()
         self.mock_error_post_response(requests.codes.bad_request,
                                       code='103',
-                                      text=u'Fake 103 error')
+                                      text='Fake 103 error')
         self.assertRaises(cexc.ApicResponseNotOk,
                           self.apic.physDomP.create, mocked.APIC_DOMAIN)
 
@@ -278,7 +278,7 @@ class TestCiscoApicClient(base.BaseTestCase, mocked.ControllerMixin):
         self._mock_authenticate()
         self.mock_error_post_response(requests.codes.bad_request,
                                       code='not103',
-                                      text=u'Fake not103 error')
+                                      text='Fake not103 error')
         bd_args = mocked.APIC_TENANT, mocked.APIC_NETWORK
         self.assertRaises(cexc.ApicResponseNotOk,
                           self.apic.fvBD.create, *bd_args)
