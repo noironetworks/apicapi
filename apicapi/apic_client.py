@@ -95,6 +95,7 @@ class ManagedObjectClass(object):
                                          name_fmt='__%s'),
         'fvRsBd': ManagedObjectName('fvAEPg', 'rsbd'),
         'fvSubnet': ManagedObjectName('fvBD', 'subnet-[%s]'),
+        'fvSubnet__epg': ManagedObjectName('fvAEPg', 'subnet-[%s]'),
         'fvCtx': ManagedObjectName('fvTenant', 'ctx-%(name)s',
                                    name_fmt='__%s'),
         'fvRsCtx': ManagedObjectName('fvBD', 'rsctx'),
