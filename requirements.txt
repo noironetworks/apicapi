@@ -4,6 +4,6 @@
 
 oslo.config>=1.4.0  # Apache-2.0
 sqlalchemy
-pyOpenSSL>=16.2.0
+pyOpenSSL>=16.2.0,<=22.0.0
 Click>=5.1
 requests
