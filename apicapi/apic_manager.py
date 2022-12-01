@@ -57,7 +57,7 @@ CP_FILTER = 'os-filter'
 CP_ENTRY = 'os-entry'
 CP_INTERFACE = 'os-interface'
 
-MAX_APIC_SYSID_LEN = 16
+MAX_APIC_SYSID_LEN = 24
 
 LOG = None
 
