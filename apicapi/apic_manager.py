@@ -75,7 +75,8 @@ class APICManager(object):
     def __init__(self, db, log, network_config, apic_config,
                  keyclient=None, keystone_authtoken=None,
                  apic_system_id='openstack', default_apic_model=None,
-                 keysession=None, keystoneclientv3=None):
+                 keysession=None, keystoneclientv3=None,
+                 apic_system_id_length=MAX_APIC_SYSID_LEN):
         # Network config looks like follows:
         # network_config = {
         #     'vlan_ranges': cfg.CONF.ml2_type_vlan.network_vlan_ranges,
@@ -85,9 +86,9 @@ class APICManager(object):
         #     config.create_external_network_dictionary(),
         # }
 
-        if len(apic_system_id) > MAX_APIC_SYSID_LEN:
+        if len(apic_system_id) > apic_system_id_length:
             raise Exception(
-                'Apic system ID max length is ' + str(MAX_APIC_SYSID_LEN))
+                'Apic system ID max length is ' + str(apic_system_id_length))
         self.apic_system_id = apic_system_id
 
         # If the following keys are not set (which will happen once deprecation
