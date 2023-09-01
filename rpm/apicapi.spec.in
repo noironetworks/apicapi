@@ -1,6 +1,6 @@
 %global srcname apicapi
 
-Name:           %{srcname}
+Name:           python3-%{srcname}
 Version:	@VERSION@
 Release:	@RELEASE@%{?dist}
 Summary:	Python interface to Cisco APIC APIs
@@ -8,11 +8,11 @@ License:	ASL 2.0
 URL:		http://github.com/noironetworks/%{srcname}
 Source:		%{srcname}-%{version}.tar.gz
 BuildArch:	noarch
-BuildRequires:	python2-devel
-BuildRequires:	python2-pbr
-BuildRequires:	python2-setuptools
-Requires:	python2-oslo-config >= 1.4.0
-Requires:	python-click >= 3.3
+BuildRequires:	python3-devel
+BuildRequires:	python3-pbr
+BuildRequires:	python3-setuptools
+Requires:	python3-oslo-config >= 1.4.0
+Requires:	python3-click >= 3.3
 
 %description
 Library that provides an interface to the APIC REST APIs
@@ -22,10 +22,10 @@ Library that provides an interface to the APIC REST APIs
 rm -f requirements.txt
 
 %build
-%{__python2} setup.py build
+%{__python3} setup.py build
 
 %install
-%{__python2} setup.py install -O1 --install-data / --skip-build --root %{buildroot}
+%{__python3} setup.py install -O1 --install-data / --skip-build --root %{buildroot}
 
 # Install other supporting files (like bash_completions)
 install -p -D -m 644 etc/apic.bash_completion \
@@ -35,12 +35,12 @@ install -p -D -m 0644 \
     $RPM_BUILD_ROOT%{_unitdir}/apic-bond-watch.service
 
 # Remove unused files
-rm -rf %{buildroot}%{python2_sitelib}/%{srcname}/tests
+rm -rf %{buildroot}%{python3_sitelib}/%{srcname}/tests
 
 %files
 %doc README.rst
-%{python2_sitelib}/%{srcname}
-%{python2_sitelib}/%{srcname}-%%{version}*.egg-info
+%{python3_sitelib}/%{srcname}
+%{python3_sitelib}/%{srcname}-%%{version}*.egg-info
 %{_bindir}/apic
 %{_bindir}/apic-bond-watch
 %{_sysconfdir}/bash_completion.d
