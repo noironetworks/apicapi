@@ -1,17 +1,17 @@
 Source: apicapi
-Section: python
+Section: python3
 Priority: optional
 Maintainer: Cisco Systems, Inc. <apicapi@noironetworks.com>
-Build-Depends: debhelper (>= 9), python-setuptools (>= 3.3), python-all (>= 2.7),
-               dh-python
+Build-Depends: debhelper (>= 9), python3-setuptools (>= 3.3), python3-all (>= 2.7),
+               dh-python3
 Standards-Version: 3.9.5
 Homepage: http://github.com/noironetworks/apicapi/
 Vcs-Git: git://github.com/noironetworks/apicapi.git
 Vcs-Browser: http://github.com/noironetworks/apicapi/
 
-Package: python-apicapi
+Package: python3-apicapi
 Architecture: all
-Depends: python-click-cli (>=3.3) | python-click (>=6.2), python-oslo.config (>=1.4),
-         ${misc:Depends}, ${python:Depends}
-Description: Python2.7 interface to Cisco APIC APIs
+Depends: python3-click-cli (>=3.3) | python3-click (>=6.2), python3-oslo.config (>=1.4),
+         ${misc:Depends}, ${python3:Depends}
+Description: Python3 interface to Cisco APIC APIs
  Library that provides an interface to the APIC REST APIs
