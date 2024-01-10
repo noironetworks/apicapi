@@ -260,6 +260,12 @@ class ManagedObjectClass(object):
         'hostprotRule': ManagedObjectName('hostprotSubj', 'rule-%s'),
         'hostprotRemoteIp': ManagedObjectName('hostprotRule', 'ip-[%s]'),
 
+        'hostprotRemoteIpContainer': ManagedObjectName('hostprotPol',
+                                                       'remoteipcont'),
+        'hostprotRemoteIp__cont': ManagedObjectName('remoteip',
+                                                       'ip-[%s]'),
+        'hostprotRsRemoteIpContainer': ManagedObjectName('hostprotRule',
+                                                   'rsremoteIpContainer-[%s]'),
         # redirect-policy objects for service-graph
         'vnsSvcCont': ManagedObjectName('fvTenant', 'svcCont'),
         'vnsSvcRedirectPol': ManagedObjectName('vnsSvcCont',
