@@ -101,6 +101,7 @@ class ManagedObjectClass(object):
         'fvRsCtx': ManagedObjectName('fvBD', 'rsctx'),
         'fvAp': ManagedObjectName('fvTenant', 'ap-%s'),
         'fvAEPg': ManagedObjectName('fvAp', 'epg-%s'),
+        'staticPt': ManagedObjectName('fvAEPg', 'rsstpt-%s'),
         'fvRsProv': ManagedObjectName('fvAEPg', 'rsprov-%s'),
         'fvRsCons': ManagedObjectName('fvAEPg', 'rscons-%s'),
         'fvRsConsIf': ManagedObjectName('fvAEPg', 'rsconsif-%s'),
