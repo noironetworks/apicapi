@@ -13,33 +13,4 @@ function buildPackages {
     rpmbuild --clean -ba --define "_topdir $BUILD_DIR" $BUILD_DIR/SPECS/$SPEC_FILE
 }
 
-function savePackages {
-    # Save the python2 packages
-    cp rpmbuild/RPMS/noarch/*.rpm .
-    cp rpmbuild/SRPMS/*.rpm .
-    rm -rf rpmbuild
-}
-
-function python3Packaging {
-    # Prepare build scripts for python3
-    cp rpm/apicapi.spec.in .
-
-    sed -i "s/python-/python3-/g" rpm/apicapi.spec.in
-    sed -i "s/python2/python3/g" rpm/apicapi.spec.in
-    sed -i "s/Name:           %{srcname}/Name:           python3-%{srcname}/g" rpm/apicapi.spec.in
-}
-
-function restorePackages {
-    # restore the python2 packages
-    mv *.src.rpm rpmbuild/SRPMS/
-    mv *.noarch.rpm rpmbuild/RPMS/noarch/
-
-    # Restore the spec file
-    mv apicapi.spec.in rpm/apicapi.spec.in
-}
-
-buildPackages python2
-savePackages
-python3Packaging
 buildPackages python3
-restorePackages
