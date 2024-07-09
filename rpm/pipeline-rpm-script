@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'noiro-build-host'
+    }
     stages {
         stage('Main Script') {
             steps {
