@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'noiro-build-host'
+        label 'noiro-build-101.cisco.com'
     }
     stages {
         stage('Main Script') {
