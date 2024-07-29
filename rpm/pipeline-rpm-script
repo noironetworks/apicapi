@@ -3,12 +3,29 @@ pipeline {
         label 'noiro-build-101.cisco.com'
     }
     stages {
-        stage('Main Script') {
+        stage('Build RPM') {
             steps {
                 script {
                     sh """
                         BUILD_DIR=$WORKSPACE/rpmbuild RELEASE=$BUILD_NUMBER ./rpm/build-rpm.sh
                     """
+                }
+            }
+        }
+        stage('Sign RPM') {
+            steps {
+                 withCredentials([
+                    conjurSecretCredential(credentialsId: 'noiro-conjur-keeper-role-id', variable: 'KEEPER_ROLE_ID'),
+                    conjurSecretCredential(credentialsId: 'noiro-conjur-keeper-secret-id', variable: 'KEEPER_SECRET')
+                    ]) {
+                    script {
+                        // Handle empty params.SIGNUSER2 and pass empty string if it is
+                        def signUser2 = params.SIGNUSER2 ?: 'empty'
+                        // Execute sign-rpm.sh with Vault credentials passed as parameters
+                        sh """
+                            ./rpm/sign-rpm.sh $WORKSPACE/rpmbuild ${params.SIGNUSER1} ${signUser2} ${params.ReleaseBuild}
+                        """
+                    }
                 }
             }
         }
