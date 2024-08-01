@@ -4,7 +4,7 @@ pipeline {
     }
     environment {
         ARTIFACTORY_USER = 'noiro.gen'
-        ARTIFACTORY_URL = 'https://engci-maven.cisco.com/artifactory/noiro-snapshot/aci-integration-module/master/$BUILD_NUMBER'
+        ARTIFACTORY_URL = 'https://engci-maven.cisco.com/artifactory/noiro-snapshot/apicapi/master/$BUILD_NUMBER'
     }
     stages {
         stage('Build RPM') {
