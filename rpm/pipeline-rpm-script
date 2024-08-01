@@ -2,6 +2,10 @@ pipeline {
     agent {
         label 'noiro-build-101.cisco.com'
     }
+    environment {
+        ARTIFACTORY_USER = 'noiro.gen'
+        ARTIFACTORY_URL = 'https://engci-maven.cisco.com/artifactory/noiro-snapshot/aci-integration-module/master/$BUILD_NUMBER'
+    }
     stages {
         stage('Build RPM') {
             steps {
@@ -26,6 +30,21 @@ pipeline {
                             ./rpm/sign-rpm.sh $WORKSPACE/rpmbuild ${params.SIGNUSER1} ${signUser2} ${params.ReleaseBuild}
                         """
                     }
+                }
+            }
+        }
+        stage('Push artifactories') {
+            steps {
+                script {
+                    withCredentials([conjurSecretCredential(credentialsId: 'noiro-conjur-artifactory-token', variable: 'ARTIFACT_TOKEN')]) {
+                        script {
+                            sh """
+                                for rpm in "$WORKSPACE/rpmbuild/SRPMS/"* "$WORKSPACE/rpmbuild/RPMS/noarch/"*; do
+                                    curl -v -u ${ARTIFACTORY_USER}:\${ARTIFACT_TOKEN} -X PUT "${ARTIFACTORY_URL}/\$(basename \$rpm)" -T "\$rpm"
+                                done 
+                            """
+                        }
+                    } 
                 }
             }
         }
