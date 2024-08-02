@@ -70,6 +70,7 @@ SRPMS_RPM_FILES=$(find "$SRPMS_DIR" -type f -name "*.rpm" | grep "$BUILD_NUMBER"
 
 # Define the CSV file path
 CSV_FILE="$SIGNHELPER_DIR/rpm_files.csv"
+> $CSV_FILE
 # Append RPM file paths to the CSV file
 for RPM_FILE in $NOARCH_RPM_FILES $SRPMS_RPM_FILES; do
   echo "$RPM_FILE" >> "$CSV_FILE"
