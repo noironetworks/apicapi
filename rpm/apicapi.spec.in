@@ -1,6 +1,6 @@
 %global srcname apicapi
 
-Name:           %{srcname}
+Name:           python3-%{srcname}
 Version:	@VERSION@
 Release:	@RELEASE@%{?dist}
 Summary:	Python interface to Cisco APIC APIs
