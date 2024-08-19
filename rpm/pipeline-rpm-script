@@ -11,6 +11,7 @@ pipeline {
             steps {
                 script {
                     sh """
+                        rm -rf $WORKSPACE/rpmbuild
                         BUILD_DIR=$WORKSPACE/rpmbuild RELEASE=$BUILD_NUMBER ./rpm/build-rpm.sh
                     """
                 }
