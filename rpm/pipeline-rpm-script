@@ -39,7 +39,7 @@ pipeline {
                     withCredentials([conjurSecretCredential(credentialsId: 'noiro-conjur-artifactory-token', variable: 'ARTIFACT_TOKEN')]) {
                         script {
                             sh """
-                                for rpm in "$WORKSPACE/rpmbuild/SRPMS/"* "$WORKSPACE/rpmbuild/RPMS/noarch/"*; do
+                                for rpm in $WORKSPACE/rpmbuild/RPMS/noarch/python3-*; do
                                     curl -v -u ${ARTIFACTORY_USER}:\${ARTIFACT_TOKEN} -X PUT "${ARTIFACTORY_URL}/\$(basename \$rpm)" -T "\$rpm"
                                 done 
                             """
