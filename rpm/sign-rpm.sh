@@ -2,7 +2,6 @@
 
 set -x
 #TODO: add verification
-#TODO: add release signing
 
 # Ensure the script is called with the correct number of arguments
 if [ "$#" -ne 4 ]; then
@@ -24,8 +23,29 @@ VAULT_SECRET_ID=$KEEPER_SECRET
 # Signing CECs
 USER1=$2
 USER2=$3
+
+# Check if SIGNUSER1 is set
+if [ "$USER1" == "empty" ]; then
+    echo "NO RPMS signed, please provide a valid CEC user for dev signing."
+    exit 0
+fi
+
 # Release Signing or not
 RELEASE=$4
+BUILD_TYPE="DEV"
+VARSOURCE=$WORKSPACE/rpm/my_setup_dev.sh
+GPG_FILE="dev.gpg"
+# Check if RELEASE is True and validate SIGNUSER1 and SIGNUSER2
+if [ "$RELEASE" == "true" ]; then
+    if [ "$USER1" == "empty" ] || [ "$USER2" == "empty" ]; then
+        echo "Two valid CEC users required for release signing."
+        exit 1
+    fi
+    BUILD_TYPE="RELEASE"
+    VARSOURCE=$WORKSPACE/rpm/my_setup_rel.sh
+    GPG_FILE="rel.gpg"
+fi
+
 # Constants from Travis CI environment variables
 BRANCH_NAME=$GIT_BRANCH
 PROJECT_NAME=$GIT_URL
@@ -49,13 +69,10 @@ SIGNATURE_OUTPUT="$WORKING_DIR/requestPayload.sig3"
 SESSION_TOKEN_OUTPUT="$WORKING_DIR/build-session.tkn"
 
 REASON="CLI Test #1"
-BUILD_INITIATOR=$USER1
-BUILD_TYPE="DEV"
+BUILD_INITIATOR=$USER1 #RELEASE
 ATTESTATION_KEY_NAME="dcn-plugin-build"
 PRODUCT="dcn-container-vm-plugins"
 AUTH_TYPE="OTP"
-USERNAME=$USER1
-PASSWORD="push"
 
 # Step 0: Clone the repository if it does not exist and navigate into it
 mkdir -p $SIGNHELPER_DIR
@@ -77,9 +94,15 @@ for RPM_FILE in $NOARCH_RPM_FILES $SRPMS_RPM_FILES; do
 done
 
 # Step 1: Create build authorization token
-$CODE_SIGN_EXEC swims build authorization create -product $PRODUCT -buildType $BUILD_TYPE \
+if [ "$RELEASE" == "true" ]; then  
+    $CODE_SIGN_EXEC swims build authorization create -product $PRODUCT -buildType $BUILD_TYPE \
     -attestationKeyName $ATTESTATION_KEY_NAME -reason "$REASON" -buildInitiators $BUILD_INITIATOR \
-    -authType $AUTH_TYPE -username1 $USERNAME -password1 $PASSWORD -out $OUTPUT_TOKEN -logFile $LOG_FILE
+    -authType $AUTH_TYPE -username1 $USER1 -password1 "push" -username2 $USER2 -password2 "push" -approvers $USER2 -out $OUTPUT_TOKEN -logFile $LOG_FILE
+else
+    $CODE_SIGN_EXEC swims build authorization create -product $PRODUCT -buildType $BUILD_TYPE \
+    -attestationKeyName $ATTESTATION_KEY_NAME -reason "$REASON" -buildInitiators $BUILD_INITIATOR \
+    -authType $AUTH_TYPE -username1 $USER1 -password1 "push" -out $OUTPUT_TOKEN -logFile $LOG_FILE
+fi
 
 # Step 2: Encode payload for build session
 $CODE_SIGN_EXEC swims build session encodePayload -buildInitiator $BUILD_INITIATOR -branchName $BRANCH_NAME \
@@ -103,10 +126,10 @@ $CODE_SIGN_EXEC swims build session create -requestPayload $PAYLOAD_OUTPUT -requ
 echo "Build session token created successfully and stored in $SESSION_TOKEN_OUTPUT"
 
 export SWIMS_SESSION_TOKEN=$SESSION_TOKEN_OUTPUT
-source $WORKSPACE/rpm/my_setup_dev.sh $CODE_SIGN_EXEC $USER1
 cd $RPM_SIGN_SCRIPTDIR
+source $VARSOURCE $CODE_SIGN_EXEC $USER1 $USER2
 ./run-make-cert.exp
-gpg --import dev.gpg
+gpg --import $GPG_FILE
 #gpg --list-keys
 
 # Create the ~/.rpmmacros file with the specified configuration
@@ -117,6 +140,6 @@ cat >"$WORKING_DIR/.rpmmacros" <<EOF
         run-extsign %{__plaintext_filename} %{__signature_filename}
 EOF
 
-python3 $RPM_BATCH_SIGN -f $CSV_FILE -m $WORKING_DIR/.rpmmacros
+python3 $RPM_BATCH_SIGN -d -u -f $CSV_FILE -m $WORKING_DIR/.rpmmacros
 
 #rm -rf $WORKING_DIR
