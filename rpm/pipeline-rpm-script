@@ -2,6 +2,10 @@ pipeline {
     agent {
         label 'noiro-build-101.cisco.com'
     }
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
     environment {
         ARTIFACTORY_USER = 'noiro.gen'
         ARTIFACTORY_URL = 'https://engci-maven.cisco.com/artifactory/noiro-snapshot/apicapi/master/$BUILD_NUMBER'
@@ -48,6 +52,11 @@ pipeline {
                     } 
                 }
             }
+        }
+    }
+    post {
+        always {
+            cleanWs(deleteDirs: true)
         }
     }
 }
