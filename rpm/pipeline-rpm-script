@@ -8,6 +8,8 @@ pipeline {
     }
     environment {
         ARTIFACTORY_USER = 'noiro.gen'
+        // BES build inumbers are lower than our previous workflow, so we need to add an offset so that semantic-versioned upgrades work correctly
+        BUILD_NUMBER=$((${BUILD_NUMBER}+250))
         ARTIFACTORY_URL = 'https://engci-maven.cisco.com/artifactory/noiro-snapshot/apicapi/master/$BUILD_NUMBER'
     }
     stages {
