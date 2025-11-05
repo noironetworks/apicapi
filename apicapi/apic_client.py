@@ -518,7 +518,7 @@ class ApicSession(object):
         self.session_timeout = 0
         self.request_timeout = request_timeout
         self.cookie = {}
-        self.verify = verify
+        self.verify = self._parse_verify_ssl(verify)
 
         # Log in
         self.authentication = None
@@ -867,6 +867,28 @@ class ApicSession(object):
             data = self._make_data('aaaUser', name=self.username)
             self.post_data('aaaLogout', data=data)
         self.authentication = None
+
+    def _parse_verify_ssl(self, verify):
+        """Convert verify_ssl_certificate config value to appropriate type.
+        Args:
+            verify: Config value (string or None)
+        Returns:
+            bool: True to use system CA, False to disable verification
+            str: Path to custom CA certificate bundle file
+        """
+        # Handle empty/None values - disable verification
+        if not verify:
+            return False
+        # Normalize string value
+        value = str(verify).strip().lower()
+        # Check for boolean true values
+        if value in ('true', 'yes', '1', 't', 'on'):
+            return True
+        # Check for boolean false values
+        if value in ('false', 'no', '0', 'f', 'off', ''):
+            return False
+        # Otherwise, treat as file path to CA certificate
+        return str(verify).strip()
 
 
 class ManagedObjectAccess(object):

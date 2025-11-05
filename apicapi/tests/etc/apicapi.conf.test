@@ -18,7 +18,7 @@ apic_password = password
 # Whether use SSl for connecting to the APIC controller or not
 apic_use_ssl = True
 
-verify_ssl_certificate = False
+verify_ssl_certificate = "False"
 scope_names = False
 
 [apic_physdom:phys]
