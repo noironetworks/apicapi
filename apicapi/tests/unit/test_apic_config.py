@@ -189,3 +189,69 @@ class TestConfigParse(base.BaseTestCase):
         self.assertTrue('apic_physdom:phys' in parsed[0])
         # From file 2
         self.assertTrue('apic_physdom:phys3' in parsed[0])
+
+
+class TestVerifySslCertificate(base.BaseTestCase, mocked.ConfigMixin):
+    """Tests for verify_ssl_certificate config option supporting bool or path"""
+
+    def setUp(self, config_group='apic'):
+        self.config_group = config_group
+        super(TestVerifySslCertificate, self).setUp()
+        mocked.ConfigMixin.set_up_mocks(self)
+        self.apic_config._conf.register_opts(
+            config.apic_opts, self.apic_config._group.name)
+
+    def test_verify_ssl_certificate_boolean_true(self):
+        """Test verify_ssl_certificate accepts boolean true strings"""
+        test_values = ['true', 'True', 'TRUE', 'yes', 'Yes', '1']
+        for value in test_values:
+            self.override_config('verify_ssl_certificate', value, 'apic')
+            result = self.apic_config.verify_ssl_certificate
+            self.assertEqual(value, result,
+                   f"verify_ssl_certificate should store '{value}' as string")
+
+    def test_verify_ssl_certificate_boolean_false(self):
+        """Test verify_ssl_certificate accepts boolean false strings"""
+        test_values = ['false', 'False', 'FALSE', 'no', 'No', '0']
+        for value in test_values:
+            self.override_config('verify_ssl_certificate', value, 'apic')
+            result = self.apic_config.verify_ssl_certificate
+            self.assertEqual(value, result,
+                   f"verify_ssl_certificate should store '{value}' as string")
+
+    def test_verify_ssl_certificate_file_path(self):
+        """Test verify_ssl_certificate accepts file paths"""
+        test_paths = [
+            '/etc/ssl/certs/ca-certificates.crt',
+            '/path/to/apic-ca-bundle.crt',
+            '/usr/local/share/ca-certificates/apic.crt'
+        ]
+        for path in test_paths:
+            self.override_config('verify_ssl_certificate', path, 'apic')
+            result = self.apic_config.verify_ssl_certificate
+            self.assertEqual(path, result,
+               f"verify_ssl_certificate should store path '{path}' as string")
+
+    def test_verify_ssl_certificate_default(self):
+        """Test verify_ssl_certificate default value is 'false'"""
+        # Don't override, should get default
+        result = self.apic_config.verify_ssl_certificate
+        self.assertEqual('false', result,
+                   "Default verify_ssl_certificate should be 'false' string")
+
+    def test_verify_ssl_certificate_type(self):
+        """Test verify_ssl_certificate is always stored as string"""
+        from oslo_config import cfg
+
+        # Find the verify_ssl_certificate option
+        opt = None
+        for o in config.apic_opts:
+            if o.dest == 'verify_ssl_certificate':
+                opt = o
+                break
+
+        self.assertIsNotNone(opt, "verify_ssl_certificate option should exist")
+        self.assertIsInstance(opt, cfg.StrOpt,
+                            "verify_ssl_certificate should be StrOpt, not BoolOpt")
+        self.assertEqual('false', opt.default,
+                       "Default should be string 'false', not boolean False")

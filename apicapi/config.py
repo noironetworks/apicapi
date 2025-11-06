@@ -78,7 +78,10 @@ apic_opts = [
                 help=("List of <vlan_min>:<vlan_max> used for vlan pool "
                       "configuration")),
     cfg.StrOpt('shared_context_name', default=''),
-    cfg.BoolOpt('verify_ssl_certificate', default=False),
+    cfg.StrOpt('verify_ssl_certificate',
+           default='false',
+           help=("SSL certificate verification. Can be 'true' (use system CA), "
+                 "'false' (no verification), or path to CA certificate bundle file.")),
     cfg.IntOpt('apic_request_timeout', default=10,
                help=("Number of seconds after which the requests to APIC "
                      "timeout in case of no response received. This is value "
